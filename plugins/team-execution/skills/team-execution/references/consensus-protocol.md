@@ -60,9 +60,31 @@ After 3 iterations: proceed with best version, document final scores in completi
 
 ## Concurrency & Rate Limit Mitigation
 
-To prevent `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file plans:
-1. **Sequential Evaluation (Default)**: If there are 3+ active reviewers, or if files being reviewed contain more than 10k lines collectively, the Team Lead must run reviewers sequentially (one-by-one or in small batches of 2) rather than concurrently. This spreads token utilization smoothly over time.
-2. **Backoff**: If any reviewer tool call returns a rate limit error, pause execution for 5 seconds and retry sequentially.
+To prevent `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews, the Team Lead must enforce a strict, multi-layered concurrency and quota management protocol:
+
+1. **The 2-Agent Max Concurrency (Batching) Rule**:
+   - The Team Lead must **never** spawn or invoke more than **2 subagents concurrently**.
+   - Reviewers must be grouped into sequential batches of $\le 2$. For example, a 4-reviewer team must be executed as:
+     * **Batch 1**: `devils-advocate` + `security-reviewer` (Wait for completion)
+     * **Batch 2**: `architecture-reviewer` + `clarity-reviewer` (Wait for completion)
+   - Synchronize between batches: wait for all subagents in the current batch to fully return their scores and comments before invoking any subagent in the next batch.
+
+2. **Strict Sequential Fallback**:
+   - If any subagent execution triggers a `RESOURCE_EXHAUSTED` (429) rate limit error, the Team Lead must immediately degrade the concurrency limit to **1 (Strict Sequential Mode)**.
+   - For the rest of the review cycle, run all remaining subagents strictly one-by-one, waiting for each to complete before starting the next.
+
+3. **10-Second Jittered Backoff Protocol**:
+   - When a 429 error is hit, the Team Lead must immediately pause/sleep for **10 seconds** before retrying or calling another tool.
+   - This time window allows the API's Token-Per-Minute (TPM) and Request-Per-Minute (RPM) rate windows to clear.
+   - Do not invoke file reads, writes, or commands during this backoff period.
+
+4. **Git Diff Context Reduction (Filtering)**:
+   - To reduce the token volume ingested by the subagents (which is the primary driver of 429 errors), the Team Lead must filter the git diff to exclude high-volume, non-semantic changes like lockfiles and binaries.
+   - Execute the diff with precise command-level path filters:
+     ```bash
+     git diff -- . ':!*lock*' ':!*.png' ':!*.jpg' ':!*.jpeg' ':!*.ico' ':!*.pdf' ':!*.woff' ':!*.woff2'
+     ```
+   - Only supply semantic source code and documentation diffs to reviewers.
 
 ---
 

@@ -418,12 +418,30 @@ for the full protocol. Summary below:
 
 ### B3a. Spawn Reviewers (Sequential or Throttled to Prevent Rate Limits)
 
-To prevent API `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews:
-- **Default to Sequential Review Execution** if more than 3 reviewers are active or if the total context size is high.
-- **Throttling/Batching**: Execute reviewers one after the other (sequentially) or in small throttled batches of 2.
-- **Active Session Reuse (Preferred)**: 
-  - For the first cycle, create the subagent sessions. Keep these sessions active.
-  - For subsequent review/re-review cycles, **do NOT destroy and recreate the subagents**. Instead, send a structured message to the active subagent via `send_message` with the updated git diff/changes, asking for their updated evaluation. Only spawn a new subagent session if the prior session timed out or needs a clean slate.
+To prevent API `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews, the Team Lead must enforce the following strict concurrency controls:
+
+1. **The 2-Agent Max Concurrency (Batching) Rule**:
+   - **Limit**: Maximum **2 active subagents** running concurrently at any time.
+   - **Queuing**: For $N$ reviewers, group them into batches of size $\le 2$ (e.g., Batch 1: `devils-advocate` + `security-reviewer`; Batch 2: `architecture-reviewer` + `clarity-reviewer`).
+   - **Synchronization**: Launch Batch 1, wait for their complete execution and response, and only then launch Batch 2. Never spawn more than 2 subagents in parallel.
+
+2. **Strict Sequential Fallback**:
+   - If any subagent execution triggers a `RESOURCE_EXHAUSTED` (429) rate limit error, immediately degrade concurrency to **1 (Strict Sequential Mode)**.
+   - Run all remaining active subagents one-by-one sequentially for the remainder of the run.
+
+3. **10-Second Jittered Backoff Protocol**:
+   - Upon encountering a 429 error, pause execution and wait/sleep for **10 seconds** to allow the API rate limits to reset.
+   - Avoid making any other tool calls (e.g., viewing/reading files) during this window.
+
+4. **Git Diff Context Reduction (Filtering)**:
+   - Before preparing changes for the reviewers, filter out high-volume, non-semantic changes to keep the token payload minimal.
+   - Exclude lockfiles (e.g., `package-lock.json`, `pnpm-lock.yaml`, `poetry.lock`) and binary assets (e.g., images, compiled binaries) using command-level path filters:
+     `git diff -- . ':!*lock*' ':!*.png' ':!*.jpg' ':!*.ico' ':!*.pdf'`
+   - Deliver only semantic diffs (`.py`, `.ts`, `.md`, etc.) to the reviewers.
+
+5. **Active Session Reuse (Preferred)**: 
+   - For the first cycle, create the subagent sessions. Keep these sessions active.
+   - For subsequent review/re-review cycles, **do NOT destroy and recreate the subagents**. Instead, send a structured message to the active subagent via `send_message` with the updated git diff/changes, asking for their updated evaluation. Only spawn a new subagent session if the prior session timed out or needs a clean slate.
 
 Provide each reviewer with:
 ```
