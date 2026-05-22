@@ -292,14 +292,17 @@ and the review protocol. Submitting for your approval now.
 
 ## Step A5: Submit the Plan for Approval
 
-Call `ExitPlanMode` now.
+**Do NOT call ExitPlanMode automatically.**
+First, prompt the user in the main chat with the proposed roster, base reviewers, optional reviewers, and the derived worker list. Ask for explicit approval.
 
-The plan is the single artifact the user approves. It contains:
+**Hard gate**: Once the user provides positive confirmation in the chat, call `ExitPlanMode` to transition out of planning mode.
+
+The plan is the single approved artifact. It contains:
 - The implementation plan (phases, tasks, files)
 - The team roster (workers + confirmed reviewers)
 - The review protocol (consensus threshold, blocking rules)
 
-When the user approves, your ONLY next action is TeamCreate. See Phase B constraints.
+When the user approves and planning mode exits, your ONLY next action is TeamCreate. See Phase B constraints.
 
 ---
 
@@ -413,9 +416,16 @@ for the full protocol. Summary below:
 - Do not request the human user's approval or validation between cycles. 
 - Iteratively apply fixes and re-run reviews until consensus (score >= 9.0/10) is achieved or the 3-cycle cap is met.
 
-### B3a. Spawn Reviewers in Parallel
+### B3a. Spawn Reviewers (Sequential or Throttled to Prevent Rate Limits)
 
-Spawn ALL confirmed reviewers simultaneously. Provide each with:
+To prevent API `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews:
+- **Default to Sequential Review Execution** if more than 3 reviewers are active or if the total context size is high.
+- **Throttling/Batching**: Execute reviewers one after the other (sequentially) or in small throttled batches of 2.
+- **Active Session Reuse (Preferred)**: 
+  - For the first cycle, create the subagent sessions. Keep these sessions active.
+  - For subsequent review/re-review cycles, **do NOT destroy and recreate the subagents**. Instead, send a structured message to the active subagent via `send_message` with the updated git diff/changes, asking for their updated evaluation. Only spawn a new subagent session if the prior session timed out or needs a clean slate.
+
+Provide each reviewer with:
 ```
 Plan context: [1-3 sentence summary of what was built]
 Intended outcome: [what success looks like]
@@ -425,7 +435,7 @@ Review rubrics: team-execution/skills/team-execution/references/review-criteria.
 
 ### B3b. Collect and Display Scores
 
-After all reviewers complete, display:
+After all reviewers complete their evaluations, compile their scorecards and display:
 
 ```
 ## Review Cycle [N] Results
@@ -440,17 +450,17 @@ After all reviewers complete, display:
 Consensus: [REACHED / NOT REACHED]
 ```
 
-### B3c. Consensus Check
+### B3c. Consensus Check & Hybrid Fix Routing
 
 **If ALL >= 9.0** → consensus reached → proceed to Step B4.
 
 **If any < 9.0**:
-1. Consolidate fix requests from all reviewers scoring < 9.0 (deduplicate overlaps)
-2. Route consolidated fixes to the responsible worker(s)
-3. Workers implement fixes
-4. Re-run Step B3a for ONLY the reviewers that scored < 9.0
-   (reviewers that already ACCEPTED do not re-review)
-5. Increment cycle counter
+1. **Consolidate and Deduplicate**: Extract and consolidate all fix requests from reviewers scoring < 9.0, deduplicating any overlapping feedback.
+2. **Apply Hybrid Fix Routing Strategy**:
+   - **Direct Lead-Level Fixes (Fast-path)**: If the fixes are minor, mechanical, or textual (e.g., typos, formatting, simple search-and-replace, documentation link corrections), the **Team Lead** should implement them directly. This bypasses worker subagent startup overhead and saves tokens.
+   - **Worker-Level Delegation**: If the fixes require complex logic, architectural structural refactoring, or new code implementation, route the tasks back to the responsible active worker subagent(s).
+3. **Re-run Evaluation**: Re-run Step B3a/B3b for **ONLY** the reviewers that scored < 9.0 (reviewers that already ACCEPTED do not re-review). Re-use active reviewer sessions via `send_message` to submit the updated diff.
+4. Increment the cycle counter.
 
 ### B3d. Cycle Cap
 

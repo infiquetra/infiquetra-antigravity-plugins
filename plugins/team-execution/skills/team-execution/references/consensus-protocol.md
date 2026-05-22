@@ -23,12 +23,12 @@ Maximum iterations: **3**. After 3 cycles, proceed with the best available versi
 ```
 For iteration 1..3:
 
-  B3a. Spawn all reviewers IN PARALLEL with:
+  B3a. Spawn or message reviewers (SEQUENTIALLY or throttled if >= 3 active or high-context) with:
         - Full plan context (what was being built)
         - git diff of all changes made
         - Intended outcome (what success looks like)
         - Path to review-criteria.md for scoring rubrics
-
+        
   B3b. Each reviewer:
         - Scores 5 dimensions (0-10 each)
         - Produces overall score (average of 5 dimensions)
@@ -44,58 +44,55 @@ For iteration 1..3:
   B3d. If ALL >= 9.0 → consensus reached → proceed to Step B4
 
   B3e. Else:
-        - Consolidate fix requests from ALL reviewers scoring < 9.0
-        - Deduplicate overlapping fixes
-        - Route consolidated list to the worker(s) responsible for the affected code
-        - Workers implement fixes
-        - Re-run B3a..B3d for ONLY the reviewers that scored < 9.0
-          (reviewers who already ACCEPTED do not re-review)
-
-After 3 iterations: proceed with best version, document final scores in completion report
+        - Consolidate and deduplicate fix requests from all reviewers scoring < 9.0.
+        - Apply Hybrid Fix Routing:
+            * Lead-Level Fixes: If minor (formatting, badges, link correction, typos, text search-and-replace), 
+              the Team Lead (orchestrator) implements them directly for speed and token savings.
+            * Worker Delegation: If complex (logic, stack updates, structural changes), route back to active workers.
+        - Keep subagents active! Re-run B3a..B3d for ONLY the reviewers that scored < 9.0
+          by sending a re-review message via send_message rather than spawning a new subagent.
+          (Reviewers who already ACCEPTED do not re-review).
 ```
+
+After 3 iterations: proceed with best version, document final scores in completion report.
 
 ---
 
-## Scoring Threshold
+## Concurrency & Rate Limit Mitigation
 
-| Score | Meaning |
-|-------|---------|
-| >= 9.0 | ACCEPT — reviewer approves this dimension/overall |
-| 7.0 – 8.9 | NEEDS REVISION — issues exist but not blocking if isolated |
-| < 7.0 | BLOCKING — dimension must be fixed before proceeding |
-
-**Pass threshold**: Overall score >= 9.0 AND no individual dimension < 7.0.
-
-If any dimension scores < 7.0, that reviewer MUST be re-run in the next cycle regardless of overall score.
+To prevent `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file plans:
+1. **Sequential Evaluation (Default)**: If there are 3+ active reviewers, or if files being reviewed contain more than 10k lines collectively, the Team Lead must run reviewers sequentially (one-by-one or in small batches of 2) rather than concurrently. This spreads token utilization smoothly over time.
+2. **Backoff**: If any reviewer tool call returns a rate limit error, pause execution for 5 seconds and retry sequentially.
 
 ---
 
-## Re-review Scoping
+## Active Subagent Reuse Protocol
 
-To minimize cost, only re-run reviewers that scored < 9.0:
-
-```
-Cycle 1 scores:
-  Devils Advocate:      8.5 → NEEDS REVISION
-  Security:             9.3 → ACCEPT
-  Architecture:         8.2 → NEEDS REVISION
-  Infra:                9.1 → ACCEPT
-
-Cycle 2: Only re-run Devils Advocate + Architecture
-  (Security and Infra already accepted — no need to re-review)
-```
+Launching fresh subagent sessions for re-reviews introduces heavy startup latency and duplicate token overhead. To optimize:
+1. **Retain Sessions**: The Team Lead keeps all worker and reviewer subagent sessions active during the Phase B loop.
+2. **Re-Review Message Format**: Instead of creating a new agent, send a message to the active reviewer's conversation ID via `send_message`:
+   ```markdown
+   We have implemented fixes in response to your review feedback.
+   
+   ## Revisions Made
+   [List of changes or git diff showing the new state]
+   
+   Please re-run your evaluation against the modified code and return your updated scorecard and verdict.
+   ```
+3. **Shutdown**: Teammates are only sent a `shutdown_request` in Step B4c once the entire process (approval or 3-cycle cap) completes.
 
 ---
 
-## Fix Consolidation
+## Fix Routing & Consolidation
 
-When multiple reviewers flag the same file/area, consolidate before routing to workers:
+When multiple reviewers flag issues, the Team Lead consolidates and determines the optimal routing path:
 
-1. Group fix requests by file
-2. Within each file, group by section
-3. Deduplicate identical fixes
-4. Resolve conflicts (if reviewers disagree, use judgment or ask user)
-5. Send consolidated list to worker(s) in one message
+1. **Group by File & Severity**: Gather all revision requests.
+2. **Triage Routing**:
+   - **Lead Fix Path**: If all fixes are simple/textual/documentation changes, the Team Lead patches the codebase directly using standard file editing tools.
+   - **Worker Handoff Path**: If any logic is changed, send a structured revision request message to the active worker that originally completed the phase.
+3. **Deduplicate**: Ensure no worker is asked to perform the same change twice.
+4. **Conflict Resolution**: If two reviewers propose conflicting changes, the Team Lead resolves the conflict using engineering judgment or escalates to the user.
 
 ---
 
