@@ -416,34 +416,37 @@ for the full protocol. Summary below:
 - Do not request the human user's approval or validation between cycles. 
 - Iteratively apply fixes and re-run reviews until consensus (score >= 9.0/10) is achieved or the 3-cycle cap is met.
 
-### B3a. Spawn Reviewers (Sequential or Throttled to Prevent Rate Limits)
+### B3a. Warm Session Pooling & Throttled Work Distribution (Rate Limit Mitigation)
 
-To prevent API `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews, the Team Lead must enforce the following strict concurrency controls:
+To prevent API `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews while eliminating startup latency, the Team Lead must enforce the following strict concurrency and queue controls:
 
-1. **The 2-Agent Max Concurrency (Batching) Rule**:
-   - **Limit**: Maximum **2 active subagents** running concurrently at any time.
-   - **Queuing**: For $N$ reviewers, group them into batches of size $\le 2$ (e.g., Batch 1: `devils-advocate` + `security-reviewer`; Batch 2: `architecture-reviewer` + `clarity-reviewer`).
-   - **Synchronization**: Launch Batch 1, wait for their complete execution and response, and only then launch Batch 2. Never spawn more than 2 subagents in parallel.
+1. **Warm Session Spawning (All Upfront)**:
+   - At the beginning of the review phase, spawn ALL confirmed reviewers in a single parallel step using `invoke_subagent`.
+   - **Important**: To prevent token quota exhaustion during creation, use a minimal "bootstrap prompt" (e.g., `"You are the [Role] Reviewer. Initialize your session and wait for review instructions."`). This establishes warm, active sessions without triggering parallel LLM execution.
 
-2. **Strict Sequential Fallback**:
-   - If any subagent execution triggers a `RESOURCE_EXHAUSTED` (429) rate limit error, immediately degrade concurrency to **1 (Strict Sequential Mode)**.
-   - Run all remaining active subagents one-by-one sequentially for the remainder of the run.
+2. **Throttled Task Dispatch (Max 2 Active LLM Calls)**:
+   - The Team Lead manages the review dispatch queue. Send the full, high-context review task (the git diff, plan context, and review criteria) via `send_message` to a maximum of **2 subagents concurrently**.
+   - **Synchronization**: Wait for the active subagents to return their scorecards and verdicts before dispatching work to the next queued reviewers in the pool.
 
-3. **10-Second Jittered Backoff Protocol**:
-   - Upon encountering a 429 error, pause execution and wait/sleep for **10 seconds** to allow the API rate limits to reset.
+3. **Strict Sequential Fallback**:
+   - If any subagent execution or message dispatch triggers a `RESOURCE_EXHAUSTED` (429) rate limit error, immediately degrade concurrency to **1 (Strict Sequential Mode)**.
+   - Dispatch work to all remaining subagents in the pool strictly one-by-one, waiting for each to complete.
+
+4. **10-Second Jittered Backoff Protocol**:
+   - Upon encountering a 429 error, pause execution and sleep/wait for **10 seconds** to allow the API rate limits to reset.
    - Avoid making any other tool calls (e.g., viewing/reading files) during this window.
 
-4. **Git Diff Context Reduction (Filtering)**:
+5. **Git Diff Context Reduction (Filtering)**:
    - Before preparing changes for the reviewers, filter out high-volume, non-semantic changes to keep the token payload minimal.
    - Exclude lockfiles (e.g., `package-lock.json`, `pnpm-lock.yaml`, `poetry.lock`) and binary assets (e.g., images, compiled binaries) using command-level path filters:
      `git diff -- . ':!*lock*' ':!*.png' ':!*.jpg' ':!*.ico' ':!*.pdf'`
    - Deliver only semantic diffs (`.py`, `.ts`, `.md`, etc.) to the reviewers.
 
-5. **Active Session Reuse (Preferred)**: 
-   - For the first cycle, create the subagent sessions. Keep these sessions active.
-   - For subsequent review/re-review cycles, **do NOT destroy and recreate the subagents**. Instead, send a structured message to the active subagent via `send_message` with the updated git diff/changes, asking for their updated evaluation. Only spawn a new subagent session if the prior session timed out or needs a clean slate.
+6. **Active Session Reuse**:
+   - Keep all reviewer sessions active throughout the Phase B loop.
+   - For subsequent review/re-review cycles, **never recreate the subagents**. Instead, send a structured message to the active subagent via `send_message` with the updated git diff/changes, asking for their updated evaluation.
 
-Provide each reviewer with:
+Provide each reviewer (via `send_message` once ready) with:
 ```
 Plan context: [1-3 sentence summary of what was built]
 Intended outcome: [what success looks like]

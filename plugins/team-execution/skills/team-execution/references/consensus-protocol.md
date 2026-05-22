@@ -23,7 +23,7 @@ Maximum iterations: **3**. After 3 cycles, proceed with the best available versi
 ```
 For iteration 1..3:
 
-  B3a. Spawn or message reviewers (SEQUENTIALLY or throttled if >= 3 active or high-context) with:
+  B3a. Spawn all reviewers upfront (warm pooling) with a bootstrap prompt, then dispatch full review tasks via send_message to max 2 concurrent reviewers at a time:
         - Full plan context (what was being built)
         - git diff of all changes made
         - Intended outcome (what success looks like)
@@ -34,15 +34,15 @@ For iteration 1..3:
         - Produces overall score (average of 5 dimensions)
         - Issues verdict: ACCEPT (>= 9.0) or NEEDS REVISION (< 9.0)
         - If NEEDS REVISION: provides specific fix requests
-
+ 
   B3c. Collect and display scores:
         Devil's Advocate:      8.7/10 — NEEDS REVISION (2 fixes)
         Security Reviewer:     9.2/10 — ACCEPT
         Architecture Reviewer: 9.4/10 — ACCEPT
         [Optional reviewers if spawned...]
-
+ 
   B3d. If ALL >= 9.0 → consensus reached → proceed to Step B4
-
+ 
   B3e. Else:
         - Consolidate and deduplicate fix requests from all reviewers scoring < 9.0.
         - Apply Hybrid Fix Routing:
@@ -53,21 +53,22 @@ For iteration 1..3:
           by sending a re-review message via send_message rather than spawning a new subagent.
           (Reviewers who already ACCEPTED do not re-review).
 ```
-
+ 
 After 3 iterations: proceed with best version, document final scores in completion report.
-
+ 
 ---
-
-## Concurrency & Rate Limit Mitigation
-
-To prevent `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews, the Team Lead must enforce a strict, multi-layered concurrency and quota management protocol:
-
-1. **The 2-Agent Max Concurrency (Batching) Rule**:
-   - The Team Lead must **never** spawn or invoke more than **2 subagents concurrently**.
-   - Reviewers must be grouped into sequential batches of $\le 2$. For example, a 4-reviewer team must be executed as:
-     * **Batch 1**: `devils-advocate` + `security-reviewer` (Wait for completion)
-     * **Batch 2**: `architecture-reviewer` + `clarity-reviewer` (Wait for completion)
-   - Synchronize between batches: wait for all subagents in the current batch to fully return their scores and comments before invoking any subagent in the next batch.
+ 
+## Concurrency & Rate Limit Mitigation (Warm Session Pooling & Throttled Work Distribution)
+ 
+To prevent `RESOURCE_EXHAUSTED` (429) rate limit errors during high-context or multi-file reviews while eliminating startup latency, the Team Lead must enforce a strict, multi-layered concurrency and quota management protocol:
+ 
+1. **Warm Session Spawning (All Upfront)**:
+   - At the beginning of the review phase, spawn ALL confirmed reviewers in a single parallel step using `invoke_subagent`.
+   - **Important**: To prevent token quota exhaustion during creation, use a minimal "bootstrap prompt" (e.g., `"You are the [Role] Reviewer. Initialize your session and wait for review instructions."`). This establishes warm, active sessions without triggering parallel LLM execution.
+ 
+2. **Throttled Task Dispatch (Max 2 Active LLM Calls)**:
+   - The Team Lead manages the review dispatch queue. Send the full, high-context review task (the git diff, plan context, and review criteria) via `send_message` to a maximum of **2 subagents concurrently**.
+   - **Synchronization**: Wait for the active subagents to return their scorecards and verdicts before dispatching work to the next queued reviewers in the pool.
 
 2. **Strict Sequential Fallback**:
    - If any subagent execution triggers a `RESOURCE_EXHAUSTED` (429) rate limit error, the Team Lead must immediately degrade the concurrency limit to **1 (Strict Sequential Mode)**.
