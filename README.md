@@ -46,38 +46,37 @@ plugins/my-plugin/
 
 ## Installation & Setup
 
-To equip your Antigravity agent sessions with these plugins, you can either **symlink** individual plugins (highly recommended for live development) or **copy** them directly into the Antigravity plugins directory.
+To equip your Antigravity agent sessions with these plugins, you can use the automated **install-plugin.sh** utility. This script automatically handles creating symlinks or directory backups in your Antigravity configurations.
 
-### Prerequisites
+### Option 1: Automated Script (Highly Recommended)
+We provide a helper script inside the `tools` folder to easily list, install, and uninstall plugins.
 
-Verify your Antigravity config directory exists on macOS:
 ```bash
-ls -la ~/.gemini/config/plugins/
+# 1. List all available and installed plugins
+./tools/install-plugin.sh list
+
+# 2. Install a specific plugin (e.g., Slack)
+./tools/install-plugin.sh install slack
+
+# 3. Install ALL 15 plugins at once
+./tools/install-plugin.sh install-all
+
+# 4. Uninstall a specific plugin (e.g., Splunk)
+./tools/install-plugin.sh uninstall splunk
+
+# 5. Uninstall all plugins
+./tools/install-plugin.sh uninstall-all
 ```
 
-### Option 1: Symlink (Recommended)
-This links the plugins in your local repository clone directly into the Antigravity system configuration, allowing your changes to be instantly active.
+### Option 2: Manual Symlink
+If you prefer to link individual plugins manually, run:
 
 ```bash
-# General Syntax:
-ln -s /path/to/infiquetra-antigravity-plugins/plugins/<plugin-name> ~/.gemini/config/plugins/<plugin-name>
-
-# Example - Install Slack:
-ln -s /Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/slack ~/.gemini/config/plugins/slack
-
-# Example - Install PagerDuty:
-ln -s /Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/pagerduty ~/.gemini/config/plugins/pagerduty
-```
-
-### Option 2: Direct Copy
-If you prefer a standalone copy without linking to the repository:
-
-```bash
-cp -r /Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/slack ~/.gemini/config/plugins/
+ln -s /Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/<plugin-name> ~/.gemini/config/plugins/<plugin-name>
 ```
 
 ### Activating the Plugins
-Once symlinked or copied, simply start a new terminal session or initialize a new Antigravity agent. The session will automatically scan `~/.gemini/config/plugins/`, read `plugin.json` from the root of each plugin folder, and load its associated skills.
+Once symlinked, simply start a new Antigravity agent session. The agent will automatically scan `~/.gemini/config/plugins/`, read `plugin.json` from the root of each plugin folder, and load its associated skills, subagents, and commands natively. You do **not** need to manually execute them in an external terminal!
 
 ---
 
