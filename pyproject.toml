@@ -28,9 +28,6 @@ dev = [
     "types-PyYAML>=6.0",
     "types-requests>=2.31",
 ]
-ebay = [
-    "Pillow>=10.0",
-]
 
 [build-system]
 requires = ["hatchling"]
