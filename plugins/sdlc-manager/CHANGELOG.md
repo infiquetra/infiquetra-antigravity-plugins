@@ -1,10 +1,66 @@
 # Changelog — sdlc-manager
 
-## Unreleased
+## 1.6.1 - 2026-05-31
 
 ### Changed
+- Tracked the `infiquetra-loop` → `infiquetra-lifecycle` rename: updated the ignored runtime-state
+  path to `.claude/infiquetra-lifecycle/` and refreshed plugin references in `/create-issue`, the
+  `sdlc-operator` agent, and the `sdlc-issues` skill.
+
+## Unreleased
+
+### Added
+- Added `/create-issue` as the primary issue command surface, with `/sdlc-create` retained as a
+  compatibility alias.
+- Added prepared-issue handoff maturity metadata and source artifact resolution for local files,
+  GitHub issue/PR URLs, branch refs, and natural hints such as "from the brainstorm".
+
+### Changed
+- Synced the vendored SDLC schema and Asgard prepared-issue readiness with the corrected
+  Asgard/Olympus model: sibling target boards with explicit cross-team transfer, not an
+  implied Asgard-to-Olympus promotion path.
+
+## [1.6.0] — 2026-05-30
+
+### Added
+- Added `issue prepare` to write team-aware Asgard or Mount Olympus issue drafts under
+  `docs/sdlc-issue-drafts/` with JSON readiness sidecars.
+- Added `issue create-prepared` to re-run readiness, render a full mutation plan, ask for final
+  confirmation, repair missing labels/templates, add issues to the requested project, set safe
+  starting status, and record the created issue back onto the draft.
+- Added Asgard and Olympus readiness profiles. Asgard accepts shaping-quality drafts with mode,
+  constraints, risk, and transfer notes; Olympus requires the strict actionable card body,
+  expected labels, project presence, author-visible risk, and safe `Backlog` status.
+- Added mocked tests for blocked create, declined confirmation, direct create, missing
+  labels/templates, missing mapping PR stop, and mapping override creation.
+
+### Changed
+- Updated `sdlc-issues`, `/sdlc-create`, `sdlc-operator`, README, and release metadata so
+  natural-language requests like "create an Olympus issue from this text" route through prepared
+  drafts instead of bypassing readiness checks.
+- Bumped plugin and marketplace metadata to `1.6.0`.
+
+## [1.5.0] — 2026-05-30
+
+### Migration notes
+- **No breaking CLI changes.** Existing commands continue to work. Operators should update
+  installed cache paths from `sdlc-manager/1.0.0` or `1.4.0` to `sdlc-manager/1.5.0` after
+  installing this release.
+- Current actionable issue templates use `hermes-task`, `needs-plan`, and the type label.
+  `needs-analysis` and `needs-triage` remain documented only as legacy auto-label fallback
+  labels from `labels.json`.
+
+### Changed
+- Added vendored `config/sdlc-schema.json` and taught board/metric helpers to consume schema-backed boards, workflows, WIP limits, and terminal statuses.
+- Added live Jeff Intent (#3) and Asgard (#2) project mappings plus explicit `--project` targeting for board add/move.
+- Refreshed board, metrics, milestones, labels, rollout, and operator guidance around Jeff Intent, Asgard, Olympus, direct project fields, and deployment-state separation.
+- Preserved read compatibility for live/legacy Olympus statuses such as `In Progress`, `In Development`, and `Deployed` while guiding new movement to the current schema.
 - Synced `sdlc-issues` template guidance with canonical issue forms in `infiquetra-sdlc`, including current Hermes actionable labels and required card sections.
 - Added a deterministic template documentation generator plus drift guard tests for `templates-reference.md`.
+- Restored legacy rollout WIP-limit fallback when schema-backed limits are absent.
+- Aligned `sdlc-operator`, `/sdlc-triage`, and issue/label references so prompts no longer teach
+  stale actionable labels or initiative/objective labels as current practice.
+- Bumped plugin and marketplace metadata to `1.5.0`.
 
 ## [1.4.0] — 2026-05-04
 
@@ -152,7 +208,7 @@ The 10-step flow:
 
 ### Added
 - Initial release of sdlc-manager plugin for the Mount Olympus agent team
-- Adapted from vecu-sdlc-manager, made organization-agnostic for Infiquetra
+- Updated wording to use Infiquetra conventions consistently
 - 6 skills: sdlc-board, sdlc-issues, sdlc-labels, sdlc-metrics, sdlc-milestones, sdlc-rollout
 - 4 commands: /sdlc-board, /sdlc-create, /sdlc-metrics, /sdlc-triage
 - 1 agent: sdlc-operator

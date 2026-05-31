@@ -10,13 +10,16 @@ All GitHub operations use the `gh` CLI for zero-token-management auth.
 Usage:
     sdlc_manager.py board view --project mount-olympus
     sdlc_manager.py board add --repo athena-service --number 42
-    sdlc_manager.py board move --repo athena-service --number 42 --status "E2E Testing"
+    sdlc_manager.py board move --repo athena-service --number 42 --status "Assigned"
     sdlc_manager.py board archive --project mount-olympus [--dry-run]
     sdlc_manager.py board wip --project mount-olympus
     sdlc_manager.py board standup --project mount-olympus
     sdlc_manager.py board discover-fields --project mount-olympus
 
     sdlc_manager.py issue create --repo athena-service --type capability
+    sdlc_manager.py issue prepare --repo athena-service --type capability --team olympus \
+      --project mount-olympus --from docs/plans/example.md
+    sdlc_manager.py issue create-prepared docs/sdlc-issue-drafts/<draft>.md
 
     sdlc_manager.py labels sync-fields --repo athena-service --number 42
     sdlc_manager.py labels audit --repo athena-service
@@ -61,6 +64,8 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -211,8 +216,9 @@ def load_config() -> dict[str, Any]:
             except Exception:
                 config[key] = {}
 
-    # Project mappings — three-step resolution
+    # Project mappings and SDLC schema — three-step resolution
     config["project_mappings"] = _resolve_project_mappings(sdlc_path)
+    config["sdlc_schema"] = _resolve_sdlc_schema(sdlc_path)
 
     config["sdlc_path"] = str(sdlc_path)
     return config
@@ -226,6 +232,15 @@ def load_config() -> dict[str, Any]:
 _VENDORED_PROJECT_MAPPINGS_PATH = (
     Path(__file__).resolve().parent.parent / "config" / "project-mappings.json"
 )
+_VENDORED_SDLC_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "config" / "sdlc-schema.json"
+PROJECT_CHOICES = ("mount-olympus", "asgard", "jeff-intent")
+LIVE_LEGACY_STATUS_ALIASES = {
+    "In Progress": "Assigned",
+    "In Development": "Assigned",
+    "E2E Testing": "In Review",
+    "Deployment Ready": "Deploy State",
+    "Deployed": "Done",
+}
 
 
 def _resolve_project_mappings(sdlc_path: Path) -> dict[str, Any]:
@@ -263,6 +278,37 @@ def _resolve_project_mappings(sdlc_path: Path) -> dict[str, Any]:
     return {}
 
 
+def _resolve_sdlc_schema(sdlc_path: Path) -> dict[str, Any]:
+    """Resolve sdlc-schema.json via external checkout → vendored → remote fallback."""
+    override = sdlc_path / "config" / "sdlc-schema.json"
+    if override.exists():
+        with open(override) as f:
+            return cast(dict[str, Any], json.load(f))
+
+    if _VENDORED_SDLC_SCHEMA_PATH.exists():
+        with open(_VENDORED_SDLC_SCHEMA_PATH) as f:
+            return cast(dict[str, Any], json.load(f))
+
+    try:
+        result = _gh(
+            [
+                "api",
+                f"repos/{ORG}/infiquetra-sdlc/contents/config/sdlc-schema.json",
+                "--jq",
+                ".content",
+            ]
+        )
+        if result:
+            import base64
+
+            content = base64.b64decode(result.strip()).decode()
+            return cast(dict[str, Any], json.loads(content))
+    except (GhApiError, RuntimeError):
+        pass
+
+    return {}
+
+
 def get_project_config(config: dict, project_name: str) -> dict:
     """Get config for a specific project."""
     projects = config.get("project_mappings", {}).get("projects", {})
@@ -270,6 +316,120 @@ def get_project_config(config: dict, project_name: str) -> dict:
         _error(f"Unknown project: {project_name}. Known projects: {', '.join(projects.keys())}")
         sys.exit(1)
     return cast(dict, projects[project_name])
+
+
+def _project_board_key(project_name: str, proj: dict) -> str:
+    """Return the SDLC schema board key for a project mapping."""
+    if proj.get("board_key"):
+        return cast(str, proj["board_key"])
+    if project_name == "mount-olympus":
+        return "olympus"
+    return project_name.replace("-", "_")
+
+
+def _project_workflow_name(schema: dict, project_name: str, proj: dict) -> str:
+    """Return the workflow name for a project mapping."""
+    if proj.get("workflow"):
+        return cast(str, proj["workflow"])
+    board_key = _project_board_key(project_name, proj)
+    board = schema.get("boards", {}).get(board_key, {})
+    workflow = board.get("workflow")
+    if workflow:
+        return cast(str, workflow)
+    return "olympus_execution" if project_name == "mount-olympus" else "intent_flow"
+
+
+def _project_workflow(config: dict, project_name: str, proj: dict) -> dict:
+    """Return the workflow config for a project, or an empty fallback."""
+    schema = config.get("sdlc_schema", {})
+    workflow_name = _project_workflow_name(schema, project_name, proj)
+    return cast(dict, schema.get("workflows", {}).get(workflow_name, {}))
+
+
+def _status_order(
+    config: dict, project_name: str, proj: dict, columns: dict | None = None
+) -> list[str]:
+    """Return schema-backed display order with live/legacy statuses appended."""
+    workflow = _project_workflow(config, project_name, proj)
+    ordered = list(workflow.get("statuses", []))
+
+    if project_name == "mount-olympus" and "In Progress" not in ordered:
+        # Live Olympus still exposes this option. Keep it visible without
+        # making it canonical in the SDLC schema.
+        insert_at = ordered.index("In Review") if "In Review" in ordered else len(ordered)
+        ordered.insert(insert_at, "In Progress")
+
+    for status in workflow.get("pause_states", []):
+        if status not in ordered:
+            ordered.append(status)
+
+    if columns:
+        for status in columns:
+            if status not in ordered:
+                ordered.append(status)
+
+    if "No Status" not in ordered:
+        ordered.append("No Status")
+    return ordered
+
+
+def _wip_limits(config: dict, project_name: str, proj: dict) -> dict[str, Any]:
+    """Return schema-backed WIP limits for the project."""
+    schema = config.get("sdlc_schema", {})
+    board_key = _project_board_key(project_name, proj)
+    limits = schema.get("wip_limits", {}).get(board_key, {})
+    if limits:
+        return cast(dict[str, Any], limits)
+
+    legacy_limits = config.get("legacy_rollout_config", {}).get("wip_limits", {})
+    if project_name == "mount-olympus" and isinstance(legacy_limits, dict) and legacy_limits:
+        return {
+            "Ready": legacy_limits.get("ready", 10),
+            "In Development": legacy_limits.get("in_development", 10),
+            "E2E Testing": legacy_limits.get("e2e_testing", 3),
+            "Deployment Ready": legacy_limits.get("deployment_ready", 5),
+        }
+
+    return {"Ready": 10, "In Progress": 10 if project_name == "mount-olympus" else 5}
+
+
+def _terminal_statuses(config: dict, project_name: str, proj: dict) -> list[str]:
+    workflow = _project_workflow(config, project_name, proj)
+    statuses = list(workflow.get("terminal_statuses", []))
+    if project_name == "mount-olympus" and "Deployed" not in statuses:
+        statuses.append("Deployed")
+    return statuses or ["Done"]
+
+
+def _cycle_start_statuses(project_name: str) -> list[str]:
+    if project_name == "mount-olympus":
+        return ["Assigned", "In Progress", "In Development"]
+    return ["Active"]
+
+
+def _active_age_thresholds(config: dict, project_name: str, proj: dict) -> dict[str, int]:
+    workflow = _project_workflow(config, project_name, proj)
+    statuses = list(workflow.get("statuses", []))
+    if project_name == "mount-olympus":
+        return {
+            "Ready": 2,
+            "Planning": 2,
+            "Assigned": 5,
+            "In Progress": 5,
+            "In Review": 2,
+        }
+    terminal_statuses = _terminal_statuses(config, project_name, proj)
+    return {status: 3 for status in statuses if status not in terminal_statuses}
+
+
+def _legacy_status_hint(status: str, available: list[str]) -> str | None:
+    """Return a migration hint when an old status name is requested."""
+    alias = LIVE_LEGACY_STATUS_ALIASES.get(status)
+    if not alias:
+        return None
+    if alias in available:
+        return f"'{status}' is legacy; use '{alias}' on this board."
+    return f"'{status}' is legacy; usually maps to '{alias}', which is not available here."
 
 
 def get_projects_for_repo(config: dict, repo_name: str) -> list[dict]:
@@ -758,16 +918,8 @@ def board_view(project_name: str, status_filter: str | None, fmt: str) -> None:
             continue
         columns.setdefault(status, []).append(item)
 
-    # WIP limits
-    wip_limits = {"Ready": 10, "In Development": None, "E2E Testing": 3, "Deployment Ready": 5}
-    column_order = [
-        "Ready",
-        "In Development",
-        "E2E Testing",
-        "Deployment Ready",
-        "Deployed",
-        "No Status",
-    ]
+    wip_limits = _wip_limits(config, project_name, proj)
+    column_order = _status_order(config, project_name, proj, columns)
 
     if fmt == "json":
         _out({"project": project_name, "columns": columns}, fmt)
@@ -783,8 +935,15 @@ def board_view(project_name: str, status_filter: str | None, fmt: str) -> None:
             continue
 
         limit = wip_limits.get(col)
-        limit_str = f" [WIP: {len(col_items)}/{limit}]" if limit else f" [{len(col_items)} items]"
-        over_limit = limit and len(col_items) > limit
+        if isinstance(limit, int):
+            limit_str = f" [WIP: {len(col_items)}/{limit}]"
+            over_limit = len(col_items) > limit
+        elif isinstance(limit, str):
+            limit_str = f" [WIP: {len(col_items)}; limit {limit}]"
+            over_limit = False
+        else:
+            limit_str = f" [{len(col_items)} items]"
+            over_limit = False
         marker = " OVER LIMIT" if over_limit else ""
 
         print(f"### {col}{limit_str}{marker}")
@@ -807,12 +966,22 @@ def board_view(project_name: str, status_filter: str | None, fmt: str) -> None:
         print()
 
 
-def board_add(repo: str, number: int, fmt: str, config: dict | None = None) -> None:
+def board_add(
+    repo: str,
+    number: int,
+    fmt: str,
+    config: dict | None = None,
+    project_name: str | None = None,
+) -> None:
     """Add issue/PR to correct project(s)."""
     if not config:
         config = load_config()
 
-    projects = get_projects_for_repo(config, repo)
+    projects = (
+        [get_project_config(config, project_name)]
+        if project_name
+        else get_projects_for_repo(config, repo)
+    )
     if not projects:
         mappings = config.get("project_mappings", {})
         excluded = mappings.get("excluded_repositories", [])
@@ -853,10 +1022,16 @@ def board_add(repo: str, number: int, fmt: str, config: dict | None = None) -> N
     _out("\n".join(results), fmt)
 
 
-def board_move(repo: str, number: int, status: str, fmt: str) -> None:
+def board_move(
+    repo: str, number: int, status: str, fmt: str, project_name: str | None = None
+) -> None:
     """Move item to a different board column."""
     config = load_config()
-    projects = get_projects_for_repo(config, repo)
+    projects = (
+        [get_project_config(config, project_name)]
+        if project_name
+        else get_projects_for_repo(config, repo)
+    )
     if not projects:
         _error(f"Repo '{repo}' not mapped to any project")
         sys.exit(1)
@@ -905,7 +1080,11 @@ def board_move(repo: str, number: int, status: str, fmt: str) -> None:
             continue
         if not status_option_id:
             available = [o["name"] for o in status_field.get("options", [])]
-            results.append(f"Status '{status}' not found. Available: {', '.join(available)}")
+            hint = _legacy_status_hint(status, available)
+            message = f"Status '{status}' not found. Available: {', '.join(available)}"
+            if hint:
+                message = f"{message}. {hint}"
+            results.append(message)
             continue
 
         try:
@@ -926,16 +1105,20 @@ def board_move(repo: str, number: int, status: str, fmt: str) -> None:
 
 
 def board_archive(project_name: str, dry_run: bool, fmt: str) -> None:
-    """Archive items with 'Deployed' status."""
+    """Archive items in terminal workflow statuses."""
     config = load_config()
     proj = get_project_config(config, project_name)
     project_id, items = get_project_items(proj["number"])
 
-    deployed = [i for i in items if get_item_status(i) == "Deployed"]
+    terminal_statuses = set(_terminal_statuses(config, project_name, proj))
+    terminal_items = [i for i in items if get_item_status(i) in terminal_statuses]
 
     if dry_run:
-        print(f"DRY RUN: Would archive {len(deployed)} items from '{proj['name']}':")
-        for item in deployed:
+        print(
+            f"DRY RUN: Would archive {len(terminal_items)} terminal items "
+            f"from '{proj['name']}' ({', '.join(sorted(terminal_statuses))}):"
+        )
+        for item in terminal_items:
             content = item.get("content", {})
             print(
                 f"  - {content.get('repository', {}).get('name', '?')}#{content.get('number', '?')}: {content.get('title', '')[:50]}"
@@ -943,7 +1126,7 @@ def board_archive(project_name: str, dry_run: bool, fmt: str) -> None:
         return
 
     results = []
-    for item in deployed:
+    for item in terminal_items:
         content = item.get("content", {})
         label = f"{content.get('repository', {}).get('name', '?')}#{content.get('number', '?')}"
         try:
@@ -968,16 +1151,7 @@ def board_wip(project_name: str, fmt: str) -> None:
     proj = get_project_config(config, project_name)
     _, items = get_project_items(proj["number"])
 
-    # WIP limits: configurable via beads-config.json "wip_limits" section.
-    # "In Development" default is 10 (conservative for a mixed human/agent team
-    # where not all agents do dev work). Override in config for your team size.
-    config_wip = config.get("legacy_rollout_config", {}).get("wip_limits", {})
-    wip_limits = {
-        "Ready": config_wip.get("ready", 10),
-        "In Development": config_wip.get("in_development", 10),
-        "E2E Testing": config_wip.get("e2e_testing", 3),
-        "Deployment Ready": config_wip.get("deployment_ready", 5),
-    }
+    wip_limits = _wip_limits(config, project_name, proj)
 
     counts: dict[str, int] = {}
     for item in items:
@@ -989,13 +1163,18 @@ def board_wip(project_name: str, fmt: str) -> None:
     print("=" * 50)
     violations = []
     for col, limit in wip_limits.items():
+        if col == "pause_states" or limit is None:
+            continue
         count = counts.get(col, 0)
-        over = count > limit
-        if over:
-            violations.append(col)
-        bar = "X" * count + "." * max(0, limit - count)
-        marker = " OVER LIMIT" if over else ""
-        print(f"  {col:20} {count:2}/{limit:<2} [{bar}]{marker}")
+        if isinstance(limit, int):
+            over = count > limit
+            if over:
+                violations.append(col)
+            bar = "X" * count + "." * max(0, limit - count)
+            marker = " OVER LIMIT" if over else ""
+            print(f"  {col:20} {count:2}/{limit:<2} [{bar}]{marker}")
+        else:
+            print(f"  {col:20} {count:2} (limit: {limit})")
 
     if violations:
         print(f"\nWIP VIOLATIONS: {', '.join(violations)}")
@@ -1016,7 +1195,8 @@ def board_standup(project_name: str, fmt: str) -> None:
         status = get_item_status(item) or "No Status"
         columns.setdefault(status, []).append(item)
 
-    right_to_left = ["Deployed", "Deployment Ready", "E2E Testing", "In Development", "Ready"]
+    right_to_left = list(reversed(_status_order(config, project_name, proj, columns)))
+    right_to_left = [c for c in right_to_left if c != "No Status"]
 
     print(f"\n{'=' * 60}")
     print(f"  STANDUP PREP — {proj['name']}")
@@ -1045,9 +1225,9 @@ def board_standup(project_name: str, fmt: str) -> None:
         print()
 
     # Summary
-    total_active = sum(
-        len(columns.get(c, [])) for c in ["In Development", "E2E Testing", "Deployment Ready"]
-    )
+    terminal = set(_terminal_statuses(config, project_name, proj))
+    active_columns = [c for c in right_to_left if c not in terminal and c != "No Status"]
+    total_active = sum(len(columns.get(c, [])) for c in active_columns)
     print(f"Summary: {total_active} active items, {len(columns.get('Ready', []))} in Ready")
 
 
@@ -1367,6 +1547,8 @@ def metrics_cycle_time(project_name: str, days: int, issue_type: str | None, fmt
     config = load_config()
     proj = get_project_config(config, project_name)
     _, items = get_project_items(proj["number"])
+    terminal_statuses = set(_terminal_statuses(config, project_name, proj))
+    start_statuses = set(_cycle_start_statuses(project_name))
 
     cycle_times = []
 
@@ -1375,7 +1557,7 @@ def metrics_cycle_time(project_name: str, days: int, issue_type: str | None, fmt
 
     for item in items:
         status = get_item_status(item)
-        if status != "Deployed":
+        if status not in terminal_statuses:
             continue
 
         content = item.get("content", {})
@@ -1394,17 +1576,18 @@ def metrics_cycle_time(project_name: str, days: int, issue_type: str | None, fmt
         except Exception:
             continue
 
-        # Find In Development start and Deployed end
+        # Find first active-work start and terminal end. Legacy Olympus
+        # timeline data may still use In Progress / In Development / Deployed.
         dev_start = None
-        deployed_time = None
+        done_time = None
         for t in transitions:
-            if t["to"] == "In Development" and not dev_start:
+            if t["to"] in start_statuses and not dev_start:
                 dev_start = datetime.fromisoformat(t["at"].replace("Z", "+00:00"))
-            if t["to"] == "Deployed":
-                deployed_time = datetime.fromisoformat(t["at"].replace("Z", "+00:00"))
+            if t["to"] in terminal_statuses:
+                done_time = datetime.fromisoformat(t["at"].replace("Z", "+00:00"))
 
-        if dev_start and deployed_time:
-            cycle_days = (deployed_time - dev_start).total_seconds() / 86400
+        if dev_start and done_time:
+            cycle_days = (done_time - dev_start).total_seconds() / 86400
             cycle_times.append(cycle_days)
 
     if not cycle_times:
@@ -1435,10 +1618,11 @@ def metrics_cycle_time(project_name: str, days: int, issue_type: str | None, fmt
 
 
 def metrics_throughput(project_name: str, weeks: int, fmt: str) -> None:
-    """Show items deployed per week."""
+    """Show terminal items per week."""
     config = load_config()
     proj = get_project_config(config, project_name)
     _, items = get_project_items(proj["number"])
+    terminal_statuses = set(_terminal_statuses(config, project_name, proj))
 
     from collections import defaultdict
 
@@ -1446,7 +1630,7 @@ def metrics_throughput(project_name: str, weeks: int, fmt: str) -> None:
 
     for item in items:
         status = get_item_status(item)
-        if status != "Deployed":
+        if status not in terminal_statuses:
             continue
 
         content = item.get("content", {})
@@ -1491,8 +1675,8 @@ def metrics_wip_age(project_name: str, fmt: str) -> None:
     proj = get_project_config(config, project_name)
     _, items = get_project_items(proj["number"])
 
-    active_cols = ["Ready", "In Development", "E2E Testing", "Deployment Ready"]
-    aged_thresholds = {"Ready": 2, "In Development": 5, "E2E Testing": 1, "Deployment Ready": 2}
+    aged_thresholds = _active_age_thresholds(config, project_name, proj)
+    active_cols = list(aged_thresholds.keys())
 
     print(f"\nWIP Age — {proj['name']}")
     print("=" * 60)
@@ -2467,13 +2651,51 @@ _ISSUE_TYPES = (
     "context-update",
     "objective",
 )
+_TEAM_CHOICES = ("asgard", "olympus")
+_TEAM_SAFE_STATUSES = {"asgard": "Shaping", "olympus": "Backlog"}
+_DISPATCH_ACTIONABLE_TYPES = frozenset({"capability", "enhancement", "defect"})
+_ISSUE_TYPE_LABELS = {
+    "capability": ["capability", "hermes-task", "needs-plan"],
+    "enhancement": ["enhancement", "hermes-task", "needs-plan"],
+    "defect": ["defect", "hermes-task", "needs-plan"],
+    "objective": ["objective", "hermes-not-actionable"],
+    "exploration": ["exploration", "research", "hermes-not-actionable"],
+    "context-update": ["context-update", "documentation", "hermes-not-actionable"],
+}
+_PREPARED_DRAFT_DIR = Path("docs") / "sdlc-issue-drafts"
+_HANDOFF_MATURITY_CHOICES = (
+    "idea-ready",
+    "requirements-ready",
+    "plan-ready",
+    "resume-ready",
+    "deferred-context",
+)
+_SOURCE_SEARCH_DIRS = (
+    Path(".claude") / "infiquetra-lifecycle",
+    Path("docs") / "plans",
+    Path("docs") / "brainstorms",
+    Path("docs") / "ideation",
+    Path("docs") / "reviews",
+    Path("docs") / "work-sessions",
+    Path("docs") / "sdlc-issue-drafts",
+)
+_SOURCE_HINT_DIRS = {
+    "plan": (Path("docs") / "plans",),
+    "brainstorm": (Path("docs") / "brainstorms",),
+    "requirements": (Path("docs") / "brainstorms",),
+    "idea": (Path("docs") / "ideation",),
+    "ideation": (Path("docs") / "ideation",),
+    "review": (Path("docs") / "reviews",),
+    "work": (Path("docs") / "work-sessions",),
+    "resume": (Path("docs") / "work-sessions", Path(".claude") / "infiquetra-lifecycle"),
+    "draft": (Path("docs") / "sdlc-issue-drafts",),
+}
+
 _HERMES_ACTIONABLE_TYPES = frozenset(
     {
         "capability",
         "enhancement",
         "defect",
-        "exploration",
-        "context-update",
     }
 )
 # Issue types where the capability-adaptive fields are relevant (size,
@@ -2492,6 +2714,1010 @@ _HERMES_ACTIONABLE_TYPES = frozenset(
 # `infiquetra-sdlc/docs/operations/operational-reference.md`, the
 # additional prompts light up automatically.
 _CAPABILITY_ADAPTIVE_TYPES = frozenset({"capability", "objective"})
+
+
+@dataclass
+class PreparedReadiness:
+    profile: str
+    passed: bool
+    blocking_gaps: list[str]
+    warnings: list[str]
+
+
+@dataclass
+class SourceArtifact:
+    ref: str
+    kind: str
+    title: str
+    content: str
+    inferred_maturity: str
+    path: str | None = None
+    url: str | None = None
+    branch: str | None = None
+
+
+@dataclass
+class PreparedIssue:
+    title: str
+    repo: str
+    issue_type: str
+    team: str
+    project: str
+    status: str
+    labels: list[str]
+    risk: str | None
+    mode: str | None
+    body: str
+    handoff_maturity: str | None = None
+    source_artifact: dict[str, Any] | None = None
+    draft_path: str | None = None
+    sidecar_path: str | None = None
+
+
+@dataclass
+class MutationStep:
+    action: str
+    detail: str
+
+
+@dataclass
+class MutationPlan:
+    draft_path: str
+    repo: str
+    issue_type: str
+    team: str
+    project: str
+    status: str
+    steps: list[MutationStep]
+    mapping_missing: bool = False
+
+
+def _issue_expected_labels(issue_type: str) -> list[str]:
+    return list(_ISSUE_TYPE_LABELS.get(issue_type, [issue_type]))
+
+
+def _normalize_label_list(raw: Any) -> list[str]:
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if str(item).strip()]
+    if isinstance(raw, str):
+        return [item.strip() for item in raw.split(",") if item.strip()]
+    return []
+
+
+def _source_artifact_payload(artifact: SourceArtifact | None) -> dict[str, Any] | None:
+    if not artifact:
+        return None
+    payload = asdict(artifact)
+    content = str(payload.pop("content", "")).strip()
+    if content:
+        payload["content_excerpt"] = content[:1200]
+    return payload
+
+
+def _markdown_title(text: str, fallback: str) -> str:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            return stripped[2:].strip() or fallback
+    return fallback
+
+
+def _infer_maturity_from_path(path: Path) -> str:
+    normalized = path.as_posix()
+    if "docs/ideation/" in normalized:
+        return "idea-ready"
+    if "docs/brainstorms/" in normalized:
+        return "requirements-ready"
+    if "docs/plans/" in normalized or "docs/reviews/" in normalized:
+        return "plan-ready"
+    if "docs/work-sessions/" in normalized or "docs/sdlc-issue-drafts/" in normalized:
+        return "resume-ready"
+    if ".claude/infiquetra-lifecycle/" in normalized:
+        return "resume-ready"
+    return "requirements-ready"
+
+
+def _infer_kind_from_path(path: Path) -> str:
+    normalized = path.as_posix()
+    if "docs/ideation/" in normalized:
+        return "ideation"
+    if "docs/brainstorms/" in normalized:
+        return "brainstorm"
+    if "docs/plans/" in normalized:
+        return "plan"
+    if "docs/reviews/" in normalized:
+        return "review"
+    if "docs/work-sessions/" in normalized:
+        return "work-session"
+    if "docs/sdlc-issue-drafts/" in normalized:
+        return "prepared-draft"
+    if ".claude/infiquetra-lifecycle/" in normalized:
+        return "loop-state"
+    return "local-file"
+
+
+def _source_from_local_path(path: Path, root: Path | None = None) -> SourceArtifact:
+    root = root or Path.cwd()
+    resolved = path.expanduser()
+    if not resolved.is_absolute():
+        resolved = root / resolved
+    if not resolved.exists() or not resolved.is_file():
+        raise RuntimeError(f"Source artifact path does not exist or is not a file: {path}")
+    content = resolved.read_text(encoding="utf-8")
+    try:
+        display_path = resolved.relative_to(root).as_posix()
+    except ValueError:
+        display_path = resolved.as_posix()
+    return SourceArtifact(
+        ref=display_path,
+        kind=_infer_kind_from_path(Path(display_path)),
+        title=_markdown_title(content, resolved.stem),
+        content=content,
+        inferred_maturity=_infer_maturity_from_path(Path(display_path)),
+        path=display_path,
+    )
+
+
+def _source_from_github_url(url: str) -> SourceArtifact:
+    match = re.match(
+        r"^https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/"
+        r"(?P<kind>issues|pull)/(?P<number>\d+)(?:\b|/|$)",
+        url.strip(),
+    )
+    if not match:
+        raise RuntimeError(f"Unsupported GitHub source URL: {url}")
+
+    owner = match.group("owner")
+    repo = match.group("repo")
+    number = match.group("number")
+    is_pr = match.group("kind") == "pull"
+    resource = "pr" if is_pr else "issue"
+    try:
+        raw = _gh(
+            [
+                resource,
+                "view",
+                number,
+                "--repo",
+                f"{owner}/{repo}",
+                "--json",
+                "title,body,url",
+            ]
+        )
+        data = json.loads(raw)
+    except Exception as e:
+        raise RuntimeError(f"Could not fetch GitHub source artifact {url}: {e}") from e
+
+    title = str(data.get("title") or f"{repo}#{number}").strip()
+    body = str(data.get("body") or "").strip()
+    content = f"# {title}\n\n{body}".strip()
+    return SourceArtifact(
+        ref=f"{owner}/{repo}#{number}",
+        kind="github-pr" if is_pr else "github-issue",
+        title=title,
+        content=content,
+        inferred_maturity="resume-ready" if is_pr else "requirements-ready",
+        url=str(data.get("url") or url),
+    )
+
+
+def _source_from_branch_ref(ref: str, root: Path | None = None) -> SourceArtifact:
+    root = root or Path.cwd()
+    branch = ref.removeprefix("branch:").strip() or "HEAD"
+    if branch in {"current", "current-branch", "current branch"}:
+        branch = _run_git_command(["git", "branch", "--show-current"], root) or "HEAD"
+    head = _run_git_command(["git", "rev-parse", branch], root)
+    try:
+        upstream = _run_git_command(
+            ["git", "rev-parse", "--abbrev-ref", f"{branch}@{{upstream}}"], root
+        )
+    except RuntimeError:
+        upstream = "none"
+    status = _run_git_command(["git", "status", "--short", "--branch"], root)
+    content = (
+        f"# Branch handoff: {branch}\n\n"
+        f"- Branch: {branch}\n"
+        f"- HEAD: {head}\n"
+        f"- Upstream: {upstream}\n\n"
+        "## Working tree\n\n"
+        f"```text\n{status}\n```\n"
+    )
+    return SourceArtifact(
+        ref=f"branch:{branch}",
+        kind="branch",
+        title=f"Branch handoff: {branch}",
+        content=content,
+        inferred_maturity="resume-ready",
+        branch=branch,
+    )
+
+
+def _hint_search_dirs(hint: str) -> tuple[Path, ...]:
+    lower = hint.lower()
+    dirs: list[Path] = []
+    for word, paths in _SOURCE_HINT_DIRS.items():
+        if word in lower:
+            dirs.extend(paths)
+    if dirs:
+        return tuple(dict.fromkeys(dirs))
+    return _SOURCE_SEARCH_DIRS
+
+
+def _source_matches_hint(path: Path, text: str, hint: str) -> bool:
+    lower = hint.lower()
+    ignored_terms = set(_SOURCE_HINT_DIRS) | {
+        "from",
+        "the",
+        "this",
+        "that",
+        "issue",
+        "handoff",
+        "hand",
+        "off",
+        "create",
+        "using",
+        "use",
+        "based",
+        "for",
+    }
+    terms = [
+        term for term in re.findall(r"[a-z0-9][a-z0-9-]{2,}", lower) if term not in ignored_terms
+    ]
+    if not terms:
+        return True
+    haystack = f"{path.stem}\n{text[:2000]}".lower()
+    return all(term in haystack for term in terms[:4])
+
+
+def find_source_artifacts(hint: str, root: Path | None = None) -> list[SourceArtifact]:
+    root = root or Path.cwd()
+    matches: list[tuple[float, SourceArtifact]] = []
+    for rel_dir in _hint_search_dirs(hint):
+        search_dir = root / rel_dir
+        if not search_dir.exists():
+            continue
+        for candidate in search_dir.rglob("*.md"):
+            if not candidate.is_file():
+                continue
+            text = candidate.read_text(encoding="utf-8")
+            if _source_matches_hint(candidate, text, hint):
+                artifact = _source_from_local_path(candidate, root)
+                matches.append((candidate.stat().st_mtime, artifact))
+    matches.sort(key=lambda item: item[0], reverse=True)
+    return [artifact for _, artifact in matches]
+
+
+def resolve_source_artifact(ref_or_hint: str, root: Path | None = None) -> SourceArtifact:
+    root = root or Path.cwd()
+    ref = ref_or_hint.strip()
+    if not ref:
+        raise RuntimeError("Source artifact reference is empty")
+
+    path = Path(ref).expanduser()
+    if path.exists() or (not path.is_absolute() and (root / path).exists()):
+        return _source_from_local_path(path, root)
+    if ref.startswith("https://github.com/"):
+        return _source_from_github_url(ref)
+    if ref.startswith("branch:") or ref in {"current-branch", "current branch"}:
+        return _source_from_branch_ref(ref, root)
+
+    matches = find_source_artifacts(ref, root)
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        searched = ", ".join(str(path) for path in _hint_search_dirs(ref))
+        raise RuntimeError(f"No source artifact matched {ref!r}. Searched: {searched}")
+    choices = ", ".join(artifact.ref for artifact in matches[:10])
+    raise RuntimeError(f"Ambiguous source artifact hint {ref!r}. Matches: {choices}")
+
+
+def _natural_language_source_hint(text: str) -> str | None:
+    lower = text.lower()
+    if not any(word in lower for word in _SOURCE_HINT_DIRS):
+        return None
+    if re.search(r"\b(from|handoff|hand off|using|use|based on)\b", lower):
+        return text
+    return None
+
+
+def _resolve_prepare_source(
+    source_parts: list[str],
+    source_file: str | None,
+    from_ref: str | None,
+    root: Path | None = None,
+) -> tuple[str, SourceArtifact | None]:
+    root = root or Path.cwd()
+    if from_ref:
+        artifact = resolve_source_artifact(from_ref, root)
+        return artifact.content, artifact
+    if source_file:
+        artifact = _source_from_local_path(Path(source_file), root)
+        return artifact.content, artifact
+    if source_parts:
+        source = " ".join(source_parts)
+        natural_hint = _natural_language_source_hint(source)
+        if natural_hint:
+            artifact = resolve_source_artifact(natural_hint, root)
+            return artifact.content, artifact
+        return source, None
+    if not sys.stdin.isatty():
+        return sys.stdin.read(), None
+    raise RuntimeError("Provide source text as an argument, stdin, --source-file, or --from")
+
+
+def _parse_draft_frontmatter(text: str) -> tuple[dict[str, str], str]:
+    if not text.startswith("---\n"):
+        return {}, text
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return {}, text
+    metadata: dict[str, str] = {}
+    for line in text[4:end].splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        metadata[key.strip()] = value.strip()
+    return metadata, text[end + 5 :].lstrip()
+
+
+def _strip_draft_h1(body: str) -> tuple[str | None, str]:
+    lines = body.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith("# "):
+            title = line[2:].strip()
+            remaining = "\n".join(lines[index + 1 :]).lstrip()
+            return title, remaining
+        if line.strip():
+            break
+    return None, body
+
+
+def _render_draft_markdown(issue: PreparedIssue) -> str:
+    labels = ", ".join(issue.labels)
+    frontmatter = [
+        "---",
+        f"title: {issue.title}",
+        f"repo: {issue.repo}",
+        f"type: {issue.issue_type}",
+        f"team: {issue.team}",
+        f"project: {issue.project}",
+        f"status: {issue.status}",
+        f"labels: {labels}",
+    ]
+    if issue.risk:
+        frontmatter.append(f"risk: {issue.risk}")
+    if issue.mode:
+        frontmatter.append(f"mode: {issue.mode}")
+    if issue.handoff_maturity:
+        frontmatter.append(f"handoff_maturity: {issue.handoff_maturity}")
+    frontmatter.append("---")
+    return "\n".join(frontmatter) + f"\n\n# {issue.title}\n\n{issue.body.rstrip()}\n"
+
+
+def _suggested_next_action(handoff_maturity: str) -> str:
+    return {
+        "idea-ready": "Use `/plan <issue>` to shape requirements before implementation.",
+        "requirements-ready": "Use `/plan <issue>` to create an implementation plan.",
+        "plan-ready": "Use `/work <issue>` to execute from the plan-grade context.",
+        "resume-ready": "Use `/work <issue>` to resume from the captured work state.",
+        "deferred-context": "Clarify current intent before planning or working this issue.",
+    }[handoff_maturity]
+
+
+def _render_handoff_context(
+    handoff_maturity: str | None,
+    source_artifact: SourceArtifact | None,
+) -> str:
+    if not handoff_maturity and not source_artifact:
+        return ""
+    maturity = handoff_maturity or "requirements-ready"
+    lines = [
+        "### Handoff maturity",
+        maturity,
+        "",
+        "### Suggested next action",
+        _suggested_next_action(maturity),
+    ]
+    if source_artifact:
+        lines.extend(
+            [
+                "",
+                "### Source context",
+                f"- Source: {source_artifact.ref}",
+                f"- Source type: {source_artifact.kind}",
+                f"- Source title: {source_artifact.title}",
+            ]
+        )
+        if source_artifact.url:
+            lines.append(f"- Source URL: {source_artifact.url}")
+        if source_artifact.branch:
+            lines.append(f"- Source branch: {source_artifact.branch}")
+    return "\n\n" + "\n".join(lines) + "\n"
+
+
+def _source_to_issue_body(
+    source: str,
+    team: str,
+    repo: str,
+    mode: str | None,
+    handoff_maturity: str | None = None,
+    source_artifact: SourceArtifact | None = None,
+) -> str:
+    stripped = source.strip()
+    if "### " in stripped:
+        if "### Handoff maturity" in stripped:
+            return stripped
+        return stripped + _render_handoff_context(handoff_maturity, source_artifact)
+    if team == "asgard":
+        return f"""### Intent
+{stripped}
+
+### Target repo / surface
+{repo}
+
+### Mode
+{mode or "TBD"}
+
+### Constraints
+TBD
+
+### Risk
+TBD
+
+### Transfer notes
+- [ ] Record any explicit cross-team transfer target, or leave as none.
+""" + _render_handoff_context(handoff_maturity, source_artifact)
+    return f"""### Objective
+{stripped}
+
+### Acceptance criteria
+- [ ] TBD
+
+### Out-of-scope / non-goals
+TBD
+
+### Files expected to change
+TBD
+
+### Tests to add or update
+TBD
+
+### Verification
+TBD
+""" + _render_handoff_context(handoff_maturity, source_artifact)
+
+
+def _safe_slug(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return slug[:48].strip("-") or "issue"
+
+
+def _unique_draft_path(draft_dir: Path, title: str) -> Path:
+    date_prefix = datetime.now(UTC).strftime("%Y-%m-%d")
+    base = f"{date_prefix}-{_safe_slug(title)}"
+    candidate = draft_dir / f"{base}.md"
+    index = 2
+    while candidate.exists() or candidate.with_suffix(".json").exists():
+        candidate = draft_dir / f"{base}-{index}.md"
+        index += 1
+    return candidate
+
+
+def _read_prepared_issue(draft_path: Path) -> PreparedIssue:
+    text = draft_path.read_text(encoding="utf-8")
+    metadata, body_with_title = _parse_draft_frontmatter(text)
+    h1_title, body = _strip_draft_h1(body_with_title)
+    sidecar_path = draft_path.with_suffix(".json")
+    if not sidecar_path.exists():
+        raise RuntimeError(f"Missing prepared issue sidecar: {sidecar_path}")
+    try:
+        sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Malformed prepared issue sidecar {sidecar_path}: {e}") from e
+    if not isinstance(sidecar, dict):
+        raise RuntimeError(f"Prepared issue sidecar {sidecar_path} is not a JSON object")
+
+    def field(name: str, sidecar_name: str | None = None) -> str:
+        value = metadata.get(name) or sidecar.get(sidecar_name or name)
+        return str(value).strip() if value is not None else ""
+
+    issue = PreparedIssue(
+        title=field("title") or h1_title or draft_path.stem,
+        repo=field("repo"),
+        issue_type=field("type", "issue_type"),
+        team=field("team"),
+        project=field("project"),
+        status=field("status"),
+        labels=_normalize_label_list(metadata.get("labels") or sidecar.get("labels")),
+        risk=field("risk") or None,
+        mode=field("mode") or None,
+        body=body.strip(),
+        handoff_maturity=field("handoff_maturity") or None,
+        source_artifact=sidecar.get("source_artifact")
+        if isinstance(sidecar.get("source_artifact"), dict)
+        else None,
+        draft_path=str(draft_path),
+        sidecar_path=str(sidecar_path),
+    )
+
+    for key, value in {
+        "repo": issue.repo,
+        "type": issue.issue_type,
+        "team": issue.team,
+        "project": issue.project,
+    }.items():
+        sidecar_key = "issue_type" if key == "type" else key
+        if metadata.get(key) and sidecar.get(sidecar_key) and metadata[key] != sidecar[sidecar_key]:
+            raise RuntimeError(
+                f"Draft metadata {key}={metadata[key]!r} conflicts with sidecar "
+                f"{sidecar_key}={sidecar[sidecar_key]!r}"
+            )
+        if not value:
+            raise RuntimeError(f"Prepared issue draft is missing required metadata: {key}")
+    if issue.issue_type not in _ISSUE_TYPES:
+        raise RuntimeError(f"Unknown issue type in prepared draft: {issue.issue_type}")
+    if issue.team not in _TEAM_CHOICES:
+        raise RuntimeError(f"Unknown team in prepared draft: {issue.team}")
+    return issue
+
+
+def _readiness_for_prepared_issue(issue: PreparedIssue) -> PreparedReadiness:
+    blocking: list[str] = []
+    warnings: list[str] = []
+
+    expected_status = _TEAM_SAFE_STATUSES.get(issue.team)
+    if issue.status == "Ready":
+        blocking.append("Prepared issues must not start in Ready")
+    elif expected_status and issue.status != expected_status:
+        blocking.append(
+            f"Prepared {issue.team} issues must start in {expected_status!r}, not {issue.status!r}"
+        )
+
+    if issue.project not in PROJECT_CHOICES:
+        blocking.append(f"Unknown project {issue.project!r}")
+
+    expected_labels = set(_issue_expected_labels(issue.issue_type))
+    missing_labels = sorted(expected_labels - set(issue.labels))
+    if missing_labels:
+        blocking.append(f"Missing expected labels: {missing_labels}")
+
+    if issue.handoff_maturity and issue.handoff_maturity not in _HANDOFF_MATURITY_CHOICES:
+        allowed = ", ".join(_HANDOFF_MATURITY_CHOICES)
+        blocking.append(f"Unknown handoff maturity {issue.handoff_maturity!r}; expected {allowed}")
+    elif not issue.handoff_maturity:
+        warnings.append("Missing handoff maturity metadata")
+
+    sections = _split_sections(issue.body)
+    if issue.team == "olympus":
+        if issue.issue_type not in _DISPATCH_ACTIONABLE_TYPES:
+            blocking.append(
+                f"Issue type {issue.issue_type!r} is not an Olympus dispatch-ready task type"
+            )
+        valid_body, body_errors = validate_card_body(issue.body)
+        if not valid_body:
+            blocking.extend(body_errors)
+        if not issue.project:
+            blocking.append("Missing target project")
+        if not issue.risk:
+            blocking.append("Missing author-visible risk metadata")
+    elif issue.team == "asgard":
+        required = {
+            "Intent": "intent",
+            "Target repo / surface": "target repo/surface",
+            "Mode": "mode",
+            "Constraints": "constraints",
+            "Risk": "risk",
+            "Transfer notes": "transfer notes",
+        }
+        for header, label in required.items():
+            text = sections.get(header, "").strip()
+            if not text or text.upper() == "TBD":
+                blocking.append(f"Missing Asgard {label}")
+        if not issue.mode:
+            blocking.append("Missing Asgard mode metadata")
+        if not issue.risk:
+            blocking.append("Missing Asgard risk metadata")
+
+    return PreparedReadiness(
+        profile=issue.team,
+        passed=not blocking,
+        blocking_gaps=blocking,
+        warnings=warnings,
+    )
+
+
+def _sidecar_payload(
+    issue: PreparedIssue, readiness: PreparedReadiness, state: str
+) -> dict[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "state": state,
+        "title": issue.title,
+        "repo": issue.repo,
+        "issue_type": issue.issue_type,
+        "team": issue.team,
+        "project": issue.project,
+        "status": issue.status,
+        "labels": issue.labels,
+        "risk": issue.risk,
+        "mode": issue.mode,
+        "handoff_maturity": issue.handoff_maturity,
+        "source_artifact": issue.source_artifact,
+        "draft_path": issue.draft_path,
+        "sidecar_path": issue.sidecar_path,
+        "readiness": asdict(readiness),
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def issue_prepare(
+    repo: str,
+    issue_type: str,
+    team: str,
+    project: str,
+    source: str,
+    title: str | None,
+    status: str | None,
+    risk: str | None,
+    mode: str | None,
+    handoff_maturity: str | None = None,
+    source_artifact: SourceArtifact | None = None,
+    draft_dir: Path | None = None,
+    fmt: str = "text",
+) -> Path:
+    if not source.strip():
+        raise RuntimeError("issue prepare requires non-empty source text")
+    if team not in _TEAM_CHOICES:
+        raise RuntimeError(f"Unknown team {team!r}; expected one of {', '.join(_TEAM_CHOICES)}")
+    if issue_type not in _ISSUE_TYPES:
+        raise RuntimeError(f"Unknown issue type {issue_type!r}")
+    if project not in PROJECT_CHOICES:
+        raise RuntimeError(
+            f"Unknown project {project!r}; expected one of {', '.join(PROJECT_CHOICES)}"
+        )
+
+    safe_status = status or _TEAM_SAFE_STATUSES[team]
+    draft_title = title or f"{issue_type}: {repo} {team} work"
+    maturity = handoff_maturity or (
+        source_artifact.inferred_maturity if source_artifact else "requirements-ready"
+    )
+    if maturity not in _HANDOFF_MATURITY_CHOICES:
+        allowed = ", ".join(_HANDOFF_MATURITY_CHOICES)
+        raise RuntimeError(f"Unknown handoff maturity {maturity!r}; expected {allowed}")
+    issue = PreparedIssue(
+        title=draft_title,
+        repo=repo,
+        issue_type=issue_type,
+        team=team,
+        project=project,
+        status=safe_status,
+        labels=_issue_expected_labels(issue_type),
+        risk=risk,
+        mode=mode,
+        body=_source_to_issue_body(source, team, repo, mode, maturity, source_artifact),
+        handoff_maturity=maturity,
+        source_artifact=_source_artifact_payload(source_artifact),
+    )
+    readiness = _readiness_for_prepared_issue(issue)
+
+    target_dir = draft_dir or _PREPARED_DRAFT_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+    draft_path = _unique_draft_path(target_dir, draft_title)
+    sidecar_path = draft_path.with_suffix(".json")
+    issue.draft_path = str(draft_path)
+    issue.sidecar_path = str(sidecar_path)
+
+    draft_path.write_text(_render_draft_markdown(issue), encoding="utf-8")
+    state = "ready_to_create" if readiness.passed else "blocked"
+    sidecar_path.write_text(
+        json.dumps(_sidecar_payload(issue, readiness, state), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    if fmt == "json":
+        _out(
+            {
+                "draft": str(draft_path),
+                "sidecar": str(sidecar_path),
+                "readiness": asdict(readiness),
+            },
+            fmt,
+        )
+    else:
+        print(f"Prepared draft: {draft_path}")
+        print(f"Readiness: {'passed' if readiness.passed else 'blocked'}")
+        for gap in readiness.blocking_gaps:
+            print(f"  - BLOCKING: {gap}")
+        for warning in readiness.warnings:
+            print(f"  - WARNING: {warning}")
+    return draft_path
+
+
+def _known_template_names() -> list[str]:
+    return [f"{issue_type}.yml" for issue_type in _ISSUE_TYPES]
+
+
+def _repo_missing_labels(repo: str, required_labels: list[str]) -> list[str]:
+    existing_raw = _rest_get(f"/repos/{ORG}/{repo}/labels?per_page=100")
+    existing = {label.get("name") for label in existing_raw if isinstance(label, dict)}
+    return [label for label in required_labels if label not in existing]
+
+
+def _repo_missing_templates(repo: str) -> list[str]:
+    template_names = _known_template_names()
+    try:
+        existing_raw = _rest_get(f"/repos/{ORG}/{repo}/contents/.github/ISSUE_TEMPLATE")
+    except ApiNotFoundError:
+        return template_names
+    existing = {template.get("name") for template in existing_raw if isinstance(template, dict)}
+    return [template for template in template_names if template not in existing]
+
+
+def _project_mapping_contains_repo(config: dict[str, Any], repo: str, project_name: str) -> bool:
+    projects = config.get("project_mappings", {}).get("projects", {})
+    project = projects.get(project_name, {})
+    return repo in project.get("repositories", [])
+
+
+def _mapping_update_target() -> tuple[Path, Path, str, str | None]:
+    sdlc_path = get_sdlc_path()
+    external = sdlc_path / "config" / "project-mappings.json"
+    if external.exists():
+        return external, sdlc_path, "infiquetra-sdlc", None
+    warning = (
+        "No external infiquetra-sdlc project-mappings.json found; updating vendored "
+        "sdlc-manager mapping instead."
+    )
+    repo_root = Path(__file__).resolve().parents[3]
+    return _VENDORED_PROJECT_MAPPINGS_PATH, repo_root, "infiquetra-claude-plugins", warning
+
+
+def _write_mapping_update(mapping_path: Path, repo: str, project_name: str) -> None:
+    data = json.loads(mapping_path.read_text(encoding="utf-8"))
+    projects = data.setdefault("projects", {})
+    if project_name not in projects:
+        raise RuntimeError(f"Project {project_name!r} not found in {mapping_path}")
+    repositories = projects[project_name].setdefault("repositories", [])
+    if repo not in repositories:
+        repositories.append(repo)
+        projects[project_name]["repositories"] = sorted(repositories)
+    mapping_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _run_git_command(args: list[str], cwd: Path) -> str:
+    result = subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=60)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or f"{args[0]} failed")
+    return result.stdout.strip()
+
+
+def _open_mapping_pr(repo: str, project_name: str) -> str:
+    mapping_path, worktree_root, gh_repo, warning = _mapping_update_target()
+    if warning:
+        _warn(warning)
+    branch = (
+        f"sdlc-map-{_safe_slug(repo)}-{_safe_slug(project_name)}-"
+        f"{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
+    )
+    rel_mapping_path = mapping_path.relative_to(worktree_root)
+    with tempfile.TemporaryDirectory(prefix="sdlc-mapping-") as tmp_parent:
+        temp_worktree = Path(tmp_parent) / "repo"
+        _run_git_command(
+            ["git", "worktree", "add", "-b", branch, str(temp_worktree), "HEAD"],
+            cwd=worktree_root,
+        )
+        try:
+            _write_mapping_update(temp_worktree / rel_mapping_path, repo, project_name)
+            _run_git_command(["git", "add", str(rel_mapping_path)], cwd=temp_worktree)
+            _run_git_command(
+                ["git", "commit", "-m", f"chore(sdlc): map {repo} to {project_name}"],
+                cwd=temp_worktree,
+            )
+            _run_git_command(["git", "push", "-u", "origin", branch], cwd=temp_worktree)
+            return _gh(
+                [
+                    "pr",
+                    "create",
+                    "--repo",
+                    f"{ORG}/{gh_repo}",
+                    "--title",
+                    f"chore(sdlc): map {repo} to {project_name}",
+                    "--body",
+                    f"Adds `{repo}` to the `{project_name}` project mapping for sdlc-manager routing.",
+                ]
+            )
+        finally:
+            try:
+                _run_git_command(
+                    ["git", "worktree", "remove", "--force", str(temp_worktree)], cwd=worktree_root
+                )
+            except RuntimeError as e:
+                _warn(f"Could not remove temporary mapping worktree {temp_worktree}: {e}")
+
+
+def _issue_body_for_github(issue: PreparedIssue) -> str:
+    return issue.body.strip() + "\n"
+
+
+def _create_github_issue(issue: PreparedIssue) -> tuple[str, int]:
+    args = [
+        "issue",
+        "create",
+        "--repo",
+        f"{ORG}/{issue.repo}",
+        "--title",
+        issue.title,
+        "--body",
+        _issue_body_for_github(issue),
+    ]
+    if issue.labels:
+        args.extend(["--label", ",".join(issue.labels)])
+    url = _gh(args).strip()
+    match = re.search(r"/issues/(\d+)\b", url)
+    if not match:
+        raise RuntimeError(f"Could not parse created issue number from gh output: {url!r}")
+    return url, int(match.group(1))
+
+
+def _append_created_issue_to_draft(draft_path: Path, url: str, number: int) -> None:
+    text = draft_path.read_text(encoding="utf-8").rstrip()
+    created_at = datetime.now(UTC).isoformat()
+    marker = "\n\n## Created Issue\n"
+    if marker in text:
+        text = text.split(marker, 1)[0].rstrip()
+    text += f"{marker}\n- URL: {url}\n- Number: {number}\n- Created at: {created_at}\n"
+    draft_path.write_text(text + "\n", encoding="utf-8")
+
+
+def _update_sidecar_state(draft_path: Path, updates: dict[str, Any]) -> None:
+    sidecar_path = draft_path.with_suffix(".json")
+    payload = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    payload.update(updates)
+    payload["updated_at"] = datetime.now(UTC).isoformat()
+    sidecar_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _build_mutation_plan(issue: PreparedIssue, config: dict[str, Any]) -> MutationPlan:
+    if not issue.draft_path:
+        raise RuntimeError("Prepared issue is missing draft_path")
+    steps: list[MutationStep] = []
+    missing_labels = _repo_missing_labels(issue.repo, issue.labels)
+    missing_templates = _repo_missing_templates(issue.repo)
+    mapping_missing = not _project_mapping_contains_repo(config, issue.repo, issue.project)
+
+    if missing_labels:
+        steps.append(
+            MutationStep("deploy-labels", f"Deploy missing labels: {', '.join(missing_labels)}")
+        )
+    if missing_templates:
+        steps.append(
+            MutationStep(
+                "deploy-templates", f"Deploy missing templates: {', '.join(missing_templates)}"
+            )
+        )
+    if mapping_missing:
+        steps.append(
+            MutationStep(
+                "mapping-pr",
+                f"Open mapping PR for {issue.repo} -> {issue.project}",
+            )
+        )
+    steps.extend(
+        [
+            MutationStep("create-issue", f"Create {issue.issue_type} in {ORG}/{issue.repo}"),
+            MutationStep("board-add", f"Add issue to {issue.project}"),
+            MutationStep("set-status", f"Set Status to {issue.status}"),
+            MutationStep("mark-draft", "Record created issue on draft and sidecar"),
+        ]
+    )
+    return MutationPlan(
+        draft_path=issue.draft_path,
+        repo=issue.repo,
+        issue_type=issue.issue_type,
+        team=issue.team,
+        project=issue.project,
+        status=issue.status,
+        steps=steps,
+        mapping_missing=mapping_missing,
+    )
+
+
+def _print_mutation_plan(plan: MutationPlan) -> None:
+    print("\nMutation plan:")
+    for step in plan.steps:
+        print(f"  - {step.action}: {step.detail}")
+
+
+def issue_create_prepared(
+    draft_path: Path,
+    fmt: str,
+    auto_confirm: bool = False,
+    override_mapping: bool = False,
+) -> dict[str, Any]:
+    issue = _read_prepared_issue(draft_path)
+    readiness = _readiness_for_prepared_issue(issue)
+    if not readiness.passed:
+        if fmt == "json":
+            _out({"created": False, "readiness": asdict(readiness)}, fmt)
+        else:
+            print("Prepared issue is blocked:")
+            for gap in readiness.blocking_gaps:
+                print(f"  - {gap}")
+        raise RuntimeError("Prepared issue has blocking readiness gaps")
+
+    config = load_config()
+    plan = _build_mutation_plan(issue, config)
+    plan_payload = asdict(plan)
+    if fmt != "json":
+        _print_mutation_plan(plan)
+
+    if not auto_confirm:
+        confirm = _safe_input("Apply this mutation plan? (y/N): ")
+        if confirm is None or confirm.lower() not in ("y", "yes"):
+            result = {"created": False, "reason": "declined"}
+            if fmt == "json":
+                _out({**result, "mutation_plan": plan_payload}, fmt)
+            else:
+                print("No mutations applied.")
+            return result
+
+    labels_missing = any(step.action == "deploy-labels" for step in plan.steps)
+    templates_missing = any(step.action == "deploy-templates" for step in plan.steps)
+    if labels_missing:
+        labels_deploy(issue.repo, fmt="text")
+    if templates_missing:
+        rollout_deploy_templates(issue.repo, fmt="text")
+
+    mapping_pr_url: str | None = None
+    if plan.mapping_missing:
+        mapping_pr_url = _open_mapping_pr(issue.repo, issue.project)
+        if not override_mapping:
+            _update_sidecar_state(
+                draft_path,
+                {
+                    "state": "mapping_pending",
+                    "mapping_pr_url": mapping_pr_url,
+                    "pending_mapping": {"repo": issue.repo, "project": issue.project},
+                },
+            )
+            if fmt != "json":
+                print(f"Mapping PR opened; issue creation stopped: {mapping_pr_url}")
+            result = {"created": False, "mapping_pr_url": mapping_pr_url}
+            if fmt == "json":
+                _out({**result, "mutation_plan": plan_payload}, fmt)
+            return result
+
+    url, number = _create_github_issue(issue)
+    board_add(issue.repo, number, fmt="text", config=config, project_name=issue.project)
+    flow_set_field(issue.project, issue.repo, number, "Status", issue.status, fmt="text")
+    _append_created_issue_to_draft(draft_path, url, number)
+    _update_sidecar_state(
+        draft_path,
+        {
+            "state": "created",
+            "created_issue_url": url,
+            "created_issue_number": number,
+            "created_at": datetime.now(UTC).isoformat(),
+            "mutation_summary": [asdict(step) for step in plan.steps],
+            "mapping_pr_url": mapping_pr_url,
+            "pending_mapping": bool(mapping_pr_url and override_mapping),
+        },
+    )
+    result = {"created": True, "url": url, "number": number, "mapping_pr_url": mapping_pr_url}
+    if fmt == "json":
+        _out({**result, "mutation_plan": plan_payload}, fmt)
+    else:
+        print(f"Created issue: {url}")
+    return result
+
+
+def _read_prepare_source(
+    source_parts: list[str],
+    source_file: str | None,
+    from_ref: str | None = None,
+) -> str:
+    source, _ = _resolve_prepare_source(source_parts, source_file, from_ref)
+    return source
 
 
 def _safe_input(prompt: str) -> str | None:
@@ -2705,7 +3931,7 @@ def _apply_post_create_metadata(
     cached_config = load_config()
 
     # 1. Hermes-actionability label (only types we want the orchestrator
-    # to act on — capability/enhancement/defect/exploration/context-update)
+    # to act on — capability/enhancement/defect)
     if issue_type in _HERMES_ACTIONABLE_TYPES:
         try:
             _gh(
@@ -3019,36 +4245,46 @@ def main() -> None:
     board_sp = board_p.add_subparsers(dest="action", required=True)
 
     board_view_p = board_sp.add_parser("view", help="View board items by column")
-    board_view_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    board_view_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
     board_view_p.add_argument("--status", help="Filter by status column")
 
     board_add_p = board_sp.add_parser("add", help="Add issue/PR to project(s)")
+    board_add_p.add_argument(
+        "--project",
+        choices=PROJECT_CHOICES,
+        help="Target a specific project instead of repo-based default routing",
+    )
     board_add_p.add_argument("--repo", required=True, help="Repository name (without org)")
     board_add_p.add_argument("--number", required=True, type=int, help="Issue or PR number")
 
     board_move_p = board_sp.add_parser("move", help="Move item to different column")
+    board_move_p.add_argument(
+        "--project",
+        choices=PROJECT_CHOICES,
+        help="Target a specific project instead of repo-based default routing",
+    )
     board_move_p.add_argument("--repo", required=True)
     board_move_p.add_argument("--number", required=True, type=int)
     board_move_p.add_argument(
-        "--status", required=True, help="Target status (e.g. 'In Development', 'E2E Testing')"
+        "--status", required=True, help="Target status (e.g. 'Assigned', 'In Review', 'Active')"
     )
 
-    board_archive_p = board_sp.add_parser("archive", help="Archive deployed items")
-    board_archive_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    board_archive_p = board_sp.add_parser("archive", help="Archive terminal workflow items")
+    board_archive_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
     board_archive_p.add_argument("--dry-run", action="store_true")
 
     board_wip_p = board_sp.add_parser("wip", help="Show WIP counts and limits")
-    board_wip_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    board_wip_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
 
     board_standup_p = board_sp.add_parser(
         "standup", help="Standup prep — right-to-left board review"
     )
-    board_standup_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    board_standup_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
 
     board_fields_p = board_sp.add_parser(
         "discover-fields", help="Discover all project fields and options"
     )
-    board_fields_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    board_fields_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
 
     # ===========================
     # ISSUE
@@ -3084,6 +4320,60 @@ def main() -> None:
         help="Skip post-create metadata (labels, project fields, sub-issue link, "
         "paired-card prompt). Useful for testing or scripted setup.",
     )
+    issue_prepare_p = issue_sp.add_parser(
+        "prepare",
+        help="Prepare a team-aware issue draft and readiness sidecar without GitHub mutation",
+    )
+    issue_prepare_p.add_argument("--repo", required=True)
+    issue_prepare_p.add_argument(
+        "--type",
+        required=True,
+        choices=[
+            "capability",
+            "enhancement",
+            "defect",
+            "exploration",
+            "context-update",
+            "objective",
+        ],
+    )
+    issue_prepare_p.add_argument("--team", required=True, choices=_TEAM_CHOICES)
+    issue_prepare_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
+    issue_prepare_p.add_argument("--title", default=None)
+    issue_prepare_p.add_argument("--status", default=None)
+    issue_prepare_p.add_argument("--risk", default=None)
+    issue_prepare_p.add_argument("--mode", default=None)
+    issue_prepare_p.add_argument("--source-file", default=None)
+    issue_prepare_p.add_argument(
+        "--from",
+        dest="from_ref",
+        default=None,
+        help="Source artifact ref: local path, GitHub issue/PR URL, branch ref, or search hint",
+    )
+    issue_prepare_p.add_argument(
+        "--maturity",
+        dest="handoff_maturity",
+        default=None,
+        choices=_HANDOFF_MATURITY_CHOICES,
+        help="Override inferred handoff maturity",
+    )
+    issue_prepare_p.add_argument("source", nargs="*")
+
+    issue_create_prepared_p = issue_sp.add_parser(
+        "create-prepared",
+        help="Create a prepared issue draft after readiness checks and final confirmation",
+    )
+    issue_create_prepared_p.add_argument("draft")
+    issue_create_prepared_p.add_argument(
+        "--yes",
+        action="store_true",
+        help="Apply the rendered mutation plan without an interactive prompt",
+    )
+    issue_create_prepared_p.add_argument(
+        "--override-mapping",
+        action="store_true",
+        help="Create the issue before a missing project-mapping PR merges",
+    )
 
     # ===========================
     # LABELS
@@ -3114,14 +4404,14 @@ def main() -> None:
     fields_sp = fields_p.add_subparsers(dest="action", required=True)
 
     fields_create_p = fields_sp.add_parser("create-option", help="Create new single-select option")
-    fields_create_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    fields_create_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
     fields_create_p.add_argument(
         "--field", required=True, help="Field name (e.g. initiative, objective)"
     )
     fields_create_p.add_argument("--option", required=True, help="New option name")
 
     fields_discover_p = fields_sp.add_parser("discover", help="Discover all fields and options")
-    fields_discover_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    fields_discover_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
 
     # ===========================
     # METRICS
@@ -3130,23 +4420,23 @@ def main() -> None:
     metrics_sp = metrics_p.add_subparsers(dest="action", required=True)
 
     metrics_ct_p = metrics_sp.add_parser("cycle-time", help="Cycle time percentiles")
-    metrics_ct_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    metrics_ct_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
     metrics_ct_p.add_argument("--days", type=int, default=30)
     metrics_ct_p.add_argument(
         "--type", choices=["capability", "enhancement", "defect", "exploration"]
     )
 
     metrics_th_p = metrics_sp.add_parser("throughput", help="Items deployed per week")
-    metrics_th_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    metrics_th_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
     metrics_th_p.add_argument("--weeks", type=int, default=4)
 
     metrics_age_p = metrics_sp.add_parser("wip-age", help="Age of in-progress items")
-    metrics_age_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    metrics_age_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
 
     metrics_col_p = metrics_sp.add_parser(
         "column-time", help="Time in each column for a specific item"
     )
-    metrics_col_p.add_argument("--project", required=True, choices=["mount-olympus"])
+    metrics_col_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)
     metrics_col_p.add_argument("--number", required=True, type=int)
 
     # ===========================
@@ -3167,7 +4457,7 @@ def main() -> None:
     ms_list_p.add_argument("--repo", required=True)
     ms_list_p.add_argument("--state", choices=["open", "closed", "all"], default="open")
 
-    ms_progress_p = ms_sp.add_parser("progress", help="Show milestone completion %")
+    ms_progress_p = ms_sp.add_parser("progress", help="Show milestone completion percent")
     ms_progress_p.add_argument("--repo", required=True)
     ms_progress_p.add_argument("--milestone", required=True, type=int, help="Milestone number")
 
@@ -3296,9 +4586,9 @@ def main() -> None:
             if args.action == "view":
                 board_view(args.project, args.status, fmt)
             elif args.action == "add":
-                board_add(args.repo, args.number, fmt)
+                board_add(args.repo, args.number, fmt, project_name=args.project)
             elif args.action == "move":
-                board_move(args.repo, args.number, args.status, fmt)
+                board_move(args.repo, args.number, args.status, fmt, project_name=args.project)
             elif args.action == "archive":
                 board_archive(args.project, args.dry_run, fmt)
             elif args.action == "wip":
@@ -3316,6 +4606,33 @@ def main() -> None:
                     fmt,
                     parent_ref=args.parent_ref,
                     skip_metadata=args.skip_metadata,
+                )
+            elif args.action == "prepare":
+                source, source_artifact = _resolve_prepare_source(
+                    args.source,
+                    args.source_file,
+                    args.from_ref,
+                )
+                issue_prepare(
+                    repo=args.repo,
+                    issue_type=args.type,
+                    team=args.team,
+                    project=args.project,
+                    source=source,
+                    title=args.title,
+                    status=args.status,
+                    risk=args.risk,
+                    mode=args.mode,
+                    handoff_maturity=args.handoff_maturity,
+                    source_artifact=source_artifact,
+                    fmt=fmt,
+                )
+            elif args.action == "create-prepared":
+                issue_create_prepared(
+                    Path(args.draft),
+                    fmt=fmt,
+                    auto_confirm=args.yes,
+                    override_mapping=args.override_mapping,
                 )
 
         elif args.resource == "labels":

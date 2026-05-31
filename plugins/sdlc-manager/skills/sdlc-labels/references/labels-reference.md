@@ -25,10 +25,15 @@ Applied automatically or manually as issues progress through the workflow.
 
 | Label | Color | Description |
 |-------|-------|-------------|
+| `needs-plan` | `#FBCA04` (yellow) | Current actionable-template planning label read by Hermes |
 | `needs-analysis` | `#FBCA04` (yellow) | Requires context gathering and specification |
 | `needs-triage` | `#FBCA04` (yellow) | Needs priority and impact assessment |
 | `ready` | `#0E8A16` (green) | Context complete, ready for development |
 | `blocked` | `#B60205` (dark red) | Work is blocked by external dependency |
+
+`needs-analysis` and `needs-triage` are legacy fallback labels. Current capability,
+enhancement, and defect templates apply `needs-plan`; the older labels may still appear when
+`labels auto-label` runs against title-pattern rules from `labels.json`.
 
 ---
 
@@ -118,8 +123,8 @@ These labels follow a naming convention and are created on-demand rather than pr
 
 ### `initiative:*` and `objective:*`
 
-Applied to issues to associate them with a program-level initiative or delivery objective.
-Synced to project board single-select fields via `labels sync-fields`.
+Legacy convention labels that may appear on older issues. New work should use the
+project board's `Initiative` and `Objective` fields directly via `flow set-field`.
 
 | Pattern | Color | Example |
 |---------|-------|---------|
@@ -147,6 +152,8 @@ Organizational and process labels.
 ## Auto-Label Rules
 
 Applied by `labels auto-label` command. Rules match patterns in issue title or body.
+These are legacy fallback rules, not the current GitHub Issue Form template defaults. For current
+template labels, use `../sdlc-issues/references/templates-reference.md`.
 
 | Rule | Pattern (regex) | Labels Applied |
 |------|----------------|----------------|
@@ -155,6 +162,7 @@ Applied by `labels auto-label` command. Rules match patterns in issue title or b
 | `title_contains_defect` | `\[DEFECT\]` in title | `defect`, `needs-triage` |
 | `title_contains_exploration` | `\[EXPLORATION\]` in title | `exploration` |
 | `title_contains_context` | `\[CONTEXT\]` in title | `context-update`, `documentation` |
+| `title_contains_objective` | `\[OBJECTIVE\]` in title | `objective` |
 | `mentions_security` | `security\|vulnerability\|CVE` in title/body | `security` |
 | `mentions_performance` | `performance\|latency\|slow\|timeout` in title/body | `performance` |
 | `mentions_breaking` | `breaking change\|breaking\|backwards incompatible` in title/body | `breaking-change` |
@@ -177,24 +185,31 @@ Applied by `labels auto-label` command. Rules match patterns in issue title or b
 
 6. **Risk labels**: Add during Analysis phase. One per capability.
 
-7. **Status labels** (`ready`, `blocked`, `needs-analysis`, `needs-triage`): May be
-   auto-managed by the system as issues progress through workflow columns.
+7. **Planning/status labels**: current actionable templates apply `needs-plan`; `ready` and
+   `blocked` may be managed as issues progress. `needs-analysis` and `needs-triage` are legacy
+   fallback labels from older auto-label rules.
 
 8. **Technical area, workflow, and meta labels**: Apply as many as relevant. Not exclusive.
 
 ---
 
-## Initiative and Objective Labels
+## Initiative and Objective Fields
 
-These labels are not defined in `labels.json` but are used as a convention:
+These values are project field options. Legacy labels may exist, but they are not the
+canonical source of truth:
 
-- `initiative:<name>` — maps to the "Initiative" single-select field on the project board
-- `objective:<name>` — maps to the "Objective" single-select field on the project board
+- `Initiative` project field - strategic grouping
+- `Objective` project field - delivery target or parent objective
 
-When applied to an issue, run `labels sync-fields` to propagate the value to the board field.
+Set fields directly:
 
-The mount-olympus board maintains the full set of initiative and objective options. When
-creating a new initiative or objective, add the field option using `fields create-option`.
+```bash
+python3 sdlc_manager.py flow set-field --project mount-olympus \
+  --repo <repo> --number <N> \
+  --field Objective --option "platform-launch"
+```
+
+When creating a new initiative or objective, add the field option using `fields create-option`.
 
 Example label names:
 - `initiative:olympus-v1`
