@@ -4,19 +4,16 @@ Google Antigravity plugins and specialized skills for Infiquetra engineering wor
 
 ## Available Plugins
 
-This repository contains 11 powerful, production-ready plugins designed specifically to work natively with the **Google Antigravity** agentic ecosystem.
+This repository contains 6 powerful, production-ready plugins designed specifically to work natively with the **Google Antigravity** agentic ecosystem.
 
 | Plugin | Description | Category | Layout |
 |--------|-------------|----------|--------|
-| [splunk](plugins/splunk/) | Splunk log querying and deep operations analysis | Operations | CLI & Skills |
-| [identity-toolkit](plugins/identity-toolkit/) | Identity architecture guidance (NIST, W3C VCs, custody models) | Security | Skills-Only |
-| [test-suite](plugins/test-suite/) | Parallel quality check orchestrator (pytest, ruff, mypy, bandit) | Development | CLI & Skills |
-| [docs-generator](plugins/docs-generator/) | Automated README, API specs, and architecture generator | Development | CLI & Skills |
+
 | [python-toolkit](plugins/python-toolkit/) | Production patterns for Python, Lambda, DynamoDB, and robust handler models | Development | Skills-Only |
 | [sdk-lifecycle](plugins/sdk-lifecycle/) | Package scaffolding, security review, docs and release workflows | Development | Skills-Only |
 | [sdlc-manager](plugins/sdlc-manager/) | Board tracking, milestones, objective synchronization, and issue triage | Development | CLI & Skills |
 | [home-lab-ops](plugins/home-lab-ops/) | Local server orchestration, hardware inventory, and system status tracking | Operations | Skills-Only |
-| [blueprint-reviewer](plugins/blueprint-reviewer/) | Multi-agent architectural blueprint validation | Architecture | Skills-Only |
+
 | [team-execution](plugins/team-execution/) | Structured team review cycles and consensus protocol workflows | Orchestration | CLI & Skills |
 | [unifi](plugins/unifi/) | Ubiquiti UniFi network and camera protect controllers monitoring | Operations | CLI & Skills |
 
@@ -54,7 +51,7 @@ We provide a helper script inside the `tools` folder to easily list, install, an
 # 2. Install a specific plugin (e.g., Slack)
 ./tools/install-plugin.sh install slack
 
-# 3. Install ALL 11 plugins at once
+# 3. Install ALL 6 plugins at once
 ./tools/install-plugin.sh install-all
 
 # 4. Uninstall a specific plugin (e.g., Splunk)
