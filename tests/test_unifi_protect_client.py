@@ -8,11 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add plugin skills directory to path
 sys.path.insert(
     0,
     str(
-        Path(__file__).parent.parent / "plugins" / "unifi" / "skills" / "unifi-protect" / "scripts"
+        Path(__file__).parent.parent / "plugins" / "unifi" / "src"
     ),
 )
 

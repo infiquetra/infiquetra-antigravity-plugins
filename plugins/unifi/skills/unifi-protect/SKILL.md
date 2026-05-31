@@ -12,7 +12,7 @@ triggers:
   - "protect cameras"
   - "camera stream"
   - "patrol"
-script: ./scripts/unifi_protect_client.py
+script: ../../src/unifi_protect_client.py
 ---
 
 # UniFi Protect Skill

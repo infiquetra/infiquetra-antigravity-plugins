@@ -13,7 +13,7 @@ triggers:
   - "dns record"
   - "network health"
   - "unifi stats"
-script: ./scripts/unifi_network_client.py
+script: ../../src/unifi_network_client.py
 ---
 
 # UniFi Network Skill
@@ -23,7 +23,7 @@ Interacts with the UniFi Network API on a UniFi Dream Machine (UDM) to manage ne
 ## UniFi Network Ops (Agent)
 
 For complex network diagnostics or configuration changes, you can delegate execution to the **UniFi Network Ops** subagent:
-1. Read its persona instructions from `plugins/unifi/skills/unifi-network/references/personas/unifi-network-ops.md`.
+1. Read its persona instructions from `plugins/unifi/agents/unifi-network-ops.md`.
 2. Use the `invoke_subagent` tool with `TypeName: "self"` and the persona instructions in the `Prompt` argument.
 
 ## Environment Setup

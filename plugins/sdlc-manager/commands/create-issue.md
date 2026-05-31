@@ -45,7 +45,7 @@ issue command; `/sdlc-create` remains a compatibility alias.
 Prepare from a source artifact:
 
 ```bash
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.6.0/src/sdlc_manager.py \
+python3 plugins/sdlc-manager/src/sdlc_manager.py \
   issue prepare --repo infiquetra-claude-plugins --type capability \
   --team olympus --project mount-olympus --risk medium \
   --from docs/plans/example.md --maturity plan-ready
@@ -54,7 +54,7 @@ python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.6.0/src/sdlc_m
 Create after review and confirmation:
 
 ```bash
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.6.0/src/sdlc_manager.py \
+python3 plugins/sdlc-manager/src/sdlc_manager.py \
   issue create-prepared docs/sdlc-issue-drafts/<draft>.md
 ```
 

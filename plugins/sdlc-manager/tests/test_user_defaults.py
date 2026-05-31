@@ -15,10 +15,12 @@ import sdlc_manager  # noqa: E402
 
 @pytest.fixture
 def tmp_defaults_path(tmp_path, monkeypatch):
-    """Redirect _USER_DEFAULTS_PATH into a tmp dir so tests don't write
-    to the real ~/.claude/sdlc-defaults.json."""
-    fake_path = tmp_path / ".claude" / "sdlc-defaults.json"
+    """Redirect _USER_DEFAULTS_PATH and _FALLBACK_DEFAULTS_PATH into a tmp dir
+    so tests don't write or read from the real defaults files."""
+    fake_path = tmp_path / ".gemini" / "sdlc-defaults.json"
+    fake_fallback_path = tmp_path / ".claude" / "sdlc-defaults.json"
     monkeypatch.setattr(sdlc_manager, "_USER_DEFAULTS_PATH", fake_path)
+    monkeypatch.setattr(sdlc_manager, "_FALLBACK_DEFAULTS_PATH", fake_fallback_path)
     return fake_path
 
 
@@ -34,6 +36,21 @@ def test_load_user_defaults_returns_dict_when_file_present(tmp_defaults_path) ->
     tmp_defaults_path.write_text('{"assignee": "namredips", "default_project": "mount-olympus"}')
     data = sdlc_manager.load_user_defaults()
     assert data == {"assignee": "namredips", "default_project": "mount-olympus"}
+
+
+def test_load_user_defaults_falls_back_to_claude(tmp_path, monkeypatch) -> None:
+    fake_gemini_path = tmp_path / ".gemini" / "sdlc-defaults.json"
+    fake_claude_path = tmp_path / ".claude" / "sdlc-defaults.json"
+    monkeypatch.setattr(sdlc_manager, "_USER_DEFAULTS_PATH", fake_gemini_path)
+    monkeypatch.setattr(sdlc_manager, "_FALLBACK_DEFAULTS_PATH", fake_claude_path)
+
+    # Write only to .claude path
+    fake_claude_path.parent.mkdir(parents=True, exist_ok=True)
+    fake_claude_path.write_text('{"assignee": "fallback-user"}')
+
+    # Load defaults should fetch from fallback
+    data = sdlc_manager.load_user_defaults()
+    assert data == {"assignee": "fallback-user"}
 
 
 def test_load_user_defaults_tolerates_malformed_json(tmp_defaults_path, capsys) -> None:

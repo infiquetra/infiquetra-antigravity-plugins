@@ -44,7 +44,7 @@ def test_issue_type_reference_uses_current_template_labels() -> None:
 
 
 def test_operator_prompt_honors_hermes_actionability_contract() -> None:
-    operator = _read(PLUGIN_ROOT / "skills/sdlc-flow/references/personas/sdlc-operator.md")
+    operator = _read(PLUGIN_ROOT / "agents/sdlc-operator.md")
 
     assert "(capability/enhancement/defect)" in operator
     assert "(objective/exploration/context-update)" in operator
@@ -125,7 +125,7 @@ def test_asgard_olympus_model_uses_explicit_transfer_language() -> None:
         PLUGIN_ROOT / "skills/sdlc-issues/SKILL.md",
         PLUGIN_ROOT / "commands/create-issue.md",
         PLUGIN_ROOT / "commands/sdlc-create.md",
-        PLUGIN_ROOT / "skills/sdlc-flow/references/personas/sdlc-operator.md",
+        PLUGIN_ROOT / "agents/sdlc-operator.md",
         PLUGIN_ROOT / "README.md",
     ]
     stale_phrases = [

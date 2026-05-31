@@ -93,7 +93,8 @@ def get_sdlc_path() -> Path:
 # defaults from here and present them as prompt-default values; operators
 # override per-card by typing a different value at the prompt.
 
-_USER_DEFAULTS_PATH = Path.home() / ".claude" / "sdlc-defaults.json"
+_USER_DEFAULTS_PATH = Path.home() / ".gemini" / "sdlc-defaults.json"
+_FALLBACK_DEFAULTS_PATH = Path.home() / ".claude" / "sdlc-defaults.json"
 
 # Schema (all keys optional; missing keys = no default for that prompt).
 # Listed here so callers and the wizard agree on the set:
@@ -109,7 +110,8 @@ _USER_DEFAULTS_KEYS = (
 
 
 def load_user_defaults() -> dict[str, Any]:
-    """Read ~/.claude/sdlc-defaults.json. Returns {} on:
+    """Read ~/.gemini/sdlc-defaults.json (or fallback to ~/.claude/sdlc-defaults.json).
+    Returns {} on:
       - file missing (first run)
       - malformed JSON (warn + return {})
       - non-object root (warn + return {})
@@ -117,30 +119,33 @@ def load_user_defaults() -> dict[str, Any]:
 
     The CLI must remain usable even if the defaults file is corrupt —
     the operator can always re-run `config init-defaults` to reseed it."""
-    if not _USER_DEFAULTS_PATH.exists():
+    path = _USER_DEFAULTS_PATH
+    if not path.exists() and _FALLBACK_DEFAULTS_PATH.exists():
+        path = _FALLBACK_DEFAULTS_PATH
+    if not path.exists():
         return {}
     try:
-        with open(_USER_DEFAULTS_PATH) as f:
+        with open(path) as f:
             data = json.load(f)
         if not isinstance(data, dict):
-            _warn(f"User defaults at {_USER_DEFAULTS_PATH} is not a JSON object; ignoring.")
+            _warn(f"User defaults at {path} is not a JSON object; ignoring.")
             return {}
         return data
     except json.JSONDecodeError as e:
-        _warn(f"User defaults at {_USER_DEFAULTS_PATH} is malformed JSON ({e}); ignoring.")
+        _warn(f"User defaults at {path} is malformed JSON ({e}); ignoring.")
         return {}
     except (OSError, UnicodeDecodeError) as e:
         # Permissions, broken symlink, non-UTF-8 encoding, etc. The defaults
         # file is operator-owned and not load-bearing; warn + degrade.
         _warn(
-            f"User defaults at {_USER_DEFAULTS_PATH} could not be read "
+            f"User defaults at {path} could not be read "
             f"({type(e).__name__}: {e}); ignoring."
         )
         return {}
 
 
 def save_user_defaults(data: dict[str, Any]) -> None:
-    """Atomically write ~/.claude/sdlc-defaults.json. Creates parent dir
+    """Atomically write ~/.gemini/sdlc-defaults.json. Creates parent dir
     if missing. Atomic via tempfile + rename so a crash mid-write doesn't
     corrupt the file."""
     _USER_DEFAULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -2671,6 +2676,7 @@ _HANDOFF_MATURITY_CHOICES = (
     "deferred-context",
 )
 _SOURCE_SEARCH_DIRS = (
+    Path(".gemini") / "infiquetra-lifecycle",
     Path(".claude") / "infiquetra-lifecycle",
     Path("docs") / "plans",
     Path("docs") / "brainstorms",
@@ -2687,7 +2693,7 @@ _SOURCE_HINT_DIRS = {
     "ideation": (Path("docs") / "ideation",),
     "review": (Path("docs") / "reviews",),
     "work": (Path("docs") / "work-sessions",),
-    "resume": (Path("docs") / "work-sessions", Path(".claude") / "infiquetra-lifecycle"),
+    "resume": (Path("docs") / "work-sessions", Path(".gemini") / "infiquetra-lifecycle", Path(".claude") / "infiquetra-lifecycle"),
     "draft": (Path("docs") / "sdlc-issue-drafts",),
 }
 
@@ -2812,7 +2818,7 @@ def _infer_maturity_from_path(path: Path) -> str:
         return "plan-ready"
     if "docs/work-sessions/" in normalized or "docs/sdlc-issue-drafts/" in normalized:
         return "resume-ready"
-    if ".claude/infiquetra-lifecycle/" in normalized:
+    if ".gemini/infiquetra-lifecycle/" in normalized or ".claude/infiquetra-lifecycle/" in normalized:
         return "resume-ready"
     return "requirements-ready"
 
@@ -2831,7 +2837,7 @@ def _infer_kind_from_path(path: Path) -> str:
         return "work-session"
     if "docs/sdlc-issue-drafts/" in normalized:
         return "prepared-draft"
-    if ".claude/infiquetra-lifecycle/" in normalized:
+    if ".gemini/infiquetra-lifecycle/" in normalized or ".claude/infiquetra-lifecycle/" in normalized:
         return "loop-state"
     return "local-file"
 

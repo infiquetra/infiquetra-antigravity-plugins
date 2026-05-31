@@ -95,26 +95,26 @@ has optional `Capability size (human planning hint)`.
 ## Script Command
 
 ```bash
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.6.0/src/sdlc_manager.py \
+python3 plugins/sdlc-manager/src/sdlc_manager.py \
   issue create --repo athena-service --type capability
 ```
 
 Then add to project:
 
 ```bash
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.6.0/src/sdlc_manager.py \
+python3 plugins/sdlc-manager/src/sdlc_manager.py \
   board add --repo athena-service --number <new-issue-number>
 ```
 
 Prepared-draft path:
 
 ```bash
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.6.0/src/sdlc_manager.py \
+python3 plugins/sdlc-manager/src/sdlc_manager.py \
   issue prepare --repo hermes-claude-code-router --type capability \
   --team olympus --project mount-olympus --risk medium \
   --title "Prepared issue workflow" --from docs/plans/example.md --maturity plan-ready
 
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.6.0/src/sdlc_manager.py \
+python3 plugins/sdlc-manager/src/sdlc_manager.py \
   issue create-prepared docs/sdlc-issue-drafts/<draft>.md
 ```
 

@@ -11,7 +11,7 @@ import requests
 sys.path.insert(
     0,
     str(
-        Path(__file__).parent.parent / "plugins" / "unifi" / "skills" / "unifi-network" / "scripts"
+        Path(__file__).parent.parent / "plugins" / "unifi" / "src"
     ),
 )
 
