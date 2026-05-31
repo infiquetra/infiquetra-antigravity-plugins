@@ -14,7 +14,7 @@ This repository contains 6 powerful, production-ready plugins designed specifica
 | [sdlc-manager](plugins/sdlc-manager/) | Board tracking, milestones, objective synchronization, and issue triage | Development | CLI & Skills |
 | [home-lab-ops](plugins/home-lab-ops/) | Local server orchestration, hardware inventory, and system status tracking | Operations | Skills-Only |
 
-| [team-execution](plugins/team-execution/) | Structured team review cycles and consensus protocol workflows | Orchestration | CLI & Skills |
+| [multi-agent-consensus](plugins/multi-agent-consensus/) | Structured team review cycles and consensus protocol workflows | Orchestration | CLI & Skills |
 | [unifi](plugins/unifi/) | Ubiquiti UniFi network and camera protect controllers monitoring | Operations | CLI & Skills |
 
 ---

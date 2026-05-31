@@ -1,0 +1,17 @@
+{
+  "name": "multi-agent-consensus",
+  "version": "2.0.0",
+  "description": "Native Antigravity multi-agent consensus workflow. Spawns parallel workers and reviewers with a 0-10 scoring loop and automatic fix routing.",
+  "author": {
+    "name": "Infiquetra",
+    "email": "hello@infiquetra.com"
+  },
+  "repository": "https://github.com/infiquetra/infiquetra-antigravity-plugins",
+  "keywords": [
+    "multi-agent",
+    "consensus",
+    "code-review",
+    "reviewers",
+    "antigravity"
+  ]
+}
