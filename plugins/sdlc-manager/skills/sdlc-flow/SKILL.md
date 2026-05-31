@@ -54,6 +54,12 @@ when_to_use: |
 Operator-facing helpers over the GraphQL + REST APIs Mount Olympus uses.
 Each command is a thin wrapper with idempotency + clear error messages.
 
+## SDLC Operator (Agents)
+
+For complex SDLC workflows, you can delegate execution to the **SDLC Operator** subagent:
+1. Read its persona instructions from `plugins/sdlc-manager/skills/sdlc-flow/references/personas/sdlc-operator.md`.
+2. Use the `invoke_subagent` tool with `TypeName: "self"` and the persona instructions in the `Prompt` argument.
+
 ## Commands
 
 ```bash
@@ -120,7 +126,7 @@ to Ready saves a round-trip.
 The card_validator schema is mirrored from
 `home-lab/ansible/roles/hermes_orchestrator/files/card_validator.py`. When
 that file's contract changes, update `validate_card_body` in
-`scripts/sdlc_manager.py` to match.
+`src/sdlc_manager.py` to match.
 
 ## Related
 

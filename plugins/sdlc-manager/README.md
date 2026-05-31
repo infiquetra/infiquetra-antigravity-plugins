@@ -25,12 +25,12 @@ All operations run locally via the `gh` CLI, providing:
 ### Script Location (after plugin install)
 
 ```bash
-SCRIPT="$HOME/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/scripts/sdlc_manager.py"
+SCRIPT="$HOME/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/src/sdlc_manager.py"
 ```
 
 Or from source:
 ```bash
-SCRIPT="$HOME/workspace/infiquetra/infiquetra-claude-plugins/plugins/sdlc-manager/scripts/sdlc_manager.py"
+SCRIPT="$HOME/workspace/infiquetra/infiquetra-claude-plugins/plugins/sdlc-manager/src/sdlc_manager.py"
 ```
 
 ### Verify Configuration
@@ -73,7 +73,7 @@ The `sdlc-operator` agent orchestrates complex multi-step operations:
 
 ## Architecture
 
-sdlc-manager uses a single shared CLI (`scripts/sdlc_manager.py`) at the plugin root rather than per-skill scripts, because all 6 skills share the same execution backend. Each skill's SKILL.md documents the subset of CLI commands it uses, but they all invoke the same script.
+sdlc-manager uses a single shared CLI (`src/sdlc_manager.py`) at the plugin root rather than per-skill scripts, because all 6 skills share the same execution backend. Each skill's SKILL.md documents the subset of CLI commands it uses, but they all invoke the same script.
 
 ## Script Reference
 

@@ -90,8 +90,8 @@ You are deeply familiar with the Infiquetra SDLC process as documented in the
 ## Tools Available
 
 **Primary**: `sdlc_manager.py` (this plugin's shared script)
-- Installed: `~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/<version>/scripts/sdlc_manager.py`
-- Dev/source: `~/workspace/infiquetra/infiquetra-claude-plugins/plugins/sdlc-manager/scripts/sdlc_manager.py`
+- Installed: `~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/<version>/src/sdlc_manager.py`
+- Dev/source: `~/workspace/infiquetra/infiquetra-claude-plugins/plugins/sdlc-manager/src/sdlc_manager.py`
 
 **Subcommand groups** (full list: `sdlc_manager.py --help`):
 - `board {view,add,move,archive,wip,standup,discover-fields}` — project board operations
@@ -332,8 +332,8 @@ python "$SCRIPT" board move --repo <repo> --number <N> --status Ready
 # Script paths (use whichever exists). Note: the cache version may lag plugin.json's
 # `version` field — list the actual installed dir if unsure:
 #   ls ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/
-SCRIPT_INSTALLED="$HOME/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/<version>/scripts/sdlc_manager.py"
-SCRIPT_DEV="$HOME/workspace/infiquetra/infiquetra-claude-plugins/plugins/sdlc-manager/scripts/sdlc_manager.py"
+SCRIPT_INSTALLED="$HOME/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/<version>/src/sdlc_manager.py"
+SCRIPT_DEV="$HOME/workspace/infiquetra/infiquetra-claude-plugins/plugins/sdlc-manager/src/sdlc_manager.py"
 
 # Per-user defaults (Phase C foundation)
 # First-run setup: python "$SCRIPT" config init-defaults

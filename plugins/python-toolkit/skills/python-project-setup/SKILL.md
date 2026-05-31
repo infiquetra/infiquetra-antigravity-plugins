@@ -17,6 +17,12 @@ when_to_use: |
 
 You are helping the user set up a Python project with modern tooling and Infiquetra standards.
 
+## Python Expert (Agent)
+
+For complex Python architectures or in-depth refactoring, you can delegate execution to the **Python Expert** subagent:
+1. Read its persona instructions from `plugins/python-toolkit/skills/python-project-setup/references/personas/python-expert.md`.
+2. Use the `invoke_subagent` tool with `TypeName: "self"` and the persona instructions in the `Prompt` argument.
+
 ## Quick Start
 
 For a new Infiquetra Python project, create this structure:

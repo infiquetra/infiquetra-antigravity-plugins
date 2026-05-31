@@ -44,7 +44,7 @@ events. Measures cycle time, throughput, WIP age, and flow efficiency — with t
 ## Script Location
 
 ```
-$INFIQUETRA_SDLC_PATH/../infiquetra-claude-plugins/plugins/sdlc-manager/scripts/sdlc_manager.py
+$INFIQUETRA_SDLC_PATH/../infiquetra-claude-plugins/plugins/sdlc-manager/src/sdlc_manager.py
 ```
 
 > If `$INFIQUETRA_SDLC_PATH` is unset, use `~/workspace/infiquetra/infiquetra-sdlc` as the default base path.

@@ -20,6 +20,12 @@ script: ./scripts/unifi_network_client.py
 
 Interacts with the UniFi Network API on a UniFi Dream Machine (UDM) to manage network infrastructure.
 
+## UniFi Network Ops (Agent)
+
+For complex network diagnostics or configuration changes, you can delegate execution to the **UniFi Network Ops** subagent:
+1. Read its persona instructions from `plugins/unifi/skills/unifi-network/references/personas/unifi-network-ops.md`.
+2. Use the `invoke_subagent` tool with `TypeName: "self"` and the persona instructions in the `Prompt` argument.
+
 ## Environment Setup
 
 ```bash

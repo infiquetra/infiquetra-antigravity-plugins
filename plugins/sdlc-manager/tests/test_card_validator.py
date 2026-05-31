@@ -8,7 +8,7 @@ fenced code block, Files-expected has ≥1 path-like line, no placeholders.
 import sys
 from pathlib import Path
 
-# Make scripts importable as a package: tests/ is sibling of scripts/
+# Make scripts importable as a package: tests/ is sibling of src/
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import sdlc_manager  # noqa: E402

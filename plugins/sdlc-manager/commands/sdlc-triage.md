@@ -37,7 +37,7 @@ Triage an existing issue by analyzing its content, recommending appropriate labe
 ## Script Commands
 
 ```bash
-SCRIPT=~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/scripts/sdlc_manager.py
+SCRIPT=~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/src/sdlc_manager.py
 
 # Auto-label based on content
 python3 $SCRIPT labels auto-label --repo athena-service --number 42

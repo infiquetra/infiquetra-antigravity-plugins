@@ -21,6 +21,12 @@ Always load these references before answering:
 - `references/ceph-operations.md` — Ceph Squid 19.x operational guide
 - `references/vm-lifecycle.md` — VM create, clone, migrate, cloud-init patterns
 
+## HomeLab SRE (Agent)
+
+For complex hardware debugging or cluster operations, you can delegate execution to the **HomeLab SRE** subagent:
+1. Read its persona instructions from `plugins/home-lab-ops/skills/proxmox-operations/references/personas/homelab-sre.md`.
+2. Use the `invoke_subagent` tool with `TypeName: "self"` and the persona instructions in the `Prompt` argument.
+
 ## Quick Reference — Common Operations
 
 ### Cluster Status

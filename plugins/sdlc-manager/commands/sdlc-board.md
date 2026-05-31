@@ -35,13 +35,13 @@ Show the current status of an Infiquetra project board (mount-olympus or strateg
 ## Script Command
 
 ```bash
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/scripts/sdlc_manager.py \
+python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/src/sdlc_manager.py \
   board view --project mount-olympus
 ```
 
 For WIP check only:
 ```bash
-python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/scripts/sdlc_manager.py \
+python3 ~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/src/sdlc_manager.py \
   board wip --project mount-olympus
 ```
 

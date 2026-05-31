@@ -222,7 +222,7 @@ def load_config() -> dict[str, Any]:
 # `monkeypatch.setattr` it without renaming the real file (which is racy
 # under pytest-xdist + leaves a `.bak-test` orphan if the test crashes
 # between rename and `finally`). Resolves to `<plugin-dir>/config/project-mappings.json`
-# via `scripts/sdlc_manager.py → ../config/...`.
+# via `src/sdlc_manager.py → ../config/...`.
 _VENDORED_PROJECT_MAPPINGS_PATH = (
     Path(__file__).resolve().parent.parent / "config" / "project-mappings.json"
 )

@@ -37,7 +37,7 @@ Display a comprehensive flow metrics dashboard for an Infiquetra project board, 
 ## Script Commands
 
 ```bash
-SCRIPT=~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/scripts/sdlc_manager.py
+SCRIPT=~/.claude/plugins/cache/infiquetra-plugins/sdlc-manager/1.0.0/src/sdlc_manager.py
 
 # Cycle time (uses timeline events — may take a moment)
 python3 $SCRIPT metrics cycle-time --project mount-olympus --days 30
