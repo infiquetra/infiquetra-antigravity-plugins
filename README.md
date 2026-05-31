@@ -4,7 +4,7 @@ Google Antigravity plugins and specialized skills for Infiquetra engineering wor
 
 ## Available Plugins
 
-This repository contains 6 powerful, production-ready plugins designed specifically to work natively with the **Google Antigravity** agentic ecosystem.
+This repository contains 7 powerful, production-ready plugins designed specifically to work natively with the **Google Antigravity** agentic ecosystem.
 
 | Plugin | Description | Category | Layout |
 |--------|-------------|----------|--------|
@@ -13,6 +13,7 @@ This repository contains 6 powerful, production-ready plugins designed specifica
 | [sdk-lifecycle](plugins/sdk-lifecycle/) | Package scaffolding, security review, docs and release workflows | Development | Skills-Only |
 | [sdlc-manager](plugins/sdlc-manager/) | Board tracking, milestones, objective synchronization, and issue triage | Development | CLI & Skills |
 | [home-lab-ops](plugins/home-lab-ops/) | Local server orchestration, hardware inventory, and system status tracking | Operations | Skills-Only |
+| [infiquetra-deploy](plugins/infiquetra-deploy/) | Deployment operations for tag-promotion workflows and hotfixes | Operations | CLI & Skills |
 
 | [multi-agent-consensus](plugins/multi-agent-consensus/) | Structured team review cycles and consensus protocol workflows | Orchestration | CLI & Skills |
 | [unifi](plugins/unifi/) | Ubiquiti UniFi network and camera protect controllers monitoring | Operations | CLI & Skills |
