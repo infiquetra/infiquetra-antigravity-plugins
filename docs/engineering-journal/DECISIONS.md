@@ -22,6 +22,37 @@
 
 ---
 
+## 2026-05-31
+
+### Promote agent and SRE personas to root-level `agents/` directories (commit `41c9a94`)  {#promote-agents-root-layout}
+
+**Decision.** Promote all passive nested personas (e.g. `skills/.../references/personas/`) to active root-level `agents/` directories at each plugin root, adhering strictly to the official layout standard defined in `ANTIGRAVITY.md`.
+
+**Rejected alternatives.**
+- *Keep nested markdown personas under `references/personas/`.* Rejected: This violates the official Antigravity plugin layout structure and hides SRE/agent configs, making them passive instead of active subagent definitions.
+- *Define agents as raw system prompts inside `plugin.json`.* Rejected: Keeping system prompts inside structured markdown files under `agents/` is infinitely more readable, easier to maintain, and supports clean version control.
+
+**Rationale.** Promoted personas in the root `agents/` directory are automatically discovered and can be natively invoked using the `invoke_subagent` tool. This simplifies subagent definition and orchestration while maintaining repository layout consistency.
+
+**Revisit when.** The Antigravity SDK changes its agent discovery rules or introduces a centralized agents directory at the repository root.
+
+**Refs.** ANTIGRAVITY.md [Plugin Types](ANTIGRAVITY.md#L41-L83).
+
+---
+
+### Consolidate executable scripts in a root-level `src/` directory (commit `41c9a94`)  {#consolidate-scripts-src}
+
+**Decision.** Consolidate all executable python scripts under a root-level `src/` directory within each plugin's folder (such as relocating `unifi` scripts from `skills/unifi-network/scripts/` to `src/`).
+
+**Rejected alternatives.**
+- *Leave scripts nested within skill subfolders (e.g., `skills/.../scripts/`).* Rejected: This makes importing shared helper classes and utilities across different skills in the same plugin difficult and results in duplicate code/helpers. It also breaks repository layout consistency.
+
+**Rationale.** Grouping python files under a unified root-level `src/` directory provides a consistent codebase architecture across all CLI-based plugins, simplifies import paths for tests and commands, and mirrors the architecture of other modernized plugins like `sdlc-manager` and `infiquetra-lifecycle`.
+
+**Revisit when.** A plugin requires isolation of python runtimes or dependencies on a per-skill basis.
+
+---
+
 ## 2026-05-08
 
 ### Adopt uv as canonical dependency sync (commit pending)  {#uv-canonical-sync}
