@@ -27,6 +27,24 @@
 
 ## 2026-05-31
 
+### Agy CLI command-line marketplace installations require local path fallback or clean session reload  {#agy-marketplace-resolution}
+
+**Context.** When a user attempted to install a plugin via the marketplace using the native `agy` CLI tool (e.g. `agy plugin install home-lab-ops@infiquetra-plugins`), the tool exited with `Error: unknown marketplace: infiquetra-plugins`. This occurred despite registering the marketplace under `extraKnownMarketplaces` in both the user's `~/.gemini/settings.json` and `~/.gemini/antigravity-cli/settings.json`.
+
+**Evidence.** Running `/Users/jefcox/.local/bin/agy plugin install home-lab-ops@infiquetra-plugins` failed with `Error: unknown marketplace: infiquetra-plugins`.
+
+**Mechanism.** The `agy` CLI is a client that delegates plugin/marketplace tasks to the running background language server daemon (started via `agy --continue` at shell session initialization). Because the background daemon caches `settings.json` at startup, any subsequent edits to register `extraKnownMarketplaces` in the configuration files are ignored by the active daemon. Furthermore, the `agy` binary parses its global configuration from the standard `~/.gemini/settings.json` file in a structured object format, not an array.
+
+**Fix.** Configured the `extraKnownMarketplaces` and `marketplaces` keys with the correct object format across `/Users/jefcox/.gemini/settings.json` and `/Users/jefcox/.gemini/antigravity-cli/settings.json`. For immediate installation without restarting the background session, a local installation path fallback was successfully used: `agy plugin install /Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/home-lab-ops`.
+
+**Validation.** Running `agy plugin install /Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/home-lab-ops` successfully installed and enabled the plugin in the client runtime environment, and `agy plugin list` verified that it is registered.
+
+**Generalizable rule.** Settings parsed by daemon-client architectures are cached by the server process at startup. When runtime configurations (such as plugin marketplaces) are updated, the background server/daemon must be reloaded (using slash commands or session restarts) or bypassed via local direct paths to register the changes.
+
+---
+
+## 2026-05-31
+
 ### Cross-plugin directory path changes require complete consumer audits  {#cross-plugin-path-mismatch}
 
 **Context.** When porting the `infiquetra-lifecycle` plugin to the modern Antigravity layout, local loop checkpoint states were migrated from the `.claude/` directory to `.gemini/infiquetra-lifecycle/` in accordance with the Antigravity local state standards. However, the `sdlc-manager` plugin was left with hardcoded `.claude/` path searches for retrieving and verifying in-flight checkpoints.
