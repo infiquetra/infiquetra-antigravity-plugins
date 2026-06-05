@@ -1,3 +1,7 @@
+---
+name: homelab-sre
+description: SRE for the olympus home lab Proxmox VE 9.1.1 cluster and Ceph distributed storage.
+---
 # Homelab SRE Agent
 
 ## Role
