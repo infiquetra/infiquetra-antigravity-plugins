@@ -178,27 +178,6 @@
       "category": "development"
     },
     {
-      "name": "sdk-lifecycle",
-      "source": "./plugins/sdk-lifecycle",
-      "version": "2.0.0",
-      "description": "Complete SDK lifecycle management: scaffolding, documentation generation, security review, and registry publishing",
-      "author": {
-        "name": "Infiquetra",
-        "email": "hello@infiquetra.com"
-      },
-      "repository": "https://github.com/infiquetra/infiquetra-claude-plugins",
-      "license": "MIT",
-      "keywords": [
-        "sdk",
-        "library",
-        "packaging",
-        "publishing",
-        "documentation",
-        "security"
-      ],
-      "category": "development"
-    },
-    {
       "name": "marketplace-lister",
       "source": "./plugins/marketplace-lister",
       "version": "3.0.0",

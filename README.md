@@ -10,7 +10,6 @@ This repository contains 7 powerful, production-ready plugins designed specifica
 |--------|-------------|----------|--------|
 
 | [python-toolkit](plugins/python-toolkit/) | Production patterns for Python, Lambda, DynamoDB, and robust handler models | Development | Skills-Only |
-| [sdk-lifecycle](plugins/sdk-lifecycle/) | Package scaffolding, security review, docs and release workflows | Development | Skills-Only |
 | [sdlc-manager](plugins/sdlc-manager/) | Board tracking, milestones, objective synchronization, and issue triage | Development | CLI & Skills |
 | [home-lab-ops](plugins/home-lab-ops/) | Local server orchestration, hardware inventory, and system status tracking | Operations | Skills-Only |
 | [infiquetra-deploy](plugins/infiquetra-deploy/) | Deployment operations for tag-promotion workflows and hotfixes | Operations | CLI & Skills |

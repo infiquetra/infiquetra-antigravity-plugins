@@ -58,7 +58,7 @@ plugin-name/
 └── CHANGELOG.md
 ```
 
-**Examples**: `identity-toolkit`, `python-toolkit`, `sdk-lifecycle`, `docs-generator`, `test-suite`
+**Examples**: `identity-toolkit`, `python-toolkit`, `docs-generator`, `test-suite`
 
 ### CLI-based Plugins
 Python CLI scripts wrapped as Antigravity skills/commands for interacting with external services.
