@@ -1,0 +1,16 @@
+{
+  "name": "todoist",
+  "version": "1.0.0",
+  "description": "Native Todoist integration",
+  "tools": [
+    {
+      "name": "todoist_client",
+      "description": "Manage tasks and projects in Todoist",
+      "executable": "python3",
+      "args": ["src/core/todoist_client.py"],
+      "env": {
+        "TODOIST_TOKEN": "${TODOIST_TOKEN}"
+      }
+    }
+  ]
+}
