@@ -50,3 +50,23 @@ def test_port_plugin_happy_path(source_plugin_dir, tmp_path, mock_home):
     assert src_dir.exists()
     assert (src_dir / "helper.py").exists()
     assert not (dest_dir / "helper.py").exists()
+
+def test_syntax_translation(source_plugin_dir, tmp_path, mock_home):
+    (source_plugin_dir / "instructions.md").write_text(
+        "Task reviewer(review the code)\n"
+        "Ask @reviewer to confirm.\n"
+        "Go to ~/.claude/logs and .claude/config\n"
+        "Already has @agent subagent applied.\n"
+    )
+    
+    dest_dir = tmp_path / "dest_plugins" / "test_plugin"
+    is_success, errors = port_plugin(source_plugin_dir, dest_dir)
+    
+    assert is_success is True
+    
+    content = (dest_dir / "instructions.md").read_text()
+    assert "Use the @reviewer subagent to: review the code" in content
+    assert "Ask @reviewer subagent to confirm." in content
+    assert "Already has @agent subagent applied." in content # Should not double append
+    assert "~/.gemini/logs" in content
+    assert ".gemini/config" in content

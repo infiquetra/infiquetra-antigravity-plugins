@@ -9,6 +9,7 @@ to the Antigravity architecture.
 import sys
 import shutil
 import json
+import re
 from pathlib import Path
 
 # Color codes
@@ -20,6 +21,29 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 
 TARGET_PLUGINS = ["saga", "deploy", "mission-control"]
+
+def rewrite_paths_and_syntax(dest_dir: Path):
+    """Translates paths and agent syntaxes in the newly copied files."""
+    for filepath in dest_dir.rglob("*"):
+        if filepath.is_file() and filepath.suffix in [".py", ".md", ".json", ".txt", ".yaml", ".yml"]:
+            try:
+                content = filepath.read_text(encoding="utf-8")
+                original_content = content
+                
+                # 1. Rewrite paths
+                content = content.replace(".claude/", ".gemini/")
+                content = content.replace("~/.claude/", "~/.gemini/")
+                
+                # 2. Rewrite Task invocations: Task agent(args) -> Use the @agent subagent to: args
+                content = re.sub(r'Task ([a-zA-Z0-9_-]+)\((.*?)\)', r'Use the @\1 subagent to: \2', content, flags=re.DOTALL)
+                
+                # 3. Rewrite @agent mentions, avoiding double append
+                content = re.sub(r'@([a-zA-Z0-9_-]+)(?!\w)(?!\s+subagent)', r'@\1 subagent', content)
+                
+                if content != original_content:
+                    filepath.write_text(content, encoding="utf-8")
+            except UnicodeDecodeError:
+                pass # Skip files that aren't utf-8
 
 def port_plugin(source_dir: Path, dest_dir: Path) -> tuple[bool, list[str]]:
     errors = []
@@ -51,6 +75,9 @@ def port_plugin(source_dir: Path, dest_dir: Path) -> tuple[bool, list[str]]:
         for py_file in dest_dir.glob("*.py"):
             if py_file.is_file():
                 shutil.move(str(py_file), str(src_dir / py_file.name))
+                
+        # 4. Rewrite syntax and paths
+        rewrite_paths_and_syntax(dest_dir)
                 
     except Exception as e:
         errors.append(f"Exception during porting: {e}")
