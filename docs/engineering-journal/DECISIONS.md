@@ -93,3 +93,15 @@
 - ARCHIVE [superseded no-uv-lock decision](ARCHIVE.md#superseded-no-uv-lock-decision) — pre-correction record.
 
 ---
+
+## Porting Claude Plugins: Hardcoded Script & Native State
+**Date:** 2026-06-06
+**Commit:** 8fb23bf
+
+**Decision.** To port `saga`, `deploy`, and `mission-control` from Claude to Antigravity, we wrote a single-purpose script (`scripts/port_claude_plugin.py`) instead of a generic CLI framework. Additionally, we completely stripped out the legacy `.claude/` checkpoint syncing logic.
+
+**Rationale.** 
+1. **Hardcoded > Generic:** We only needed to port three specific, known plugins. Building a generic framework to handle any arbitrary legacy plugin would have been over-engineering, increasing scope without adding value.
+2. **Native State Management:** Antigravity natively manages state in its `brain/` directory (via `implementation_plan.md`, `task.md`, `walkthrough.md`). The legacy plugins manually wrote state checkpoints to `.claude/saga/`. Syncing these into Antigravity would have meant fighting the native architecture. We deleted scripts like `scaffold_checkpoint.py` instead.
+
+**Revisit when.** If we find that subagents lose context too quickly without checkpoints, we may need to implement a native Antigravity state checkpointing mechanism.
