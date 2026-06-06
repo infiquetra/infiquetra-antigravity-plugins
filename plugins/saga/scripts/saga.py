@@ -118,7 +118,7 @@ ListOrAbsent = list[Any] | _Absent
 # ---------------------------------------------------------------------------
 
 
-@dataclass subagent(frozen=True)
+@dataclass(frozen=True)
 class Saga:
     """One thread of lifecycle work. Frozen — ``save`` derives a new instance.
 
