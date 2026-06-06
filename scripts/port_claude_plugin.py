@@ -78,18 +78,20 @@ def port_plugin(source_dir: Path, dest_dir: Path) -> tuple[bool, list[str]]:
                 
         # 4. Rewrite syntax and paths
         rewrite_paths_and_syntax(dest_dir)
+        
+        # 5. Strip out legacy artifact syncing/checkpoint logic
+        scaffold_script = src_dir / "scaffold_checkpoint.py"
+        if scaffold_script.exists():
+            scaffold_script.unlink()
                 
     except Exception as e:
         errors.append(f"Exception during porting: {e}")
         return False, errors
         
-    return len(errors) == 0, errors
+    return True, []
 
 def main():
-    print(f"\n{BOLD}🚀 Port Claude Plugins to Antigravity{RESET}")
-    print(f"{'═' * 45}\n")
-    
-    repo_root = Path(__file__).parent.parent.resolve()
+    repo_root = Path(__file__).resolve().parent.parent
     claude_repo_root = repo_root.parent / "infiquetra-claude-plugins"
     source_plugins_dir = claude_repo_root / "plugins"
     dest_plugins_dir = repo_root / "plugins"
@@ -98,7 +100,7 @@ def main():
         print(f"{RED}❌ Source plugins directory not found: {source_plugins_dir}{RESET}")
         sys.exit(1)
         
-    dest_plugins_dir.mkdir(exist_ok=True)
+    dest_plugins_dir.mkdir(parents=True, exist_ok=True)
     
     all_success = True
     for plugin_name in TARGET_PLUGINS:

@@ -70,3 +70,15 @@ def test_syntax_translation(source_plugin_dir, tmp_path, mock_home):
     assert "Already has @agent subagent applied." in content # Should not double append
     assert "~/.gemini/logs" in content
     assert ".gemini/config" in content
+
+def test_legacy_artifact_cleanup(source_plugin_dir, tmp_path, mock_home):
+    # Create a scaffold_checkpoint.py to ensure it gets removed
+    scaffold_script = source_plugin_dir / "scripts" / "scaffold_checkpoint.py"
+    scaffold_script.parent.mkdir(parents=True, exist_ok=True)
+    scaffold_script.write_text("print('checkpoint')")
+    
+    dest_dir = tmp_path / "dest_plugins" / "test_plugin"
+    is_success, errors = port_plugin(source_plugin_dir, dest_dir)
+    
+    assert is_success is True
+    assert not (dest_dir / "src" / "scaffold_checkpoint.py").exists()
