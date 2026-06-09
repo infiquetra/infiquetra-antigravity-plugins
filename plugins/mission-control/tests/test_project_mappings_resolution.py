@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import sdlc_manager  # noqa: E402
 
 
-@pytest subagent.fixture
+@pytest.fixture
 def fake_vendored_path(tmp_path, monkeypatch):
     """Redirect _VENDORED_PROJECT_MAPPINGS_PATH to a tmp dir. Caller controls
     whether the file exists (write to fake_path to make it exist)."""
@@ -31,7 +31,7 @@ def fake_vendored_path(tmp_path, monkeypatch):
     return fake_path
 
 
-@pytest subagent.fixture
+@pytest.fixture
 def fake_schema_path(tmp_path, monkeypatch):
     fake_path = tmp_path / "vendored-sdlc-schema.json"
     monkeypatch.setattr(sdlc_manager, "_VENDORED_SDLC_SCHEMA_PATH", fake_path)
@@ -139,7 +139,7 @@ def test_vendored_project_mappings_has_expected_canonical_state() -> None:
         "campps-context-library",
         "campps-mvp",
         "github-actions-runners",
-        "hermes-extensions",
+        "infiquetra-hermes-plugins",
         "infiquetra-aws-infra",
         "infiquetra-claude-plugins",
         "infiquetra-sdlc",

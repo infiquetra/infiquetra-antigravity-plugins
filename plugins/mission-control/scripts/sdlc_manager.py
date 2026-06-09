@@ -2716,7 +2716,7 @@ _HERMES_ACTIONABLE_TYPES = frozenset(
 _CAPABILITY_ADAPTIVE_TYPES = frozenset({"capability", "objective"})
 
 
-@dataclass subagent
+@dataclass
 class PreparedReadiness:
     profile: str
     passed: bool
@@ -2724,7 +2724,7 @@ class PreparedReadiness:
     warnings: list[str]
 
 
-@dataclass subagent
+@dataclass
 class SourceArtifact:
     ref: str
     kind: str
@@ -2736,7 +2736,7 @@ class SourceArtifact:
     branch: str | None = None
 
 
-@dataclass subagent
+@dataclass
 class PreparedIssue:
     title: str
     repo: str
@@ -2754,13 +2754,13 @@ class PreparedIssue:
     sidecar_path: str | None = None
 
 
-@dataclass subagent
+@dataclass
 class MutationStep:
     action: str
     detail: str
 
 
-@dataclass subagent
+@dataclass
 class MutationPlan:
     draft_path: str
     repo: str
