@@ -22,6 +22,30 @@
 
 ---
 
+## 2026-06-09
+
+### Track renamed Hermes plugin repo in Mission Control (commit `eb1c9bd`)  {#mission-control-hermes-plugin-repo-rename}
+
+**Decision.** Update the vendored Mission Control repository mapping to use
+`infiquetra-hermes-plugins`, and repair the adjacent syntax corruptions that prevented the mapping
+test from collecting.
+
+**Rejected alternatives.**
+- *Rely on GitHub redirects.* Rejected: project mapping data is not a clone URL and must match the
+  canonical repository name used for board routing.
+- *Skip the test because the repo already had syntax corruption.* Rejected: the changed mapping is a
+  routing contract, so the local test needed to import before this branch was PR-ready.
+
+**Rationale.** Antigravity carries the same Mission Control board-routing surface as the Claude and
+Codex plugin repos. Keeping its vendored repo list current prevents future issue preparation or board
+adds from targeting the retired repository identity.
+
+**Revisit when.** Mission Control discovers repositories live instead of using vendored canonical
+sets, or Antigravity stops carrying Mission Control as an active plugin.
+
+**Refs.** `plugins/mission-control/config/project-mappings.json`;
+`plugins/mission-control/tests/test_project_mappings_resolution.py`.
+
 ## 2026-05-31
 
 ### Promote agent and SRE personas to root-level `agents/` directories (commit `41c9a94`)  {#promote-agents-root-layout}
