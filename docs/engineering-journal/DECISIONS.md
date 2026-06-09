@@ -46,6 +46,29 @@ sets, or Antigravity stops carrying Mission Control as an active plugin.
 **Refs.** `plugins/mission-control/config/project-mappings.json`;
 `plugins/mission-control/tests/test_project_mappings_resolution.py`.
 
+---
+
+## 2026-06-08
+
+### Adopt shared formatting contract for saga documents (commit pending)  {#adopt-shared-formatting-contract}
+
+**Decision.** Adopt a single, shared formatting contract (`plugins/saga/references/formatting-style.md`) across all saga doc-generating plugins, enforcing clean markdown syntax (such as short paragraphs, lead-with-a-summary, comparative data as tables, and blank-line-separated labels to avoid fatal bold-label collapse).
+
+**Rejected alternatives.**
+- *Keep formatting guidelines embedded locally within each individual skill or script.* Rejected: This led to divergent styling rules, drift, and formatting inconsistencies between the different phases of the lifecycle.
+- *Rely on raw regex patterns for validation.* Rejected: Generating strict markdown is better validated by structural markdown syntax tests rather than complex and brittle regular expressions.
+
+**Rationale.** A central formatting reference ensures consistency across all generated artifacts (such as plans, specs, strategy files, and reviews). Adding a structural test ensures that these rules are automatically validated and that the formatting contract does not drift.
+
+**Revisit when.** The markdown viewer tools in our runtime environment change, or we adopt a rich web interface that renders structured data instead of markdown files.
+
+**Refs.**
+- LEARNINGS [saga formatting parser constraints](#saga-formatting-parser-constraints)
+- [formatting-style.md](file:///Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/saga/references/formatting-style.md)
+- [test_saga_doc_formatting.py](file:///Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/tests/test_saga_doc_formatting.py)
+
+---
+
 ## 2026-05-31
 
 ### Promote agent and SRE personas to root-level `agents/` directories (commit `41c9a94`)  {#promote-agents-root-layout}

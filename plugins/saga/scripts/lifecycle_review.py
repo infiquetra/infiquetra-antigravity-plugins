@@ -69,7 +69,7 @@ _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 # ─── Rubric library ───────────────────────────────────────────────────────
 
 
-@dataclass subagent
+@dataclass
 class Rubric:
     slug: str
     phase: str

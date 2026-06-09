@@ -9,7 +9,7 @@ import pytest
 # Add plugin scripts directory to path
 sys.path.insert(
     0,
-    str(Path(__file__).parent.parent / "plugins" / "sdlc-manager" / "scripts"),
+    str(Path(__file__).parent.parent / "plugins" / "mission-control" / "scripts"),
 )
 
 import sdlc_manager

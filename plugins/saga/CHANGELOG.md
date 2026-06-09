@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 - 2026-06-08
+
+- **Saga Document Formatting**: Imported shared formatting contract and style updates from the `infiquetra-claude-plugins` repository, defining visual rendering rules under `plugins/saga/references/formatting-style.md` (e.g. short paragraphs, comparative tables, and avoiding stacked bold labels).
+- **Metadata Email Updates**: Cleaned up metadata email addresses in `.claude-plugin/plugin.json` configurations (reverted `hello@infiquetra subagent.com` to `hello@infiquetra.com`).
+- **Decorator Syntax Cleanup**: Corrected `@dataclass` and `@pytest.fixture` syntax errors caused by automatic search-and-replace corruptions.
+- **Cleaned Up Obsolete Tests**: Removed obsolete UniFi network and protect client test files to restore clean test collection.
+- **Formatting Validation**: Added a new test suite under `tests/test_saga_doc_formatting.py` to assert formatting rules and contract linkages across all nine doc-writing skills.
+
 ## 0.18.0 - 2026-06-04
 
 - Rebuild `/optimize` from a 20-line stub into a **metric-driven optimization engine** — the

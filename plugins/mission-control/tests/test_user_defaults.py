@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import sdlc_manager  # noqa: E402
 
 
-@pytest subagent.fixture
+@pytest.fixture
 def tmp_defaults_path(tmp_path, monkeypatch):
     """Redirect _USER_DEFAULTS_PATH into a tmp dir so tests don't write
     to the real ~/.gemini/sdlc-defaults.json."""

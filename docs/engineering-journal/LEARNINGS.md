@@ -25,6 +25,28 @@
 
 ---
 
+## 2026-06-08
+
+### Schema fields are consumed visually by humans/models, not regex-parsed  {#saga-formatting-parser-constraints}
+
+**Context.** When designing formatting rules for the saga plugins, we needed to decide if fields (such as idea scores or plan details) must strictly remain in unstructured text or could be structured into tables. We investigated if existing parser scripts strictly depend on regex-parsing of markdown structures.
+
+**Evidence.** Analysis of the codebase (such as `sdlc_manager.py` and `lifecycle_review.py`) reveals that no scripts programmatically parse the inside of markdown files using strict regular expressions or expect specific unstructured text formatting for metrics or survivors. Instead, scripts parse metadata files (such as `plugin.json` or JSON checkpoints) for structured details, while the markdown documents are consumed visually by the model or human operators.
+
+**Mechanism.** Because markdown artifacts are for visual presentation and direct model consumption rather than downstream machine parsing, we can structure data using tables, summaries, and lists to maximize readability, without breaking integration scripts.
+
+**Fix.** Standardized the presentation schema to use two-column markdown tables for compact, key-value data fields, and narrative paragraphs for descriptions. We also introduced `test_saga_doc_formatting.py` to assert correct markdown structure.
+
+**Validation.** Pytest runs successfully and confirms that all modified files adhere to the formatting rules, and no downstream tool integrations fail.
+
+**Generalizable rule.** Verify the true consumers of a document schema before freezing its layout. If the primary consumer is a human or a language model rather than a regex parser, prioritize layout readability (tables, visual structure) over keeping layout styles strictly identical.
+
+**Refs.**
+- DECISIONS [adopt-shared-formatting-contract](#adopt-shared-formatting-contract)
+- [formatting-style.md](file:///Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/saga/references/formatting-style.md)
+
+---
+
 ## 2026-05-31
 
 ### Agy CLI command-line marketplace installations require local path fallback or clean session reload  {#agy-marketplace-resolution}
