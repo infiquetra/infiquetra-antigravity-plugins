@@ -58,6 +58,37 @@ What each command does:
   saga write) and offers operator-choice for independent experiment fan-out.
 - `/loop` routes work to plan only, PR, merge, or nonprod deploy.
 
+## State Management & Topology
+
+The Saga orchestrator coordinates work primarily by writing and parsing native `brain/` directory artifacts. Below is a topography mapping of how the orchestrator commands interact with these artifacts:
+
+```mermaid
+flowchart TD
+    classDef present fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+    classDef missing fill:#2b2b2b,stroke:#555,stroke-width:2px,color:#888,rx:5px,ry:5px,stroke-dasharray: 5 5;
+    classDef plugin fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+
+    subgraph Brain State [Native Antigravity Brain Directory]
+        IP[implementation_plan.md]:::present
+        TASK[task.md]:::present
+        WALK[walkthrough.md]:::present
+    end
+
+    subgraph Saga Lifecycle Topology
+        IDEATE([/ideate]):::plugin
+        PLAN([/plan]):::plugin
+        WORK([/work]):::plugin
+        QA([/qa]):::plugin
+    end
+
+    IDEATE -->|Generates Ideas| IP
+    PLAN -->|Formalizes| IP
+    PLAN -->|Bootstraps| TASK
+    WORK -->|Executes & Tracks| TASK
+    WORK -->|Creates| WALK
+    QA -->|Validates| WALK
+```
+
 ## Artifact Model
 
 Durable artifacts are repo docs:
