@@ -1,5 +1,5 @@
 {
   "name": "mission-control",
-  "version": "1.0.0",
-  "description": "Ported mission-control plugin"
+  "version": "1.1.0",
+  "description": "SDLC issue management, board ops, flow metrics, and issue-contract sync for Infiquetra GitHub Projects"
 }
