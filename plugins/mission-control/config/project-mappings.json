@@ -16,7 +16,7 @@
         "github-actions-runners",
         "infiquetra-hermes-plugins",
         "infiquetra-aws-infra",
-        "infiquetra-claude-plugins",
+        "infiquetra-antigravity-plugins",
         "infiquetra-sdlc",
         "mimir",
         "mimir-context-library"

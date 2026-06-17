@@ -30,13 +30,15 @@ issue command; `/issue` remains a compatibility alias.
 5. Uses `issue prepare` for non-mutating prepared drafts.
 6. Uses `issue create-prepared` for confirmed GitHub mutation from a prepared draft.
 7. Keeps `/loop` out of recipient guidance; handoff issues may suggest `/plan <issue>` or `/work <issue>`.
+8. Lets mission-control compile the prepared issue body from the vendored issue contract; do not copy
+   SDLC issue template sections into Saga or handoff prompts.
 
 ## Examples
 
 ```
 /issue --prepare from the brainstorm for Asgard
 /issue --draft --from docs/plans/2026-05-30-002-feat-sdlc-handoff-flow-plan.md
-/issue capability --repo infiquetra-claude-plugins --from docs/brainstorms/example.md
+/issue capability --repo infiquetra-antigravity-plugins --from docs/brainstorms/example.md
 /issue --prepare --from branch:current --maturity resume-ready
 ```
 
@@ -46,7 +48,7 @@ Prepare from a source artifact:
 
 ```bash
 python3 ~/.gemini/plugins/cache/infiquetra-plugins/mission-control/1.6.0/scripts/sdlc_manager.py \
-  issue prepare --repo infiquetra-claude-plugins --type capability \
+  issue prepare --repo infiquetra-antigravity-plugins --type capability \
   --team olympus --project mount-olympus --risk medium \
   --from docs/plans/example.md --maturity plan-ready
 ```
@@ -71,3 +73,5 @@ When the user invokes `/issue`:
 7. If target team or project is ambiguous, ask. Do not guess between Asgard and Mount Olympus.
 8. Ensure the prepared issue is self-contained for a recipient without `saga`.
 9. If the recipient does have `saga`, suggest `/plan <issue>` for `idea-ready` or `requirements-ready`, and `/work <issue>` for `plan-ready` or `resume-ready`.
+10. Do not hand-write actionable issue template bodies in this command; route source text through
+    `issue prepare` so the vendored Hermes contract supplies required sections and readiness checks.

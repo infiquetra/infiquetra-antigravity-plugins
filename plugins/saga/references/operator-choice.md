@@ -31,7 +31,7 @@ cc-workflows-ultracode` — these strings are the contract (they match `ORCHESTR
 |---|---|---|---|
 | `inline` | The agent does the work itself, single-context / serial. **The default.** | the agent | always |
 | `team-execution` | The team-execution plugin: a `## Team Structure` plan section + worker / reviewer / validator agents with consensus + gates. | yes — team-execution owns its own run | plugin installed |
-| `cc-workflows-ultracode` | The Claude Code **Workflow** tool: deterministic multi-agent fan-out (ultracode). | yes — the Workflow runtime owns its own run | **Claude Code only** (§4) |
+| `cc-workflows-ultracode` | The Claude Code **Workflow** tool: deterministic multi-agent orchestration (ultracode) — broad fan-out **and** independent/adversarial verification. | yes — the Workflow runtime owns its own run | **Claude Code only** (§4) |
 
 **Ownership boundary.** Lifecycle **chooses**; the backends **execute**. `team-execution` and
 `deploy` are **offered, not vendored** — lifecycle never reimplements their machinery, it points
@@ -61,7 +61,8 @@ The operator decides; lifecycle makes the cheapest-correct path one keystroke aw
 
 This mirrors `should_offer_team_execution` in
 [`scripts/lifecycle_state.py`](../scripts/lifecycle_state.py) — **that function is the canonical trigger
-source; keep these numbers identical to its constants.** Offer `team-execution` when **ANY** of:
+source; keep these numbers — and the `has_code_surface` docs-gating below — identical to its constants.**
+Offer `team-execution` when **ANY** of:
 
 | Signal | Threshold |
 |---|---|
@@ -72,20 +73,41 @@ source; keep these numbers identical to its constants.** Offer `team-execution` 
 | `cross_repo` | true |
 | `deployment_sensitive` | true |
 
-**PLUS** a needs-consensus signal: multiple reviewer lenses are warranted, a decision is contested, or
+**OR** a needs-consensus signal: multiple reviewer lenses are warranted, a decision is contested, or
 validator gates should bound the work. team-execution's whole value is *review consensus + gates*, so a job
-that wants those is a team-execution job even if it is small.
+that wants those is a team-execution job even if it is small — the consensus signal is **sufficient on its
+own**, not an additive PLUS (this matches `recommend_execution_backend`, which ORs it in).
+
+**Docs exception (`has_code_surface=False`).** team-execution's scanners + deploy gate are code-shaped and
+inert on pure docs/spec/research output, so the **output-blind** rows above — `file_count`, `phase_count`,
+`has_security`, `has_infra`, `deployment_sensitive` (the last two are `parse_issue.py` keyword matches that
+fire on a doc merely *mentioning* terraform or auth) — are neutralized when the work has no code/ship
+surface. Two rows survive because they signal governance, not code: **`cross_repo`** (crossing a repo =
+crossing an ownership boundary = a multi-party coordination need) and the **needs-consensus** signal. A big
+docs change with neither stays `inline`/ultracode, not team-execution.
 
 ### 3.2 `inline` -> `cc-workflows-ultracode` (Claude Code only)
 
-Offer when the work is **broad and independent** — breadth **WITHOUT** elevated risk:
+Offer in **either** of two ungoverned-multiplicity modes, both without elevated risk:
 
-- high-parallelism — many independent units of work that do not share output;
-- broad independent fan-out — the same operation applied across many targets;
-- exhaustive sweep — search-all / probe-all style coverage where missing a target is the failure mode.
+- **Breadth / scale** — high-parallelism, broad independent fan-out (the same operation across many
+  targets), or an exhaustive search-all / probe-all sweep where missing a target is the failure mode.
+- **Adversarial confidence** (`adversarial_confidence`) — prove-by-refutation, a judge panel over N
+  independent attempts, or perspective-diverse verifiers each applying a distinct lens. This is real review
+  depth; the Workflow tool names *confidence* as a first-class purpose. Set it only on an **explicit**
+  request for many-independent-attempt verification — not inferred from a generic "be more sure," and not
+  when 1-3 lenses suffice (that is an `inline` / `team-execution` review, not an ultracode fan-out).
 
-ultracode's value is deterministic fan-out, not review depth. If the work is risky rather than merely wide,
-that is a `team-execution` signal (§3.1), not an ultracode one.
+So ultracode is **not** "fan-out, not review depth" — it delivers deterministic fan-out **and** independent
+adversarial verification. What it lacks is **governance**: no reviewer-CONSENSUS gate, no named scanner
+registry, no guarded deploy. That — not "review depth" — is the line to `team-execution` (§3.1).
+
+**The mechanical boundary** (artifact kind, not ceremony level): ultracode gives a *throwaway* confidence
+signal on a finding you then act on yourself — N votes, the run ends, nothing is recorded or blocks.
+team-execution gives a *standing* verdict — a consensus score that blocks downstream scanners and the deploy
+and persists as evidence. Want independent cross-checking of a read-only finding → ultracode. Need the review
+to gate a merge/deploy or be recorded → team-execution. (A job that is both risky **and** wide offers both —
+§3.3.)
 
 ### 3.3 Overlap (both fire)
 

@@ -22,6 +22,46 @@
 
 ---
 
+## 2026-06-11
+
+### `/impl-spec` and `/product-review` plan decisions (commit pending)  {#impl-spec-product-review-plan}
+
+**Decision.** Introduce 2 new saga skills and extend 1:
+
+1. `/impl-spec` — a 6-stage implementation spec pipeline (Archetype B: multi-stage loop). SKILL.md
+   stays under 250 lines; stage protocols go to `references/impl-spec-stages.md`. Uses Antigravity-
+   native `define_subagent`/`invoke_subagent` for parallel authoring waves and probe spawning (the
+   subagent orchestration IS the core behavior, unlike `/optimize` which delegates fan-out to
+   operator-choice).
+2. `/product-review` — an off-chain advisory experiment gate (Archetype A: advisory gate). No Python
+   scripts; the skill is simple enough that the agent handles logic inline. Simplified from vecu's
+   version: no revival ceremony.
+3. `/doc-review` — gains a buildability-probe mode (~70 lines additive). Probe mode is highest-
+   precedence in classification (explicit request first). No existing behavior modified.
+4. Shared reference docs (`buildability-probe-protocol.md`, `lifecycle-closure-matrix-template.md`)
+   live at `plugins/saga/references/` (plugin-level, following `formatting-style.md` precedent).
+5. Dispatch table grows from 17 → 19 routable commands. Both new entries are off-chain + advisory.
+
+**Rejected alternatives.**
+- *Add implementation spec as a mode of `/spec`.* Rejected: would make `/spec` monolithic (the vecu
+  `/work-loop` at 621 lines is the cautionary example). `/spec` stays WHAT-only.
+- *Add a `product_review.py` script.* Rejected: `/product-review` is simple enough to work without
+  one. Premature script — can be added later if revival logic is needed.
+- *Probe mode as a separate skill.* Rejected: the probe is a quality gate, not a lifecycle phase. It
+  belongs in `/doc-review` as a composable mode, callable independently or by `/impl-spec`.
+
+**Rationale.** Each new skill follows an established archetype (advisory gate or multi-stage loop) to
+maintain pattern consistency. The shared reference docs avoid duplication between `/impl-spec` and
+`/doc-review`. No scripts means less maintenance surface; no probe skill means the probe is composable.
+
+**Revisit when.** `/product-review` needs revival logic (pulling near-miss ideas from `/ideate`), or
+`/impl-spec` needs a crash-recovery checkpoint mechanism beyond the scratch-file approach.
+
+**Refs.** Plan: `docs/plans/2026-06-11-impl-spec-product-review-plan.md`. Requirements:
+`docs/brainstorms/2026-06-11-impl-spec-and-product-review-requirements.md`.
+
+---
+
 ## 2026-06-09
 
 ### Track renamed Hermes plugin repo in Mission Control (commit `eb1c9bd`)  {#mission-control-hermes-plugin-repo-rename}

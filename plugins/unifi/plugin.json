@@ -1,0 +1,8 @@
+{
+  "name": "unifi",
+  "version": "0.1.0",
+  "description": "UniFi Network management tools and automation",
+  "author": "infiquetra",
+  "repository": "https://github.com/infiquetra/infiquetra-antigravity-plugins",
+  "keywords": ["unifi", "network", "infrastructure"]
+}

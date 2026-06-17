@@ -53,3 +53,5 @@ Thumbs.db
 
 # Claude Code (per-user settings and session state)
 .claude/
+.claude-plugin/
+.remember/

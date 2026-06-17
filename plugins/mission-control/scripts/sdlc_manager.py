@@ -59,6 +59,7 @@ Environment Variables:
 """
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -167,7 +168,7 @@ def _fetch_gh_login() -> str | None:
 
 
 def load_config() -> dict[str, Any]:
-    """Load config from infiquetra-sdlc checkout with remote fallback."""
+    """Load SDLC config, preferring live canonical sources when freshness matters."""
     sdlc_path = get_sdlc_path()
     config: dict[str, Any] = {}
 
@@ -216,7 +217,9 @@ def load_config() -> dict[str, Any]:
             except Exception:
                 config[key] = {}
 
-    # Project mappings and SDLC schema — three-step resolution
+    # Project mappings and SDLC schema each have their own resolution policy.
+    # Mappings allow local override for operator workflow testing; schema prefers
+    # GitHub main first because a local infiquetra-sdlc checkout may be stale.
     config["project_mappings"] = _resolve_project_mappings(sdlc_path)
     config["sdlc_schema"] = _resolve_sdlc_schema(sdlc_path)
 
@@ -279,21 +282,12 @@ def _resolve_project_mappings(sdlc_path: Path) -> dict[str, Any]:
 
 
 def _resolve_sdlc_schema(sdlc_path: Path) -> dict[str, Any]:
-    """Resolve sdlc-schema.json via external checkout → vendored → remote fallback."""
-    override = sdlc_path / "config" / "sdlc-schema.json"
-    if override.exists():
-        with open(override) as f:
-            return cast(dict[str, Any], json.load(f))
-
-    if _VENDORED_SDLC_SCHEMA_PATH.exists():
-        with open(_VENDORED_SDLC_SCHEMA_PATH) as f:
-            return cast(dict[str, Any], json.load(f))
-
+    """Resolve sdlc-schema.json via GitHub main → vendored → local fallback."""
     try:
         result = _gh(
             [
                 "api",
-                f"repos/{ORG}/infiquetra-sdlc/contents/config/sdlc-schema.json",
+                f"repos/{ORG}/infiquetra-sdlc/contents/config/sdlc-schema.json?ref=main",
                 "--jq",
                 ".content",
             ]
@@ -305,6 +299,15 @@ def _resolve_sdlc_schema(sdlc_path: Path) -> dict[str, Any]:
             return cast(dict[str, Any], json.loads(content))
     except (GhApiError, RuntimeError):
         pass
+
+    if _VENDORED_SDLC_SCHEMA_PATH.exists():
+        with open(_VENDORED_SDLC_SCHEMA_PATH) as f:
+            return cast(dict[str, Any], json.load(f))
+
+    local_fallback = sdlc_path / "config" / "sdlc-schema.json"
+    if local_fallback.exists():
+        with open(local_fallback) as f:
+            return cast(dict[str, Any], json.load(f))
 
     return {}
 
@@ -972,16 +975,43 @@ def board_add(
     fmt: str,
     config: dict | None = None,
     project_name: str | None = None,
+    project_names: list[str] | None = None,
 ) -> None:
-    """Add issue/PR to correct project(s)."""
+    """Add issue/PR to correct project(s).
+
+    Native Projects-v2 multi-membership: one item node id is added to each
+    resolved project as an INDEPENDENT membership (not a clone — see KTD10).
+    Each project keeps its own per-board Status.
+
+    Project resolution precedence (first non-empty wins):
+      1. ``project_names`` — explicit list of named projects (repeatable
+         ``--project`` on the CLI). Order-preserving de-dup; add to exactly
+         those boards.
+      2. ``project_name`` — a single explicit named project (back-compat).
+      3. neither given — fall back to ``get_projects_for_repo`` (the repo →
+         project mapping), unchanged.
+
+    Per-project fault isolation: one project's add failing is captured in the
+    results and does not abort adds to the remaining projects.
+    """
     if not config:
         config = load_config()
 
-    projects = (
-        [get_project_config(config, project_name)]
-        if project_name
-        else get_projects_for_repo(config, repo)
-    )
+    if project_names:
+        # Explicit multi-membership: resolve each named project, order-
+        # preserving de-dup so a repeated --project doesn't add twice.
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for name in project_names:
+            if name in seen:
+                continue
+            seen.add(name)
+            ordered.append(name)
+        projects = [get_project_config(config, n) for n in ordered]
+    elif project_name:
+        projects = [get_project_config(config, project_name)]
+    else:
+        projects = get_projects_for_repo(config, repo)
     if not projects:
         mappings = config.get("project_mappings", {})
         excluded = mappings.get("excluded_repositories", [])
@@ -2289,61 +2319,64 @@ def flow_verify_label(
 
 
 # ===========================
-# CARD VALIDATOR (mirror of home-lab card_validator.py)
+# CARD VALIDATOR (generated-data-backed pre-flight, mirrors home-lab card_validator.py)
 # ===========================
-# Mirrors the home-lab orchestrator's card_validator.py contract enough to
-# pre-flight check an issue body before plan-review fires. This is NOT a
-# strict re-implementation — the home-lab validator is the source of truth
-# (`home-lab/ansible/roles/hermes_orchestrator/files/card_validator.py`) and
-# should be consulted when the contract changes. We mirror the high-leverage
-# checks: 6 required H3 headers, AC has ≥1 checklist item, Verification has
-# ≥1 fenced code block, Files-expected has ≥1 path-like line, no placeholders.
+# Pre-flight-checks an issue body before plan-review fires. This is the
+# ALGORITHM (control flow) only — its DATA (the 6 required H3 headers, the
+# regexes, the placeholder set) is GENERATED in infiquetra-sdlc
+# (`tools/docs/gen_issue_contract.py` from the `issue_fields` block of
+# `config/sdlc-schema.json`) and VENDORED here as
+# `config/generated/issue_contract_shim.py` (carried with a pinned SHA256 + a
+# consumer-side parity gate). When the contract changes, the shim DATA is
+# re-vendored from sdlc and this algorithm is left untouched (KTD2). The shim is
+# shaped as a drop-in: it carries `REQUIRED_H3_HEADERS` / `OPTIONAL_H3_HEADERS`
+# and the named regex source strings (`HEADER_RE_PATTERN` / `CHECKLIST_RE_PATTERN`
+# / `CODE_BLOCK_RE_PATTERN` / `PATH_LINE_RE_PATTERN`) + a LOWERCASED
+# `PLACEHOLDER_LINES` set (the shim compares `ln.lower() in _PLACEHOLDER_LINES`).
+#
+# Import mechanism: load the vendored shim BY PATH relative to this file
+# (`__file__`-relative), so it resolves whether `sdlc_manager` is imported as a
+# top-level module in the test suite (tests put `scripts/` on sys.path) OR run
+# directly as the CLI. Loading by path means resolution does NOT depend on
+# `config/generated/` being on sys.path or being an importable package.
+_SHIM_DATA_PATH = (
+    Path(__file__).resolve().parent.parent / "config" / "generated" / "issue_contract_shim.py"
+)
+_CONTRACT_DATA_PATH = (
+    Path(__file__).resolve().parent.parent / "config" / "generated" / "issue_contract_data.py"
+)
+_shim_spec = importlib.util.spec_from_file_location("issue_contract_shim", _SHIM_DATA_PATH)
+if _shim_spec is None or _shim_spec.loader is None:  # pragma: no cover - defensive
+    raise ImportError(f"vendored issue-contract shim not loadable at {_SHIM_DATA_PATH}")
+_shim = importlib.util.module_from_spec(_shim_spec)
+_shim_spec.loader.exec_module(_shim)
+_contract_spec = importlib.util.spec_from_file_location("issue_contract_data", _CONTRACT_DATA_PATH)
+if _contract_spec is None or _contract_spec.loader is None:  # pragma: no cover - defensive
+    raise ImportError(f"vendored issue-contract data not loadable at {_CONTRACT_DATA_PATH}")
+_contract = importlib.util.module_from_spec(_contract_spec)
+_contract_spec.loader.exec_module(_contract)
 
-# All regexes + the placeholder set below MUST mirror the home-lab source-of-truth:
-# `home-lab/ansible/roles/hermes_orchestrator/files/card_validator.py`. When that
-# file's contract changes, update these in the same PR.
-
-_REQUIRED_H3_HEADERS = (
-    "Objective",
-    "Acceptance criteria",
-    "Out-of-scope / non-goals",  # exact match: home-lab uses slash, not "or"
-    "Files expected to change",
-    "Tests to add or update",
-    "Verification",
-)
-_OPTIONAL_H3_HEADERS = (
-    "Notes / conventions",
-    "Context library links",
-)
-_HEADER_RE = re.compile(r"^###\s+(.+?)\s*$", re.MULTILINE)
-# Checklist: `- [ ]`, `- [x]`, `* [ ]`, `* [X]`, with leading whitespace.
-# Requires `\S` after the bracket — empty checkbox-only lines don't count
-# (matches home-lab `card_validator.py:73`).
-_CHECKLIST_RE = re.compile(r"^\s*[-*]\s+\[[ xX]\]\s+\S", re.MULTILINE)
-_CODE_BLOCK_RE = re.compile(r"^```", re.MULTILINE)
-# A "plausible path" — matches home-lab `_PATH_LINE_RE` exactly:
-# optional bullet (`-` or `*`), optional quote/backtick wrapper, then a
-# token containing either `/` or `.` (so `pyproject.toml` and `- src/foo.py`
-# both pass). The orchestrator verifies actual existence; we just gate on
-# "looks like a path."
-_PATH_LINE_RE = re.compile(
-    r"^\s*(?:[-*]\s+)?"
-    r"[`'\"]?"
-    r"[\w./~\-]*[/.][\w./~\-]+"
-    r".*$",
-    re.MULTILINE,
-)
-_PLACEHOLDER_LINES = frozenset(
-    {
-        "- [ ]",
-        "-",
-        "* [ ]",
-        "*",
-        "_no response_",
-        "none",
-        "<!-- placeholder -->",
-    }
-)
+# DATA imported from the vendored shim (NOT hand-maintained here). A named regex
+# group is also positional group 1, so `HEADER_RE_PATTERN`'s `(?P<label>...)` is
+# a drop-in for the prior `m.group(1)` extraction in `_split_sections` below.
+_REQUIRED_H3_HEADERS = _shim.REQUIRED_H3_HEADERS
+_OPTIONAL_H3_HEADERS = _shim.OPTIONAL_H3_HEADERS
+_CONTRACT_FIELD_HEADERS = _contract.FIELD_HEADERS
+_CONTRACT_REQUIRED_MATRIX = _contract.REQUIRED_MATRIX
+_CONTRACT_AUTO_FIELDS = frozenset(_CONTRACT_REQUIRED_MATRIX.get("auto_populated_fields", ()))
+_HEADER_RE = re.compile(_shim.HEADER_RE_PATTERN, re.MULTILINE)
+_CHECKLIST_RE = re.compile(_shim.CHECKLIST_RE_PATTERN, re.MULTILINE)
+_CODE_BLOCK_RE = re.compile(_shim.CODE_BLOCK_RE_PATTERN, re.MULTILINE)
+_PATH_LINE_RE = re.compile(_shim.PATH_LINE_RE_PATTERN, re.MULTILINE)
+# R2/KTD8 executable-acceptance regex: the acceptance field must name a runnable
+# check (a `code span` or a ``` fenced block). DATA from the vendored shim.
+_ACCEPTANCE_EXECUTABLE_RE = re.compile(_shim.ACCEPTANCE_EXECUTABLE_RE_PATTERN, re.MULTILINE)
+# R4: explicit `_none_` declaration accepted for context-links presence. The
+# none-marker is `_none_` / `none` / `None` (case-insensitive); hard-coded here to
+# match the vendored CONTEXT_PARSING none-marker the home-lab validator uses.
+_NONE_MARKER_RE = re.compile(r"^_?none_?$", re.IGNORECASE)
+# Already LOWERCASED in the vendored shim to match the `.lower()` compare below.
+_PLACEHOLDER_LINES = frozenset(_shim.PLACEHOLDER_LINES)
 
 
 def _split_sections(body: str) -> dict[str, str]:
@@ -2364,19 +2397,20 @@ def validate_card_body(body: str) -> tuple[bool, list[str]]:
     Mirrors home-lab card_validator.py's high-leverage checks. When that
     file's contract changes, update this shim in the same PR.
 
-    Returns (is_valid, errors). The 5 checks:
-      1. All 6 required H3 sections present (Objective, Acceptance criteria,
-         Out-of-scope / non-goals, Files expected to change, Tests to add
-         or update, Verification).
-      2. Acceptance criteria has at least one `- [ ]` or `* [ ]` checklist
-         item with non-whitespace content after the bracket.
+    Returns (is_valid, errors). The checks (mirror the home-lab validator's
+    always-required, body-only surface — the shim has no Risk/issue-type input,
+    so the risk-conditional matrix R5-R7 is enforced by the authoritative
+    home-lab gate, not here):
+      1. All required H3 sections present (now incl. Intent and Context library
+         links per the U8 context package).
+      2. Acceptance criteria has at least one `- [ ]` / `* [ ]` checklist item.
+      2b. Acceptance criteria is EXECUTABLE (R2/KTD8): a criterion names a
+         runnable check — a `code span` or a ``` fenced block.
       3. Verification has at least one fenced code block (≥2 ``` markers).
-      4. Files expected to change has at least one path-like line (matches
-         home-lab _PATH_LINE_RE — accepts plain filenames like
-         `pyproject.toml`, bullet-prefixed paths like `- src/foo.py`, and
-         backtick-wrapped paths).
-      5. No required section consists of only placeholder lines
-         (`- [ ]`, `_No response_`, `None`, etc.).
+      4. Files expected to change has at least one path-like line.
+      5. No required section consists of only placeholder lines — EXCEPT the
+         Context library links `_none_` declaration (R4), which is a valid
+         "no link applies" marker, not leftover placeholder chrome.
     """
     errors: list[str] = []
     sections = _split_sections(body)
@@ -2387,13 +2421,19 @@ def validate_card_body(body: str) -> tuple[bool, list[str]]:
     if missing:
         errors.append(f"Missing required H3 sections: {missing}")
 
-    # 2. Acceptance criteria has ≥1 checklist item
+    # 2 + 2b. Acceptance criteria: a checklist item AND an executable criterion.
     if "Acceptance criteria" in sections:
         ac = sections["Acceptance criteria"]
         if not _CHECKLIST_RE.search(ac):
             errors.append(
                 "'Acceptance criteria' has no `- [ ]` checklist item "
                 "(card_validator requires at least one)"
+            )
+        elif not _ACCEPTANCE_EXECUTABLE_RE.search(ac):
+            errors.append(
+                "'Acceptance criteria' is not executable (card_validator "
+                "requires each criterion to name a runnable check -- a `code "
+                "span` or a ``` fenced block -- with its expected result)"
             )
 
     # 3. Verification has ≥1 fenced code block
@@ -2415,17 +2455,83 @@ def validate_card_body(body: str) -> tuple[bool, list[str]]:
                 "(card_validator requires at least one `dir/file` style entry)"
             )
 
-    # 5. No placeholder-only sections
+    # 5. No placeholder-only sections (Context library links `_none_` exempt).
     for header in _REQUIRED_H3_HEADERS:
         if header not in sections:
             continue
         text = sections[header].strip()
+        # R4: a whole-field `_none_` on Context library links is a valid
+        # declaration, not a placeholder-only section.
+        if header == "Context library links" and _NONE_MARKER_RE.match(text):
+            continue
+        if not text:
+            errors.append(f"'{header}' is empty")
+            continue
         # Strip blank lines + check whether all remaining lines are placeholders
         lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
         if lines and all(ln.lower() in _PLACEHOLDER_LINES for ln in lines):
             errors.append(f"'{header}' contains only placeholder text")
 
     return (len(errors) == 0, errors)
+
+
+def _rule_matches(rule_value: str, actual: str | None) -> bool:
+    return rule_value == "*" or rule_value == (actual or "")
+
+
+def _required_contract_field_keys(issue_type: str, risk: str | None) -> list[str]:
+    required_by_field = {
+        field: bool(_CONTRACT_REQUIRED_MATRIX.get("default_required", False))
+        for field in _CONTRACT_REQUIRED_MATRIX["axes"]["field"]
+    }
+    normalized_risk = risk or "*"
+    for rule in _CONTRACT_REQUIRED_MATRIX["rules"]:
+        if not _rule_matches(rule["issue_type"], issue_type):
+            continue
+        if not _rule_matches(rule["risk"], normalized_risk):
+            continue
+        for field in rule["fields"]:
+            required_by_field[field] = bool(rule["required"])
+    return [
+        field
+        for field in _CONTRACT_REQUIRED_MATRIX["axes"]["field"]
+        if required_by_field.get(field) and field not in _CONTRACT_AUTO_FIELDS
+    ]
+
+
+def validate_card_body_for_context(
+    body: str, issue_type: str, risk: str | None
+) -> tuple[bool, list[str]]:
+    """Validate a prepared issue body when issue type and risk are known.
+
+    `validate_card_body` intentionally remains body-only for compatibility. This
+    wrapper layers the generated required matrix on top for prepared drafts.
+    """
+    valid, errors = validate_card_body(body)
+    sections = _split_sections(body)
+    required_headers = [
+        _CONTRACT_FIELD_HEADERS[field] for field in _required_contract_field_keys(issue_type, risk)
+    ]
+    missing = [header for header in required_headers if header not in sections]
+    if missing:
+        errors.append(
+            f"Missing required H3 sections for {issue_type}/{risk or 'unknown-risk'}: {missing}"
+        )
+
+    for header in required_headers:
+        if header not in sections:
+            continue
+        text = sections[header].strip()
+        if header == "Context library links" and _NONE_MARKER_RE.match(text):
+            continue
+        if not text:
+            errors.append(f"'{header}' is empty")
+            continue
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if lines and all(ln.lower() in _PLACEHOLDER_LINES for ln in lines):
+            errors.append(f"'{header}' contains only placeholder text")
+
+    return (valid and not errors, errors)
 
 
 class CardValidationError(RuntimeError):
@@ -2715,6 +2821,40 @@ _HERMES_ACTIONABLE_TYPES = frozenset(
 # additional prompts light up automatically.
 _CAPABILITY_ADAPTIVE_TYPES = frozenset({"capability", "objective"})
 
+# ---------------------------------------------------------------------------
+# Prepared-issue compile + approve machinery (U11)
+# ---------------------------------------------------------------------------
+# Two ORTHOGONAL durable axes, kept separate on purpose:
+#   - `state`          : the creation-pipeline state (blocked -> ready_to_create
+#                        -> mapping_pending -> created). UNCHANGED by U11 so the
+#                        existing readiness/create-prepared contract + tests hold.
+#   - `approval_state` : the human gate U11 adds. A cleanly-compiled draft lands
+#                        in NEEDS_OPERATOR_APPROVAL (recorded durably in BOTH the
+#                        sidecar and the draft front-matter) and is NOT
+#                        auto-created. Batch approval transitions it to APPROVED.
+# A blocked draft has approval_state=None — it never reaches the gate.
+_PREPARE_STATE_BLOCKED = "blocked"
+_PREPARE_STATE_READY = "ready_to_create"
+_APPROVAL_NEEDS_OPERATOR = "needs_operator_approval"
+_APPROVAL_APPROVED = "approved"
+# approval_state values from which a draft may be batch-approved. Only a draft
+# sitting in the gate is approvable; an already-approved draft is SKIPPED (its
+# approved_at timestamp is preserved, not rewritten) so approval is a true no-op.
+_APPROVABLE_APPROVAL_STATES = frozenset({_APPROVAL_NEEDS_OPERATOR})
+
+# Project FIELDS a prepared card carries, computed offline at prepare time from
+# the issue's own metadata and RECORDED in the sidecar for a future create-time
+# consumer (consumption is a follow-up unit, not wired here). These are card
+# VALUES (not the project's live field schema): "field-schema discovery" against
+# a real project stays behind `_resolve_project_field` (live GraphQL), which
+# `flow set-field` uses. Lifecycle Origin is the auto-populated field (R10) —
+# never author-supplied. Risk maps to the `Technical Risk` single-select named
+# in the PROJECT FIELD REALITY note above.
+_PREPARED_FIELD_RISK = "Technical Risk"
+_PREPARED_FIELD_OBJECTIVE = "Objective"
+_PREPARED_FIELD_ISSUE_TYPE = "Issue Type"
+_PREPARED_FIELD_LIFECYCLE_ORIGIN = "Lifecycle Origin"
+
 
 @dataclass
 class PreparedReadiness:
@@ -2750,8 +2890,39 @@ class PreparedIssue:
     body: str
     handoff_maturity: str | None = None
     source_artifact: dict[str, Any] | None = None
+    project_fields: dict[str, str] | None = None
     draft_path: str | None = None
     sidecar_path: str | None = None
+
+
+def _prepared_project_fields(
+    issue: PreparedIssue, source_artifact: SourceArtifact | None
+) -> dict[str, str]:
+    """Resolve the project-field values a prepared card will carry (U11).
+
+    Pure/offline: derives values from the issue's own metadata + the handoff
+    source, so tests run without a live GitHub call. These values are RECORDED
+    in the sidecar (`project_fields`) for a LATER create-time consumer to set on
+    the live card — that consumption is a FOLLOW-UP unit and is NOT wired here.
+    `create` does not yet read `project_fields`, and `_resolve_project_field`
+    currently RAISES on a field the live project doesn't expose (per-field
+    tolerance for not-yet-created fields is also a follow-up, not implemented
+    here). We only record non-empty values so the sidecar reflects what we could
+    populate; do not read more into the presence of this key than "recorded".
+    """
+    fields: dict[str, str] = {_PREPARED_FIELD_ISSUE_TYPE: issue.issue_type}
+    if issue.risk:
+        fields[_PREPARED_FIELD_RISK] = issue.risk
+    # Lifecycle Origin is auto-populated from the handoff maturity that drove
+    # this draft (R10) — it is the compile step's record of "where this card
+    # came from", never an author-required input.
+    if issue.handoff_maturity:
+        fields[_PREPARED_FIELD_LIFECYCLE_ORIGIN] = issue.handoff_maturity
+    # Objective is carried only when the handoff source names one; we don't
+    # invent an Objective the operator didn't supply.
+    if source_artifact and source_artifact.ref:
+        fields[_PREPARED_FIELD_OBJECTIVE] = source_artifact.ref
+    return fields
 
 
 @dataclass
@@ -3072,7 +3243,7 @@ def _strip_draft_h1(body: str) -> tuple[str | None, str]:
     return None, body
 
 
-def _render_draft_markdown(issue: PreparedIssue) -> str:
+def _render_draft_markdown(issue: PreparedIssue, approval_state: str | None = None) -> str:
     labels = ", ".join(issue.labels)
     frontmatter = [
         "---",
@@ -3090,6 +3261,11 @@ def _render_draft_markdown(issue: PreparedIssue) -> str:
         frontmatter.append(f"mode: {issue.mode}")
     if issue.handoff_maturity:
         frontmatter.append(f"handoff_maturity: {issue.handoff_maturity}")
+    # Durably record the approval state in the draft front-matter too (U11), so
+    # the human gate survives independent of the sidecar (front-matter is what
+    # an operator reads when reviewing the draft markdown directly).
+    if approval_state:
+        frontmatter.append(f"approval_state: {approval_state}")
     frontmatter.append("---")
     return "\n".join(frontmatter) + f"\n\n# {issue.title}\n\n{issue.body.rstrip()}\n"
 
@@ -3135,10 +3311,50 @@ def _render_handoff_context(
     return "\n\n" + "\n".join(lines) + "\n"
 
 
+def _context_links_from_source(source_artifact: SourceArtifact | None) -> str:
+    if not source_artifact:
+        return "_none_"
+    if source_artifact.url:
+        return f"- source_context: {source_artifact.url}"
+    if source_artifact.path:
+        return f"- source_context: {source_artifact.path}"
+    return "_none_"
+
+
+def _contract_field_placeholder(
+    field: str,
+    source: str,
+    source_artifact: SourceArtifact | None,
+) -> str:
+    if field == "objective":
+        return source
+    if field == "context_library_links":
+        return _context_links_from_source(source_artifact)
+    if field == "acceptance_criteria":
+        return "- [ ] _No response_"
+    return "_No response_"
+
+
+def _contract_scaffold_body(
+    source: str,
+    issue_type: str,
+    risk: str | None,
+    source_artifact: SourceArtifact | None,
+) -> str:
+    sections: list[str] = []
+    for field in _required_contract_field_keys(issue_type, risk):
+        header = _CONTRACT_FIELD_HEADERS[field]
+        value = _contract_field_placeholder(field, source, source_artifact)
+        sections.append(f"### {header}\n{value}")
+    return "\n\n".join(sections)
+
+
 def _source_to_issue_body(
     source: str,
+    issue_type: str,
     team: str,
     repo: str,
+    risk: str | None,
     mode: str | None,
     handoff_maturity: str | None = None,
     source_artifact: SourceArtifact | None = None,
@@ -3148,6 +3364,10 @@ def _source_to_issue_body(
         if "### Handoff maturity" in stripped:
             return stripped
         return stripped + _render_handoff_context(handoff_maturity, source_artifact)
+    if issue_type in _DISPATCH_ACTIONABLE_TYPES:
+        return _contract_scaffold_body(
+            stripped, issue_type, risk, source_artifact
+        ) + _render_handoff_context(handoff_maturity, source_artifact)
     if team == "asgard":
         return f"""### Intent
 {stripped}
@@ -3236,6 +3456,9 @@ def _read_prepared_issue(draft_path: Path) -> PreparedIssue:
         source_artifact=sidecar.get("source_artifact")
         if isinstance(sidecar.get("source_artifact"), dict)
         else None,
+        project_fields=sidecar.get("project_fields")
+        if isinstance(sidecar.get("project_fields"), dict)
+        else None,
         draft_path=str(draft_path),
         sidecar_path=str(sidecar_path),
     )
@@ -3288,18 +3511,21 @@ def _readiness_for_prepared_issue(issue: PreparedIssue) -> PreparedReadiness:
         warnings.append("Missing handoff maturity metadata")
 
     sections = _split_sections(issue.body)
-    if issue.team == "olympus":
-        if issue.issue_type not in _DISPATCH_ACTIONABLE_TYPES:
-            blocking.append(
-                f"Issue type {issue.issue_type!r} is not an Olympus dispatch-ready task type"
-            )
-        valid_body, body_errors = validate_card_body(issue.body)
+    if issue.issue_type in _DISPATCH_ACTIONABLE_TYPES:
+        valid_body, body_errors = validate_card_body_for_context(
+            issue.body, issue.issue_type, issue.risk
+        )
         if not valid_body:
             blocking.extend(body_errors)
         if not issue.project:
             blocking.append("Missing target project")
         if not issue.risk:
             blocking.append("Missing author-visible risk metadata")
+    elif issue.team == "olympus":
+        if issue.issue_type not in _DISPATCH_ACTIONABLE_TYPES:
+            blocking.append(
+                f"Issue type {issue.issue_type!r} is not an Olympus dispatch-ready task type"
+            )
     elif issue.team == "asgard":
         required = {
             "Intent": "intent",
@@ -3327,11 +3553,17 @@ def _readiness_for_prepared_issue(issue: PreparedIssue) -> PreparedReadiness:
 
 
 def _sidecar_payload(
-    issue: PreparedIssue, readiness: PreparedReadiness, state: str
+    issue: PreparedIssue,
+    readiness: PreparedReadiness,
+    state: str,
+    approval_state: str | None,
 ) -> dict[str, Any]:
     return {
         "schema_version": "1.0",
         "state": state,
+        # The U11 human gate (None when blocked — a blocked draft never reaches
+        # approval). Distinct from `state` (the creation pipeline) on purpose.
+        "approval_state": approval_state,
         "title": issue.title,
         "repo": issue.repo,
         "issue_type": issue.issue_type,
@@ -3343,6 +3575,7 @@ def _sidecar_payload(
         "mode": issue.mode,
         "handoff_maturity": issue.handoff_maturity,
         "source_artifact": issue.source_artifact,
+        "project_fields": issue.project_fields or {},
         "draft_path": issue.draft_path,
         "sidecar_path": issue.sidecar_path,
         "readiness": asdict(readiness),
@@ -3394,10 +3627,19 @@ def issue_prepare(
         labels=_issue_expected_labels(issue_type),
         risk=risk,
         mode=mode,
-        body=_source_to_issue_body(source, team, repo, mode, maturity, source_artifact),
+        body=_source_to_issue_body(
+            source, issue_type, team, repo, risk, mode, maturity, source_artifact
+        ),
         handoff_maturity=maturity,
         source_artifact=_source_artifact_payload(source_artifact),
     )
+    # Record the project-field values the card will carry so the later live
+    # `create` step can set them (U11). Offline — derived from issue metadata.
+    issue.project_fields = _prepared_project_fields(issue, source_artifact)
+    # KTD9: the body produced by prepare must PASS the Phase C validator before
+    # it can reach approval. The validator runs inside readiness (the olympus
+    # profile calls validate_card_body), so a malformed body fails readiness and
+    # is forced to `blocked` below — it never reaches `needs_operator_approval`.
     readiness = _readiness_for_prepared_issue(issue)
 
     target_dir = draft_dir or _PREPARED_DRAFT_DIR
@@ -3407,10 +3649,20 @@ def issue_prepare(
     issue.draft_path = str(draft_path)
     issue.sidecar_path = str(sidecar_path)
 
-    draft_path.write_text(_render_draft_markdown(issue), encoding="utf-8")
-    state = "ready_to_create" if readiness.passed else "blocked"
+    # Creation-pipeline state is unchanged by U11 (ready_to_create / blocked).
+    # The U11 human gate is the SEPARATE approval_state: a cleanly-compiled draft
+    # lands in `needs_operator_approval` (NOT auto-created); a blocked draft has
+    # no approval gate to enter.
+    state = _PREPARE_STATE_READY if readiness.passed else _PREPARE_STATE_BLOCKED
+    approval_state = _APPROVAL_NEEDS_OPERATOR if readiness.passed else None
+    draft_path.write_text(
+        _render_draft_markdown(issue, approval_state=approval_state), encoding="utf-8"
+    )
     sidecar_path.write_text(
-        json.dumps(_sidecar_payload(issue, readiness, state), indent=2, sort_keys=True) + "\n",
+        json.dumps(
+            _sidecar_payload(issue, readiness, state, approval_state), indent=2, sort_keys=True
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -3469,7 +3721,7 @@ def _mapping_update_target() -> tuple[Path, Path, str, str | None]:
         "mission-control mapping instead."
     )
     repo_root = Path(__file__).resolve().parents[3]
-    return _VENDORED_PROJECT_MAPPINGS_PATH, repo_root, "infiquetra-claude-plugins", warning
+    return _VENDORED_PROJECT_MAPPINGS_PATH, repo_root, "infiquetra-antigravity-plugins", warning
 
 
 def _write_mapping_update(mapping_path: Path, repo: str, project_name: str) -> None:
@@ -3577,6 +3829,19 @@ def _update_sidecar_state(draft_path: Path, updates: dict[str, Any]) -> None:
     sidecar_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _read_sidecar_approval_state(draft_path: Path) -> str | None:
+    """Read just the U11 `approval_state` from a draft's sidecar.
+
+    Focused reader (the gate enforcement in issue_create_prepared needs only
+    this one field; PreparedIssue deliberately doesn't carry it). Returns None
+    when absent — i.e. legacy drafts predating the gate, which proceed unblocked.
+    """
+    sidecar_path = draft_path.with_suffix(".json")
+    payload = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    value = payload.get("approval_state")
+    return str(value) if value is not None else None
+
+
 def _build_mutation_plan(issue: PreparedIssue, config: dict[str, Any]) -> MutationPlan:
     if not issue.draft_path:
         raise RuntimeError("Prepared issue is missing draft_path")
@@ -3633,6 +3898,7 @@ def issue_create_prepared(
     fmt: str,
     auto_confirm: bool = False,
     override_mapping: bool = False,
+    skip_approval: bool = False,
 ) -> dict[str, Any]:
     issue = _read_prepared_issue(draft_path)
     readiness = _readiness_for_prepared_issue(issue)
@@ -3644,6 +3910,24 @@ def issue_create_prepared(
             for gap in readiness.blocking_gaps:
                 print(f"  - {gap}")
         raise RuntimeError("Prepared issue has blocking readiness gaps")
+
+    # Enforce the U11 human gate (FIX 1): a draft sitting in
+    # `needs_operator_approval` is NOT created until an operator approves it (via
+    # `issue approve`) or explicitly overrides with --skip-approval. An
+    # `approved` draft proceeds; a None approval_state (legacy drafts predating
+    # the gate; blocked drafts already failed readiness above) proceeds
+    # unchanged — back-compatible, do NOT newly block None.
+    approval_state = _read_sidecar_approval_state(draft_path)
+    if approval_state == _APPROVAL_NEEDS_OPERATOR and not skip_approval:
+        message = (
+            f"Prepared draft awaits operator approval; run "
+            f"`issue approve {draft_path}` first, or pass --skip-approval."
+        )
+        if fmt == "json":
+            _out({"created": False, "reason": "needs_operator_approval"}, fmt)
+        else:
+            print(message)
+        raise RuntimeError(message)
 
     config = load_config()
     plan = _build_mutation_plan(issue, config)
@@ -3708,6 +3992,107 @@ def issue_create_prepared(
         _out({**result, "mutation_plan": plan_payload}, fmt)
     else:
         print(f"Created issue: {url}")
+    return result
+
+
+def _set_draft_approval_state(draft_path: Path, approval_state: str) -> None:
+    """Rewrite the `approval_state:` front-matter line on the draft markdown.
+
+    The approval state lives in BOTH the draft front-matter and the sidecar so
+    the human gate survives whichever artifact an operator looks at. This keeps
+    the front-matter in lockstep when batch approval transitions the sidecar.
+    """
+    text = draft_path.read_text(encoding="utf-8")
+    metadata, _ = _parse_draft_frontmatter(text)
+    line = f"approval_state: {approval_state}"
+    if "approval_state" in metadata:
+        # Replace the existing line in place (front-matter only, before body).
+        end = text.find("\n---\n", 4)
+        if end == -1:
+            # Opening `---` but no closing fence: never split a malformed draft
+            # (matches _parse_draft_frontmatter's contract). Safe no-op.
+            return
+        head, tail = text[:end], text[end:]
+        head = re.sub(r"(?m)^approval_state:.*$", line, head)
+        draft_path.write_text(head + tail, encoding="utf-8")
+        return
+    if not text.startswith("---\n"):
+        # No front-matter to edit (defensive): nothing durable to rewrite.
+        return
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        # Opening `---` but no closing fence: refuse to truncate. Safe no-op.
+        return
+    draft_path.write_text(text[:end] + f"\n{line}" + text[end:], encoding="utf-8")
+
+
+def prepared_approve_batch(draft_paths: list[Path], fmt: str = "text") -> dict[str, Any]:
+    """Approve multiple prepared drafts at once (U11 batch approval).
+
+    Transitions each draft's `approval_state` from `needs_operator_approval` ->
+    `approved` in both the sidecar and the draft front-matter. This is the human
+    gate clearing a batch of compiled cards for creation.
+
+    Per-draft fault isolated: a missing/malformed/non-gate draft is reported in
+    `skipped` and the rest of the batch still proceeds. Approving an
+    already-`approved` draft is a no-op — it is SKIPPED ("already approved") and
+    its `approved_at`/`updated_at` are preserved, not rewritten.
+
+    Self-defending: readiness is RECONSTRUCTED from disk (re-run the validator
+    on the on-disk body) before approving, so a hand-edited / forged sidecar that
+    claims `needs_operator_approval` over a body that fails validation cannot be
+    pushed to `approved`.
+    """
+    approved: list[str] = []
+    skipped: list[dict[str, str]] = []
+    for draft_path in draft_paths:
+        sidecar_path = draft_path.with_suffix(".json")
+        if not sidecar_path.exists():
+            skipped.append({"draft": str(draft_path), "reason": "missing sidecar"})
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            skipped.append({"draft": str(draft_path), "reason": f"malformed sidecar: {e}"})
+            continue
+        current = sidecar.get("approval_state")
+        if current == _APPROVAL_APPROVED:
+            skipped.append({"draft": str(draft_path), "reason": "already approved"})
+            continue
+        if current not in _APPROVABLE_APPROVAL_STATES:
+            skipped.append({"draft": str(draft_path), "reason": f"approval_state is {current!r}"})
+            continue
+        # Re-derive readiness from the on-disk draft so a tampered sidecar can't
+        # smuggle an unvalidated body past the gate. _read_prepared_issue raises
+        # on a malformed/conflicting draft — treat that as a skip, not an abort.
+        try:
+            issue = _read_prepared_issue(draft_path)
+            readiness = _readiness_for_prepared_issue(issue)
+        except RuntimeError as e:
+            skipped.append({"draft": str(draft_path), "reason": f"unreadable draft: {e}"})
+            continue
+        if not readiness.passed:
+            skipped.append({"draft": str(draft_path), "reason": "fails validation"})
+            continue
+        _update_sidecar_state(
+            draft_path,
+            {
+                "approval_state": _APPROVAL_APPROVED,
+                "approved_at": datetime.now(UTC).isoformat(),
+            },
+        )
+        _set_draft_approval_state(draft_path, _APPROVAL_APPROVED)
+        approved.append(str(draft_path))
+
+    result = {"approved": approved, "skipped": skipped}
+    if fmt == "json":
+        _out(result, fmt)
+    else:
+        print(f"Approved {len(approved)} prepared draft(s).")
+        for path in approved:
+            print(f"  - APPROVED: {path}")
+        for entry in skipped:
+            print(f"  - SKIPPED ({entry['reason']}): {entry['draft']}")
     return result
 
 
@@ -4251,8 +4636,14 @@ def main() -> None:
     board_add_p = board_sp.add_parser("add", help="Add issue/PR to project(s)")
     board_add_p.add_argument(
         "--project",
+        action="append",
         choices=PROJECT_CHOICES,
-        help="Target a specific project instead of repo-based default routing",
+        help=(
+            "Target a specific project instead of repo-based default routing. "
+            "Repeatable: pass --project more than once to place the item on "
+            "multiple boards as independent memberships "
+            "(e.g. --project mount-olympus --project asgard)."
+        ),
     )
     board_add_p.add_argument("--repo", required=True, help="Repository name (without org)")
     board_add_p.add_argument("--number", required=True, type=int, help="Issue or PR number")
@@ -4373,6 +4764,22 @@ def main() -> None:
         "--override-mapping",
         action="store_true",
         help="Create the issue before a missing project-mapping PR merges",
+    )
+    issue_create_prepared_p.add_argument(
+        "--skip-approval",
+        action="store_true",
+        help="Bypass the Needs Operator Approval gate (operator's direct "
+        "prepare->create path); otherwise approve via `issue approve` first",
+    )
+
+    issue_approve_p = issue_sp.add_parser(
+        "approve",
+        help="Batch-approve prepared drafts out of the Needs Operator Approval gate",
+    )
+    issue_approve_p.add_argument(
+        "drafts",
+        nargs="+",
+        help="One or more prepared draft markdown paths to approve",
     )
 
     # ===========================
@@ -4586,7 +4993,9 @@ def main() -> None:
             if args.action == "view":
                 board_view(args.project, args.status, fmt)
             elif args.action == "add":
-                board_add(args.repo, args.number, fmt, project_name=args.project)
+                # `--project` is repeatable (action="append"): args.project is
+                # None (repo-mapping default) or a list of named projects.
+                board_add(args.repo, args.number, fmt, project_names=args.project)
             elif args.action == "move":
                 board_move(args.repo, args.number, args.status, fmt, project_name=args.project)
             elif args.action == "archive":
@@ -4633,7 +5042,10 @@ def main() -> None:
                     fmt=fmt,
                     auto_confirm=args.yes,
                     override_mapping=args.override_mapping,
+                    skip_approval=args.skip_approval,
                 )
+            elif args.action == "approve":
+                prepared_approve_batch([Path(d) for d in args.drafts], fmt=fmt)
 
         elif args.resource == "labels":
             if args.action == "sync-fields":
