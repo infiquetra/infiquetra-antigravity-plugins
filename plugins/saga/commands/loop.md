@@ -10,7 +10,8 @@ command that owns the next phase. It does not execute the phase work itself.
 
 ## Instructions
 
-1. Load `saga/skills/loop/SKILL.md` and run its three-mode flow:
+1. Load `saga/skills/loop/SKILL.md` and
+   `saga/skills/loop/references/generic-ask-compiler.md`, then run its three-mode flow:
    - **Route** (default) — dispatch to the one next command (it owns its phase, gates, AND its own
      backend).
    - **Drive** — walk phases across the lifecycle, agent-sequential, pausing at every hard gate and

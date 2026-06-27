@@ -38,6 +38,10 @@ not a competitor to any of them.
 
 ## Core principles
 
+0. **Compile bare asks before routing.** For vague natural-language work, read
+   `references/generic-ask-compiler.md`; if target, proof, scope, or mutation boundary
+   is missing, ask one blocking question instead of dispatching work.
+
 1. **Route and sequence; don't execute the phase work yourself.** `/loop` dispatches to the one next
    command and (in Drive) sequences across phases. The **destination command owns its phase work, its
    gates, AND its own backend** — `/loop` never re-implements `/work`, `/plan`, or a review, and never

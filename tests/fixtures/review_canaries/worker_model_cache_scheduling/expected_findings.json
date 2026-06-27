@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "source": "infiquetra-claude-plugins: docs/reviews/2026-06-27-worker-model-cache-scheduling-review.md",
+    "prompt": "gemini-review-appliance",
+    "model": "Gemini 3.1 Pro",
+    "reasoning_level": "high",
+    "fresh_session": true,
+    "harness_version": "antigravity-harness-v1"
+  },
+  "required": [
+    {
+      "id": "unit_files_required",
+      "terms": ["Unit", "file-path", "segmentation"]
+    },
+    {
+      "id": "row_cardinality",
+      "terms": ["row cardinality", "one row per unit"]
+    },
+    {
+      "id": "segment_dependencies",
+      "terms": ["depends_on", "segment-level"]
+    }
+  ],
+  "allowed_extra_terms": ["advisory"]
+}

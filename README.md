@@ -1,112 +1,75 @@
 # Infiquetra Antigravity Plugins
 
-Google Antigravity plugins and specialized skills for Infiquetra engineering workflows and autonomous development pipelines.
+Google Antigravity plugins for Infiquetra engineering workflows.
 
-## Available Plugins
+## Plugins
 
-This repository contains 7 powerful, production-ready plugins designed specifically to work natively with the **Google Antigravity** agentic ecosystem.
+| plugin | surfaces |
+|--------|----------|
+| `deploy` | agent, commands, skill |
+| `home-lab-ops` | agent, skills |
+| `mission-control` | agent, commands, config |
+| `multi-agent-consensus` | command, skills |
+| `saga` | commands, skills |
+| `todoist` | tool |
+| `unifi` | agent, command, skills |
 
-| Plugin | Description | Category | Layout |
-|--------|-------------|----------|--------|
+## Layout
 
-| [python-toolkit](plugins/python-toolkit/) | Production patterns for Python, Lambda, DynamoDB, and robust handler models | Development | Skills-Only |
-| [sdlc-manager](plugins/sdlc-manager/) | Board tracking, milestones, objective synchronization, and issue triage | Development | CLI & Skills |
-| [home-lab-ops](plugins/home-lab-ops/) | Local server orchestration, hardware inventory, and system status tracking | Operations | Skills-Only |
-| [infiquetra-deploy](plugins/infiquetra-deploy/) | Deployment operations for tag-promotion workflows and hotfixes | Operations | CLI & Skills |
-
-| [multi-agent-consensus](plugins/multi-agent-consensus/) | Structured team review cycles and consensus protocol workflows | Orchestration | CLI & Skills |
-| [unifi](plugins/unifi/) | Ubiquiti UniFi network and camera protect controllers monitoring | Operations | CLI & Skills |
-
----
-
-## Restructured Flat Layout
-
-Antigravity plugins utilize a clean, flat directory layout where the manifest `plugin.json` resides directly at the root of the plugin directory.
-
-```
-plugins/my-plugin/
-├── plugin.json             # Plugin manifest (id, description, permissions)
-├── README.md               # Documentation and usage
-├── src/                    # Python script implementations (if CLI-based)
-├── skills/                 # Declarative skills containing SKILL.md
-│   └── my-skill/
-│       ├── SKILL.md        # Skill instructions with frontmatter
-│       └── references/     # Markdown architectural templates
-└── tests/                  # Pytest suite validating plugin logic
+```text
+plugins/<plugin-name>/
+├── plugin.json
+├── agents/
+├── commands/
+├── skills/
+└── config/
 ```
 
----
+`plugin.json` lives at the plugin root. See [docs/PLUGIN_SPEC.md](docs/PLUGIN_SPEC.md).
 
-## Installation & Setup
-
-To equip your Antigravity agent sessions with these plugins, you can use the automated **install-plugin.sh** utility. This script automatically handles creating symlinks or directory backups in your Antigravity configurations.
-
-### Option 1: Automated Script (Highly Recommended)
-We provide a helper script inside the `tools` folder to easily list, install, and uninstall plugins.
+## Install
 
 ```bash
-# 1. List all available and installed plugins
 ./tools/install-plugin.sh list
-
-# 2. Install a specific plugin (e.g., Slack)
-./tools/install-plugin.sh install slack
-
-# 3. Install ALL 6 plugins at once
+./tools/install-plugin.sh install saga
 ./tools/install-plugin.sh install-all
-
-# 4. Uninstall a specific plugin (e.g., Splunk)
-./tools/install-plugin.sh uninstall splunk
-
-# 5. Uninstall all plugins
-./tools/install-plugin.sh uninstall-all
 ```
 
-### Option 2: Manual Symlink
-If you prefer to link individual plugins manually, run:
+Manual install uses Antigravity's plugin directory:
 
 ```bash
-ln -s /Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/<plugin-name> ~/.gemini/config/plugins/<plugin-name>
+mkdir -p ~/.gemini/config/plugins
+ln -s "$(pwd)/plugins/saga" ~/.gemini/config/plugins/saga
 ```
 
-### Activating the Plugins
-Once symlinked, simply start a new Antigravity agent session. The agent will automatically scan `~/.gemini/config/plugins/`, read `plugin.json` from the root of each plugin folder, and load its associated skills, subagents, and commands natively. You do **not** need to manually execute them in an external terminal!
+Restart Antigravity after changing plugin links.
 
----
+## Verify
 
-## Development & Contribution
+Run the read-only doctor before blaming model behavior:
 
-### Prerequisites
-- Python 3.12+
-- `uv` Python package manager
-
-### Scaffolding a New Plugin
-To create a new Antigravity plugin structured natively with a flat layout, use the scaffolding tool:
 ```bash
-./tools/create-plugin.sh my-new-plugin "Infiquetra New Plugin"
+uv run python scripts/validate_plugins.py
 ```
 
-### Running Quality Checks
-Always run the test suite and quality guardrails before pushing any modifications:
+Machine-readable output:
 
 ```bash
-# Sync dependency environment
+uv run python scripts/validate_plugins.py --json
+```
+
+The legacy marketplace validator path remains as a compatibility wrapper:
+
+```bash
+uv run python marketplace/validator/validate.py
+```
+
+## Quality Checks
+
+```bash
 uv sync --locked --extra dev
-
-# Run pytest suite
 uv run pytest
-
-# Run Ruff linter and formatter
 uv run ruff check .
-
-# Run Mypy type validation
-uv run mypy plugins/
-
-# Run Bandit security scanner
-uv run bandit -r plugins/
+uv run mypy plugins/ scripts/ tests/
+uv run bandit -r plugins/ scripts/ tests/ -ll
 ```
-
----
-
-## License
-
-This repository is licensed under the MIT License.

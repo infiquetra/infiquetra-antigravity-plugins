@@ -524,7 +524,7 @@ Action: Reschedule non-critical tasks, negotiate deadlines
 - Updating due date by 1-2 days
 - Creating subtasks
 
-**When in doubt:** Trust Claude's judgment, but err on the side of confirmation for user peace of mind.
+**When in doubt:** Trust the assistant's judgment, but err on the side of confirmation for user peace of mind.
 
 ## Session Flow Examples
 
@@ -533,7 +533,7 @@ Action: Reschedule non-critical tasks, negotiate deadlines
 ```
 User: "Good morning, let's plan my day"
 
-Claude:
+Assistant:
 1. Fetches overview
 2. Presents: 3 overdue, 12 today, 25 upcoming
 3. Groups today's tasks by priority
@@ -551,7 +551,7 @@ Claude:
 ```
 User: "I need to work on the client proposal but don't know where to start"
 
-Claude:
+Assistant:
 1. Asks clarifying questions about deliverable
 2. Identifies steps: research, draft, design, review
 3. Suggests subtasks with durations
@@ -566,7 +566,7 @@ Claude:
 ```
 User: "Let's do my weekly review"
 
-Claude:
+Assistant:
 1. Fetches completed tasks (week)
 2. Calculates metrics (completion rate, by project, by priority)
 3. Presents overview with status indicators

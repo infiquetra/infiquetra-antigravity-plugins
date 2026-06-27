@@ -63,8 +63,11 @@ jobs:
       - name: Validate plugin manifests
         run: uv run python scripts/validate_plugins.py
 
-      - name: Validate marketplace registry
+      - name: Validate marketplace wrapper
         run: uv run python marketplace/validator/validate.py
+
+      - name: Score review canary
+        run: uv run python scripts/review_canary.py tests/fixtures/review_canaries/worker_model_cache_scheduling/sample_review.md
 
   lint:
     name: Lint

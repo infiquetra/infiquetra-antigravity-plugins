@@ -38,6 +38,16 @@ Living documentation at [`docs/engineering-journal/`](docs/engineering-journal/)
 - **Purpose**: Google Antigravity plugins for Infiquetra development workflows
 - **Organization**: Infiquetra
 
+## Harness Path
+
+Run the read-only doctor before tuning prompts or blaming model behavior:
+
+```bash
+uv run python scripts/validate_plugins.py
+```
+
+Use `/loop` for generic task intake, `/doc-review` for serious review, and static canaries before treating prompt changes as quality improvements.
+
 ## Plugin Types
 
 This repository contains two types of Google Antigravity plugins:

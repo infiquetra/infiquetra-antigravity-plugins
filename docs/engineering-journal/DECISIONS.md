@@ -22,6 +22,22 @@
 
 ---
 
+## 2026-06-27
+
+### Antigravity harness plan decisions (commit pending) {#antigravity-harness-plan}
+
+**Decision.** Plan the Antigravity harness as one integrated v1: a single canonical doctor in `scripts/validate_plugins.py`, repo-local `plugins/*/plugin.json` inventory, read-only host-isolated install checks, saga generic-ask routing through `/loop` plus a narrow router agent, `/doc-review`-scoped Gemini review appliance, static review canaries, and shared cheap-first escalation policy.
+
+**Rejected alternatives.** Keep independent validator entrypoints; add a new `/fix` command; put adversarial review behavior in global context; run live Gemini canaries in CI; make multi-agent consensus the default for routine tasks.
+
+**Rationale.** Runtime truth is the cheapest foundation: if Antigravity cannot see the expected plugin surfaces, prompt tuning cannot fix the failure. Reusing `/loop` and `/doc-review` avoids new command sprawl, while static canaries keep CI deterministic.
+
+**Revisit when.** Antigravity publishes a stronger plugin/hook contract, live `agy` invocation becomes stable enough for optional non-CI review runs, or the canary corpus grows large enough to justify a richer evaluator.
+
+**Refs.** Plan: `docs/plans/2026-06-27-antigravity-harness-plan.md`. Requirements: `docs/brainstorms/2026-06-27-antigravity-harness-requirements.md`. Review: `docs/reviews/2026-06-27-antigravity-harness-requirements-review.md`.
+
+---
+
 ## 2026-06-11
 
 ### `/impl-spec` and `/product-review` plan decisions (commit pending)  {#impl-spec-product-review-plan}
@@ -187,7 +203,7 @@ sets, or Antigravity stops carrying Mission Control as an active plugin.
 
 **Decision.** To port `saga`, `deploy`, and `mission-control` from Claude to Antigravity, we wrote a single-purpose script (`scripts/port_claude_plugin.py`) instead of a generic CLI framework. Additionally, we completely stripped out the legacy `.claude/` checkpoint syncing logic.
 
-**Rationale.** 
+**Rationale.**
 1. **Hardcoded > Generic:** We only needed to port three specific, known plugins. Building a generic framework to handle any arbitrary legacy plugin would have been over-engineering, increasing scope without adding value.
 2. **Native State Management:** Antigravity natively manages state in its `brain/` directory (via `implementation_plan.md`, `task.md`, `walkthrough.md`). The legacy plugins manually wrote state checkpoints to `.claude/saga/`. Syncing these into Antigravity would have meant fighting the native architecture. We deleted scripts like `scaffold_checkpoint.py` instead.
 

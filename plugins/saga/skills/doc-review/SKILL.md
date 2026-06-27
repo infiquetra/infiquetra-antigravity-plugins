@@ -78,6 +78,10 @@ readiness summary. Do not reclassify rubric findings as readiness findings.
 If the rubric engine or its rubrics are unavailable, say so clearly and continue with the
 readiness review where safe.
 
+## Gemini Review Appliance
+
+When the operator asks for Gemini review, second opinion, adversarial review, or high-risk review, load `references/gemini-review-appliance.md`. Keep the appliance scoped to that review task only.
+
 ## Readiness-Skeptic Pass
 
 Always check:

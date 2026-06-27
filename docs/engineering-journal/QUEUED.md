@@ -21,6 +21,8 @@
 
 ### CI guard: assert plugin directories match marketplace.json entries  {#marketplace-ci-guard}
 
+**Status.** SHIPPED/SUPERSEDED by `scripts/validate_plugins.py`, `marketplace/validator/validate.py`, and the CI validate job. The Antigravity doctor now walks `plugins/*/plugin.json` directly instead of comparing against a separate marketplace registry.
+
 **Priority.** P1.
 
 **Effort.** Half-day. GitHub Actions workflow + a small Python script (~30 lines).

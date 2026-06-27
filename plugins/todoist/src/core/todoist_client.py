@@ -3,7 +3,7 @@
 Todoist CLI - Command-line interface for Todoist API operations.
 
 This script wraps the official todoist-api-python SDK and provides a unified
-CLI for all Todoist operations. All output is JSON for Claude Code to parse.
+CLI for all Todoist operations. All output is JSON for Antigravity to parse.
 
 Environment Variables:
     TODOIST_TOKEN: Personal API token from Todoist (required)
