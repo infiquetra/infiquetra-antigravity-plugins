@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${ANTIGRAVITY_PLUGIN_ROOT}/hooks/stale_main_session_hook.py\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "replace_file_content|write_to_file|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${ANTIGRAVITY_PLUGIN_ROOT}/hooks/validate_json_hook.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${ANTIGRAVITY_PLUGIN_ROOT}/hooks/pre_push_gate_hook.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${ANTIGRAVITY_PLUGIN_ROOT}/hooks/journal_nudge_hook.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

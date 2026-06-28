@@ -187,3 +187,9 @@ Always validate immediately: `python3 -m json.tool .claude-plugin/marketplace.js
 **Refs.** Same lesson cached in `~/.claude/projects/.../memory/marketplace_editing_guard.md` for runtime convenience; this file is the durable project record.
 
 ---
+
+### 2026-06-28
+- **Context:** Porting the `saga` plugin from Claude to Antigravity.
+- **Evidence:** User explicitly linked to `https://antigravity.google/docs/hooks` as proof of hook support.
+- **Mechanism:** Antigravity provides a hook architecture similar to Claude. Thus, `hooks/` directories in plugins are valid and porting them is necessary.
+- **Generalizable rule:** Do not assume structural limitations from Claude port without explicit documentation proof; Antigravity hooks are natively supported.
