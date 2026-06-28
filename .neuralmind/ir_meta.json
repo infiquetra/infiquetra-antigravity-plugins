@@ -1,0 +1,160 @@
+{
+  "ir_version": 1,
+  "generated_by": "neuralmind.ir.from_graph_json",
+  "source_backend": "turbovec",
+  "source_schema_version": 1,
+  "coverage": "coarse",
+  "built_at_commit": "",
+  "created_at": "2026-06-28T02:38:13.599292+00:00",
+  "nodes": 3725,
+  "edges": 4666,
+  "clusters": 279,
+  "synapses": 0,
+  "node_kinds": {
+    "file": 58,
+    "symbol": 352,
+    "function": 641,
+    "document": 2674
+  },
+  "languages": {
+    "python": 1418,
+    "markdown": 2307
+  },
+  "validation": {
+    "ok": true,
+    "errors": 0,
+    "warnings": 26,
+    "issues": [
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_mission_control_tests_init_py' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_brainstorm_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_ceo_review_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_code_review_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_doc_review_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_founder_review_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_ideate_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_investigate_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_office_hours_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_optimize_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_plan_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_qa_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_retro_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_spec_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_strategy_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_saga_commands_work_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_agents_unifi_network_ops_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_changelog_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_commands_unifi_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_readme_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_skills_unifi_network_references_udm_api_endpoints_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_skills_unifi_network_skill_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_skills_unifi_protect_references_protect_api_endpoints_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_skills_unifi_protect_skill_md' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_src_unifi_network_client_py' has no edges."
+      },
+      {
+        "severity": "warning",
+        "code": "orphaned_node",
+        "message": "Node 'plugins_unifi_src_unifi_protect_client_py' has no edges."
+      }
+    ]
+  }
+}
