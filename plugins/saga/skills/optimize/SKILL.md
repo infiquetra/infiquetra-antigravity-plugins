@@ -73,9 +73,9 @@ Resolve any cross-command route through the lifecycle routing reference at
    developer-experience, maintainability. Each metric is measured as **hard** (a direct numeric, gated)
    or by **judge** (semantic quality), chosen per metric — see `references/metric-taxonomy.md`.
 6. **Default bounded & serial; escalate by CHOICE.** The loop runs serial and in working state by
-   default. For **independent experiment fan-out** it **OFFERS** `team-execution` /
-   `cc-workflows-ultracode` per the operator-choice contract, recorded **narratively** (this engine
-   writes no saga). It never auto-spawns a backend, never auto-commits, never auto-merges, never deploys.
+   default. For **independent experiment fan-out** it **OFFERS** `team-execution` ("team execution") /
+   `cc-workflows-ultracode` ("dynamic workflows") per the operator-choice contract, recorded
+   **narratively** (this engine writes no saga). It never auto-spawns a backend, never auto-commits, never auto-merges, never deploys.
 
 ## Interaction method
 
@@ -154,9 +154,9 @@ start of every batch.
 
 **Select a batch** from the runnable backlog. **Serial default = batch size 1.** For **independent
 experiment fan-out**, **OFFER** an execution backend HERE per `../../references/operator-choice.md`
-(§3.2 — broad, independent, low-risk fan-out leans `cc-workflows-ultracode`; risky-and-parallel leans
-`team-execution`); record the chosen backend **narratively** in the strategy digest (this engine writes
-no saga — §6 of operator-choice). Never auto-spawn.
+(§3.2 — broad, independent, low-risk fan-out leans `cc-workflows-ultracode` ("dynamic workflows");
+risky-and-parallel leans `team-execution` ("team execution")); record the chosen backend **narratively**
+in the strategy digest (this engine writes no saga — §6 of operator-choice). Never auto-spawn.
 
 **Per experiment:**
 
@@ -198,6 +198,28 @@ diagnostics, with the key kept experiments and their deltas.
 `/handoff` / `/work` / `/code-review`; a design problem -> `/brainstorm`. A winner is committed or merged
 **only when it is routed to `/work`** to ship. There is **NO saga write**. Never run `gh issue create` —
 `mission-control` owns issue bodies.
+
+## Outcome economics — the portfolio consumer (R24)
+
+When the thing being optimized is an **OutcomeOrchestrator** outcome (a DAG of leaf sagas), `/optimize`
+has a **portfolio-shaped baseline** ready-made: the realized-cost rollup (`scripts/outcome_costs.py`
+`rollup` / the materialized `spec.cost_rollup`, surfaced in `/outcome report`). Read it instead of
+re-deriving cost by hand:
+
+- per-outcome **tokens / operator_touches / retries** (summed across leaves, R24) and **by_executor**
+  (the backend **mix** — how many leaves ran on each backend; counts, not per-executor cost) — the
+  portfolio surface for "where did this outcome's budget go, and on which backends". For **per-leaf** cost
+  (which single leaf cost the most), read `scripts/outcome_costs.py` `subplot_cost(store, sid)`; the
+  rollup itself carries only the global sums + the backend mix, not a per-leaf or per-executor breakdown;
+- the **DAG-vs-one-thread** answer — `wall_seconds_parallel` (critical path) vs `wall_seconds_serial`
+  (the one-long-thread sum) and `beat_one_thread` — the **falsifiable** cost-vs-operator-time evidence,
+  not a slogan;
+- `leaves_with_cost` / `leaves_total` make missing telemetry explicit (`no data yet`, never a fabricated
+  zero — do not optimize against a fabricated baseline), and `sunk` accounts the cost of pruned leaves.
+
+This is a **read-only** consumer (the off-chain rule below still holds): `/optimize` cites the rollup as
+its baseline + measures experiment deltas against it; it does not write cost telemetry (the leaves do, via
+`record_cost`). The complementary operator-override-rate signal is `scripts/override_rate_reader.py`.
 
 ## Hard boundary
 

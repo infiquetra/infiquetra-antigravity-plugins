@@ -73,18 +73,35 @@ Offer `team-execution` when **ANY** of:
 | `cross_repo` | true |
 | `deployment_sensitive` | true |
 
-**OR** a needs-consensus signal: multiple reviewer lenses are warranted, a decision is contested, or
-validator gates should bound the work. team-execution's whole value is *review consensus + gates*, so a job
-that wants those is a team-execution job even if it is small — the consensus signal is **sufficient on its
-own**, not an additive PLUS (this matches `recommend_execution_backend`, which ORs it in).
+**OR** a **GATED** needs-consensus signal — see the governance split below. team-execution's whole value
+is *review consensus + gates*, so a job that wants a verdict to **block and persist** is a team-execution
+job even if it is small — a gated consensus signal is **sufficient on its own**, not an additive PLUS
+(this matches `recommend_execution_backend`, which ORs the gated half in).
+
+**Gated vs advisory consensus (the governance split, R7).** A bare "needs consensus" is not enough — the
+deciding question is whether the verdict **needs to stick**:
+
+| Consensus shape | What it means | Backend |
+|---|---|---|
+| **gated** (`consensus_is_gated=True`, the default) | the verdict must BLOCK a merge/deploy and PERSIST as standing evidence — a reviewer-CONSENSUS gate, named scanners, a guarded deploy | `team-execution` |
+| **advisory** (`consensus_is_gated=False`) | N throwaway in-session votes the operator acts on themselves; nothing is recorded or blocks | `cc-workflows-ultracode` (a judge-panel — §3.2 adversarial confidence) |
+
+So `recommend_execution_backend` no longer hard-forces team-execution on *every* consensus signal: only
+**gated** consensus reaches team-execution; **advisory** consensus is OR'd into the `adversarial_confidence`
+ultracode trigger (§3.2). A contested-but-not-gated job therefore reaches the advisory ultracode branch and
+**never regresses to inline**. When advisory consensus AND a broad fan-out both fire, the offer still lists
+both (§3.3). `/plan` resolves the gated/advisory question with the KTD4 interrogation question
+(`skills/plan/SKILL.md` §5.2), defaulting to *gated* when deploy/security/persist signals are present and
+*advisory* otherwise — the operator confirms.
 
 **Docs exception (`has_code_surface=False`).** team-execution's scanners + deploy gate are code-shaped and
 inert on pure docs/spec/research output, so the **output-blind** rows above — `file_count`, `phase_count`,
 `has_security`, `has_infra`, `deployment_sensitive` (the last two are `parse_issue.py` keyword matches that
 fire on a doc merely *mentioning* terraform or auth) — are neutralized when the work has no code/ship
 surface. Two rows survive because they signal governance, not code: **`cross_repo`** (crossing a repo =
-crossing an ownership boundary = a multi-party coordination need) and the **needs-consensus** signal. A big
-docs change with neither stays `inline`/ultracode, not team-execution.
+crossing an ownership boundary = a multi-party coordination need) and the **gated** needs-consensus signal
+(advisory consensus routes to ultracode regardless of code surface). A big docs change with neither stays
+`inline`/ultracode, not team-execution.
 
 ### 3.2 `inline` -> `cc-workflows-ultracode` (Claude Code only)
 
@@ -178,7 +195,31 @@ but never reads `orchestration_mode`). A command that does not yet write a saga 
 |---|---|
 | `inline` | empty string `""` |
 | `team-execution` | the team name |
-| `cc-workflows-ultracode` | the workflow id |
+| `cc-workflows-ultracode` | the **spec JSON path** (at `/plan` tick time); the workflow id (after `/work` launches the Workflow) |
+
+**`cc-workflows-ultracode` ref lifecycle.** At `/plan` time, `orchestration_ref` is set to the **canonical
+spec JSON** (`docs/plans/<date>-<topic>-spec.json`). The `.workflow.js` is a derived artifact — regenerable
+at any time via `execution_spec.py emit <spec.json>` — so the spec JSON is the durable pointer. When `/work`
+subsequently launches the Workflow tool and receives a workflow id, it overwrites `orchestration_ref` with
+that id via a second saga tick, preserving the spec path in the plan artifact itself. The spec JSON is
+therefore always the canonical authoring artifact; the workflow id is the transient execution handle.
+
+**The halt-not-degrade guarantee.** A `cc-workflows-ultracode` choice is a **guarantee-bearing** commitment —
+the operator chose parallel fan-out **and** refute-N adversarial verification. `/work` honors this guarantee by
+halting rather than silently degrading when execution is impossible in the current session:
+
+- **Workflow tool absent:** HALT with a recovery line pointing to a capable session or a backend switch.
+- **Spec or orchestration_ref missing:** HALT with a recovery line pointing back to `/plan` to author the spec.
+
+This halt-not-degrade rule is **explicitly NOT** the off-host recompile-down path
+(`recheck_orchestration_capability` in `lifecycle_state.py`), which is reserved for `/loop`'s phase-walk
+fallback and `/resume`'s capability probe — both of which run in a polling/recovery context where the operator
+is absent. `/work`, by contrast, runs with the operator present and can surface the halt for a real decision.
+Silently substituting hand-rolled sequential subagents would lose the parallel fan-out and refute-N panels
+that make the `cc-workflows-ultracode` choice meaningful (the campps issue-38 failure). The
+**provenance guard** in `saga.py save` backstops this: a tick where
+`orchestration_mode != orchestration_operator_choice` with no `orchestration_downgrade` note is rejected, so
+`/work` cannot cover a secret substitution by rewriting `operator_choice`.
 
 ---
 
@@ -205,12 +246,61 @@ Each command cites this file at its own rebuild. The CLI-backed execution-backen
 
 ---
 
-## 8. References
+## 8. OutcomeOrchestrator: the full backend menu + the presence-conditional degrade policy (R6/R23)
+
+The three backends above are the leaf-saga choice. The **OutcomeOrchestrator** (the coordinator over a
+DAG of leaf sagas) routes EACH leaf through the same seam but over a **wider menu** and adds an automatic,
+presence-conditional **degrade** decision the single-saga layer does not have. This is encoded in
+[`scripts/outcome_dispatcher.py`](../scripts/outcome_dispatcher.py) (`resolve_available`,
+`degrade_decision`, `recommend_outcome_backend`, `fork_is_cheap`) + [`scripts/outcome_liveness.py`](../scripts/outcome_liveness.py).
+
+**The full menu (R6), host-conditional.** `resolve_available()` returns:
+
+- **always-available floor** — `inline` / `team-execution` / `manual` (the operator does it by hand);
+- **host-dependent** (only when the host advertises them) — `fork` / `subagent` / `goal` (need a Claude
+  Code host) and `cc-workflows-ultracode` (needs the Workflow tool). The coordinator is a Python script
+  that cannot probe the host, so these stay OFF by default; the host enables them explicitly
+  (`--host-capable` / `--workflow-available`).
+
+**The degrade ladder (R23):** `cc-workflows-ultracode → team-execution → inline` — the same capability
+ladder as `lifecycle_state.ORCHESTRATION_TIERS`. A backend NOT on the ladder (`fork` / `subagent` / `goal`
+/ `manual`) has no defined lower rung.
+
+**The presence-conditional degrade decision (R23/AE1).** When a leaf's chosen backend is unavailable,
+`degrade_decision` returns one of `dispatch` / `degrade` / `halt`:
+
+| Condition | Decision |
+|---|---|
+| backend available | **dispatch** on it |
+| operator **attending** the leaf | **HALT** + page (the operator decides; never auto-degrade under their nose) |
+| **guarantee-bearing** (`guarantee_tags` set or `degrade_policy="halt"`) | **HALT** even when away |
+| already **side-effected** (a `destructive` leaf: deploy/migration/write/repo-mutation) | **HALT** — never re-run on a lesser backend (no duplicate side effect) |
+| autonomous + away + no guarantee + no side effect | **degrade** to the first available lower rung + record a visible `DegradeReceipt` (surfaced in `/outcome report`) |
+| backend not on the ladder, or no lower rung available | **HALT** (no silent substitution, R5) |
+
+The host signals presence to the coordinator via `/outcome advance --autonomous` (away → degrade) vs the
+default interactive advance (attending → HALT).
+
+**Liveness (R31).** A dispatched leaf carries optional `heartbeat_seconds` / `timeout_seconds` budgets; a
+breach reclaims it as the `stalled` terminal (pages once, cascades to its downstream subtree) so a hung
+`cc-workflows` / `/goal` leaf is never waited on forever.
+
+**Frontier-budget + fork-cost levers (R7).** `recommend_outcome_backend` wraps the leaf recommender:
+a wide ready frontier downgrades a per-leaf `cc-workflows-ultracode` recommendation to `team-execution`
+(a dynamic workflow per leaf is expensive); the `fork` cost lever is claimed only when `fork_is_cheap`
+holds (model + system prompt + tools match the parent within the cache TTL — else a fork pays a full
+cache miss and is not cheap).
+
+---
+
+## 9. References
 
 - Storage contract (where the choice lives): [`references/saga-spec.md`](./saga-spec.md)
   (`orchestration_mode` / `orchestration_ref`, enum domain §4).
 - Canonical team-execution trigger constants: [`scripts/lifecycle_state.py`](../scripts/lifecycle_state.py)
   (`should_offer_team_execution`).
+- OutcomeOrchestrator backend menu + degrade policy: [`scripts/outcome_dispatcher.py`](../scripts/outcome_dispatcher.py)
+  + liveness [`scripts/outcome_liveness.py`](../scripts/outcome_liveness.py) (§8 above).
 - Channel-inline offer convention (do not duplicate): [`skills/brainstorm/SKILL.md`](../skills/brainstorm/SKILL.md).
 - Decision record: [`docs/engineering-journal/DECISIONS.md`](../../../docs/engineering-journal/DECISIONS.md)
   `#operator-choice-framework`.

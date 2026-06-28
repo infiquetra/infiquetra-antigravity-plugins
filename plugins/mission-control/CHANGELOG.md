@@ -1,5 +1,29 @@
 # Changelog — mission-control
 
+## [1.7.0] — 2026-06-28
+
+### Migration notes
+- GitHub Project #3 was renamed from **Jeff Intent** to **Operations**. The `--project` value is now
+  `operations` (was `jeff-intent`) across all board / metrics / flow / triage commands, and the
+  internal board key is `operations` (was `jeff_intent`). Update any saved invocations or scripts
+  that passed `--project jeff-intent`. Project number (#3), node id, and the shared `intent_flow`
+  workflow are unchanged, so existing cards stay on the board.
+
+### Added
+- `sdlc-operator` agent: pin `model: sonnet` (was `inherit`). Orchestration work is
+  structured/mechanical — Sonnet is the right cost-quality tier (R1/R2a tiering).
+
+### Changed
+- Renamed the project surface `jeff-intent` / `jeff_intent` / "Jeff Intent" → `operations` /
+  "Operations" across `project-mappings.json`, `sdlc-schema.json`, `sdlc_manager.py`
+  (`PROJECT_CHOICES`), command and skill guidance, and the `sdlc-operator` agent prompt. Mirrors the
+  canonical rename in `infiquetra-sdlc`. Dated provenance and migration notes preserve the former
+  name as historical record.
+
+### Fixed
+- Fixed `issue create-prepared` post-create recovery by resolving issue/PR nodes with
+  `issueOrPullRequest(number:)`, keeping GraphQL mutation failures strict, and recording
+  resumable sidecar state when board-add or Status assignment fails after issue creation.
 ## 1.6.1 - 2026-05-31
 
 ### Changed

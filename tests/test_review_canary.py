@@ -37,7 +37,9 @@ def test_missing_expected_finding_fails(tmp_path: Path) -> None:
 
 
 def test_uncited_finding_fails(tmp_path: Path) -> None:
-    review = write_review(tmp_path, "| P1 | Row cardinality emits one row per unit. | missing | fix |\n")
+    review = write_review(
+        tmp_path, "| P1 | Row cardinality emits one row per unit. | missing | fix |\n"
+    )
 
     score = score_review(review, EXPECTED)
 

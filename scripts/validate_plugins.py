@@ -52,7 +52,9 @@ def default_install_dir() -> Path:
     return Path.home() / ".gemini" / "config" / "plugins"
 
 
-def run_doctor(repo_root: Path, install_dir: Path | None = None, strict_install: bool = False) -> DoctorResult:
+def run_doctor(
+    repo_root: Path, install_dir: Path | None = None, strict_install: bool = False
+) -> DoctorResult:
     repo_root = repo_root.resolve()
     plugins_root = repo_root / "plugins"
     install_root = install_dir if install_dir is not None else default_install_dir()
@@ -107,14 +109,18 @@ def inspect_plugin(manifest_path: Path, install_root: Path, strict_install: bool
     return status
 
 
-def validate_manifest_basics(manifest: dict[str, Any], plugin_dir: Path, status: PluginStatus) -> None:
+def validate_manifest_basics(
+    manifest: dict[str, Any], plugin_dir: Path, status: PluginStatus
+) -> None:
     for field_name in ("name", "version", "description"):
         value = manifest.get(field_name)
         if not isinstance(value, str) or not value.strip():
             status.errors.append(f"missing or invalid manifest field: {field_name}")
 
     if isinstance(manifest.get("name"), str) and manifest["name"] != plugin_dir.name:
-        status.errors.append(f"manifest name {manifest['name']!r} does not match directory {plugin_dir.name!r}")
+        status.errors.append(
+            f"manifest name {manifest['name']!r} does not match directory {plugin_dir.name!r}"
+        )
 
     version = manifest.get("version")
     if isinstance(version, str) and not SEMVER.match(version):
@@ -138,11 +144,15 @@ def count_surfaces(plugin_dir: Path, manifest: dict[str, Any], status: PluginSta
             status.next_actions.append("fill or remove empty agent file")
 
     if not any((status.skills, status.commands, status.agents, status.tools, status.config_files)):
-        status.warnings.append("no Antigravity-facing skills, commands, agents, tools, or config files found")
+        status.warnings.append(
+            "no Antigravity-facing skills, commands, agents, tools, or config files found"
+        )
         status.next_actions.append("add a surface or confirm plugin is intentionally inert")
 
 
-def inspect_install(plugin_dir: Path, install_root: Path, status: PluginStatus, strict_install: bool) -> None:
+def inspect_install(
+    plugin_dir: Path, install_root: Path, status: PluginStatus, strict_install: bool
+) -> None:
     install_path = install_root / plugin_dir.name
     if not install_root.exists():
         add_install_issue(status, f"install directory not found: {install_root}", strict_install)
@@ -155,7 +165,11 @@ def inspect_install(plugin_dir: Path, install_root: Path, status: PluginStatus, 
     if install_path.is_symlink():
         target = install_path.resolve()
         if target != plugin_dir.resolve():
-            add_install_issue(status, f"symlink points at {target}, expected {plugin_dir.resolve()}", strict_install)
+            add_install_issue(
+                status,
+                f"symlink points at {target}, expected {plugin_dir.resolve()}",
+                strict_install,
+            )
         else:
             status.install_state = "linked"
     elif install_path.is_dir():
@@ -163,7 +177,9 @@ def inspect_install(plugin_dir: Path, install_root: Path, status: PluginStatus, 
         status.warnings.append("plugin install is a copy, not a symlink")
         status.next_actions.append("replace copied install with symlink or reinstall")
     else:
-        add_install_issue(status, "install path exists but is not a directory or symlink", strict_install)
+        add_install_issue(
+            status, "install path exists but is not a directory or symlink", strict_install
+        )
 
 
 def add_install_issue(status: PluginStatus, message: str, strict_install: bool) -> None:

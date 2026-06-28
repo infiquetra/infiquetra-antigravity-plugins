@@ -14,6 +14,21 @@ Google Antigravity plugins for Infiquetra engineering workflows.
 | `todoist` | tool |
 | `unifi` | agent, command, skills |
 
+## Portability Matrix
+
+This repository natively ports the `infiquetra-claude-plugins` ecosystem to Google Antigravity.
+Current upstream sync state:
+
+| Plugin | Upstream Source Repo | Synced Commit (SHA) |
+|--------|----------------------|---------------------|
+| `deploy` | `infiquetra-claude-plugins` | `3987510` |
+| `home-lab-ops` | `infiquetra-claude-plugins` | `3987510` |
+| `mission-control` | `infiquetra-claude-plugins` | `3987510` |
+| `multi-agent-consensus` | `infiquetra-claude-plugins` | `3987510` |
+| `saga` | `infiquetra-claude-plugins` | `3987510` |
+| `todoist` | `infiquetra-claude-plugins` | `3987510` |
+| `unifi` | `infiquetra-claude-plugins` | `3987510` |
+
 ## Layout
 
 ```text

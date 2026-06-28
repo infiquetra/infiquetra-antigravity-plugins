@@ -246,13 +246,103 @@ nonprod-deploy**. This becomes the saga `--destination`.
 ### 5.2 Offer the execution backend
 
 Offer the execution backend per `references/operator-choice.md` (the decision contract). There are
-exactly three backends — `inline | team-execution | cc-workflows-ultracode`. Read the work shape,
-**recommend the cheapest-correct** backend and pre-select it, but always surface the alternatives so
-escalation is one step. Escalate to `team-execution` for risky/consensus work (≥8 files, ≥4 phases,
-security, infra, cross-repo, deployment-sensitive, plus a needs-consensus signal); to
-`cc-workflows-ultracode` for broad independent fan-out without elevated risk. Omit
-`cc-workflows-ultracode` from the offer when the Workflow tool is observably absent in this session.
-Confirm with the operator and record what they picked via `--orchestration-mode`.
+exactly three backends — `inline` ("inline") | `team-execution` ("team execution") |
+`cc-workflows-ultracode` ("dynamic workflows"). Read the work shape, **recommend the cheapest-correct**
+backend and pre-select it, but always surface the alternatives so escalation is one step.
+
+**Dynamic workflows serve BOTH purposes** (per `references/operator-choice.md` §3.2) — escalate to
+`cc-workflows-ultracode` ("dynamic workflows"), without elevated risk, for **either**:
+
+- **Breadth / scale** — broad independent fan-out, the same operation across many enumerated targets, or
+  an exhaustive probe-all sweep where missing a target is the failure mode.
+- **Adversarial confidence** — a judge panel over N independent attempts, prove-by-refutation (refute-N),
+  or perspective-diverse verifiers each applying a distinct lens. This is real review depth; the Workflow
+  tool names *confidence* as a first-class purpose. Set it only on an **explicit** request for
+  many-independent-attempt verification, not on a generic "be more sure."
+
+**The team↔workflow fork is GOVERNANCE, not "review depth"** (both have review depth). The question is:
+**does the verdict need to stick?** Escalate to `team-execution` ("team execution") when the work needs
+**gated** consensus — a verdict that blocks a merge/deploy and persists as standing evidence (a reviewer-
+CONSENSUS gate, named scanners, a guarded deploy), or the size/risk signals fire (≥8 files, ≥4 phases,
+security, infra, cross-repo, deployment-sensitive). When the consensus signal is **advisory** — N
+throwaway in-session votes you act on yourself, nothing recorded or blocking — it is a dynamic-workflow
+judge-panel, not a team-execution job. Omit `cc-workflows-ultracode` ("dynamic workflows") from the offer
+when the Workflow tool is observably absent in this session. Confirm with the operator and record what
+they picked via `--orchestration-mode`.
+
+**KTD4 — the gated-vs-advisory interrogation (R7).** When a consensus / multi-reviewer / many-attempt
+signal is present, do **not** silently force `team-execution`. Ask the operator (`AskUserQuestion`, or
+channel-inline) one question, with the work-shape default pre-selected:
+
+> **Does this verdict need to BLOCK a merge/deploy or PERSIST as evidence — or are these throwaway
+> in-session votes you act on yourself?**
+> **A) Gated** — block/persist (a reviewer-CONSENSUS gate, named scanners, a guarded deploy) → `team-execution`.
+> **B) Advisory** — N throwaway votes, nothing recorded/blocking → `cc-workflows-ultracode` (a judge-panel).
+
+**Work-shape default:** pre-select **Gated** when any deploy / security / persist signal is present
+(`--destination merge|nonprod-deploy`, security/infra work, or a verdict that must be recorded); pre-select
+**Advisory** otherwise. Pass the answer into the recommender as `--advisory-consensus` (set for B; omit for
+A — gated is the default). The advisory path feeds the existing `adversarial_confidence` ultracode trigger,
+so a contested-but-not-gated job reaches the judge-panel and never regresses to `inline`. If the work is
+**both** gated **and** broadly parallel, list both backends (per `references/operator-choice.md` §3.3).
+
+#### 5.2a Author the ExecutionSpec (cc-workflows-ultracode only)
+
+When the operator chooses `cc-workflows-ultracode`, **author a structured `ExecutionSpec` before writing
+the saga tick**. This is the canonical artifact `/work` re-emits from; the spec JSON — not the prose plan
+— is the single source of truth (KTD1, `references/operator-choice.md` §6).
+
+**Step 1 — Derive per-unit tiers.** For each Implementation Unit in the plan, assign a `{model, effort}`
+tier from the work-shape heuristic (R10). Surface the tier table for operator override before locking:
+
+| Work shape | Default tier | Rationale |
+|---|---|---|
+| Judgment, design, adversarial review, architectural decisions | `opus / high` | Deep reasoning needed; cost-justified |
+| Mechanical, deterministic, scripted transforms, scaffolding | `sonnet / medium` (or `haiku / low` for purely mechanical) | Bounded output, predictable steps |
+| Read-only survey, search, grep, sampling, census | `sonnet / low` | Low-effort read, no write risk |
+
+Apply the heuristic per unit, then present the full tier table (U-ID, label, proposed tier, rationale)
+and ask the operator to confirm or override before proceeding. Do not lock tiers silently.
+
+**Step 2 — Author thin per-unit prompts (KTD2).** Each unit's prompt is a **thin pointer**, not a prose
+transcription of the plan:
+
+```
+<unit-id>: <one-line goal>. Read the plan at <repo-relative plan path> as your authoritative spec.
+```
+
+The emitter appends fan-out reconciliation, budget riders, and return contracts automatically — do not
+duplicate them in the prompt. Depth comes from the agent reading the plan; the prompt is control flow.
+
+**Step 3 — Wire depends_on barriers and optional verify panels.** Set `depends_on` from the plan's
+dependency order. For units with an **explicit** adversarial-confidence request, add a `verify` panel:
+default `n=3`, `pass_rule=majority` (KTD3 — a finding survives unless ≥⌈3/2⌉=2 of 3 verifiers refute
+it). Override N per-unit when the operator requests a different panel size; N is capped at 7
+(VERIFY_N_CAP) — above the cap, `validate` will hard-block.
+
+**Step 4 — Validate the spec (HARD BLOCK on failure).** Run the validator:
+
+```bash
+python3 plugins/saga/scripts/execution_spec.py validate docs/plans/<name>-spec.json
+```
+
+A non-zero exit means the spec is malformed. **Do NOT proceed to emit or persist an invalid spec** — fix
+the `SpecError` and re-validate. Common failures: `depends_on` cycle, fan-out unit with no `targets`,
+pilot tier mismatch (R3), N above VERIFY_N_CAP.
+
+**Step 5 — Emit the workflow script and surface for operator confirmation.** Once `validate` exits 0:
+
+```bash
+python3 plugins/saga/scripts/execution_spec.py emit docs/plans/<name>-spec.json \
+  -o docs/plans/<name>.workflow.js
+```
+
+Surface the emitted `.workflow.js` and the per-unit tier table for operator confirmation (R8 "approved").
+The operator must explicitly confirm the tier assignments and the control-flow structure before `/work`
+runs it. A rejection at this step means revising the spec and re-running validate + emit.
+
+**Spec naming convention:** `docs/plans/<YYYY-MM-DD>-<topic>-spec.json` beside the plan doc. The
+`.workflow.js` shares the same stem: `docs/plans/<YYYY-MM-DD>-<topic>.workflow.js`.
 
 ### 5.3 Write the saga tick
 
@@ -268,14 +358,41 @@ python3 plugins/saga/scripts/saga.py save \
   --destination <plan-only|pr|merge|nonprod-deploy> \
   --adr-refs "ADR-NNNN|ADR-MMMM" \
   --decisions "KTD1: rationale. KTD2: rationale." \
-  --orchestration-mode <inline|team-execution|cc-workflows-ultracode>
+  --orchestration-mode <inline|team-execution|cc-workflows-ultracode> \
+  --orchestration-recommended <recommend_execution_backend() output>
 ```
+
+**For `cc-workflows-ultracode`:** also pass `--orchestration-ref` pointing at the **spec JSON** (the
+canonical artifact, per KTD1/KD3 — regenerable, so the ref is the spec not the `.workflow.js`):
+
+```bash
+python3 plugins/saga/scripts/saga.py save \
+  --kind <issue|task> \
+  --id <issue-number-or-task-slug> \
+  --lifecycle-phase plan \
+  --plan-path docs/plans/YYYY-MM-DD-<topic>-plan.md \
+  --destination <plan-only|pr|merge|nonprod-deploy> \
+  --adr-refs "ADR-NNNN|ADR-MMMM" \
+  --decisions "KTD1: rationale. KTD2: rationale." \
+  --orchestration-mode cc-workflows-ultracode \
+  --orchestration-recommended <recommend_execution_backend() output> \
+  --orchestration-ref docs/plans/YYYY-MM-DD-<topic>-spec.json
+```
+
+The `.workflow.js` is regenerable at any time from the spec (`execution_spec.py emit`); the spec JSON is
+the durable canonical artifact. `orchestration_ref` is the repo-relative path to the spec JSON, so
+`/work` can re-emit fresh without any prose-parsing.
+
+Also pass `--orchestration-recommended <the backend the recommender suggested>` so the tick records
+recommended-vs-chosen on this decision (R12 override-rate telemetry); `orchestration_operator_choice`
+auto-derives from `--orchestration-mode`, so the only added burden is naming the recommendation.
 
 `--id` is the only strictly required flag (`--kind` defaults to `issue`); for ad-hoc work pass
 `--kind task --id <slug>`. `--lifecycle-phase plan`, `--plan-path`, `--destination`, `--adr-refs`,
-`--decisions` (the KTD mirror), and `--orchestration-mode` carry the `/plan` consumer row from
-`references/saga-spec.md` §11. When resuming (Phase 0.3 matched), this appends a tick to the existing
-saga directory rather than minting a new one.
+`--decisions` (the KTD mirror), `--orchestration-mode`, `--orchestration-recommended`, and (for
+ultracode) `--orchestration-ref` carry the `/plan` consumer row from `references/saga-spec.md` §11.
+When resuming (Phase 0.3 matched), this appends a tick to the existing saga directory rather than
+minting a new one.
 
 ### 5.4 Route
 

@@ -84,3 +84,13 @@ If consensus is not reached, fix requests are consolidated and routed to workers
 After 3 cycles, execution proceeds with the best available version and documents any unresolved issues.
 
 **Hard stop**: Any security or auth dimension scoring < 5.0 is treated as a blocking issue and flags to the user immediately.
+
+### Reference Files
+- `multi-agent-consensus/skills/multi-agent-consensus/references/reviewer-registry.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/consensus-protocol.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-registry.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-criteria.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-execution-order.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-evidence-state.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-spawn-quirks.md`

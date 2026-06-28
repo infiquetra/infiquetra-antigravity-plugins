@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 def print_step(title, message, visual_example):
     print(f"\n\033[1;34m=== {title} ===\033[0m")
     print(f"{message}\n")
@@ -7,10 +8,13 @@ def print_step(title, message, visual_example):
     print(f"\033[0;32m{visual_example}\033[0m")
     input("\n[Press Enter to advance state machine...]")
 
+
 def run_sandbox():
     print("\n\033[1;35m--- SAGA VISUAL LEXICON SANDBOX ---\033[0m")
     print("Welcome to the interactive state machine simulator.")
-    print("This will walk you through the expected artifact mutations across the Infiquetra lifecycle.")
+    print(
+        "This will walk you through the expected artifact mutations across the Infiquetra lifecycle."
+    )
     input("[Press Enter to begin]")
 
     print_step(
@@ -26,7 +30,7 @@ def run_sandbox():
 ### Component Area
 #### [NEW] path/to/file.py
 Description of file.
-"""
+""",
     )
 
     print_step(
@@ -37,7 +41,7 @@ Description of file.
 - `[/]` In progress task
 - `[ ]` Pending task
 - `[x]` Completed task
-"""
+""",
     )
 
     print_step(
@@ -51,10 +55,13 @@ Description of file.
 
 ## Verification
 - Tests passed.
-"""
+""",
     )
 
-    print("\n\033[1;32mSandbox execution complete. You now understand the native state flow.\033[0m\n")
+    print(
+        "\n\033[1;32mSandbox execution complete. You now understand the native state flow.\033[0m\n"
+    )
+
 
 if __name__ == "__main__":
     run_sandbox()

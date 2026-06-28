@@ -93,7 +93,15 @@ def test_marketplace_wrapper_delegates_to_canonical_doctor(tmp_path: Path) -> No
     script = Path("marketplace/validator/validate.py").resolve()
 
     wrapper = subprocess.run(
-        [sys.executable, str(script), "--repo-root", str(tmp_path), "--install-dir", str(install_dir), "--json"],
+        [
+            sys.executable,
+            str(script),
+            "--repo-root",
+            str(tmp_path),
+            "--install-dir",
+            str(install_dir),
+            "--json",
+        ],
         check=False,
         text=True,
         capture_output=True,

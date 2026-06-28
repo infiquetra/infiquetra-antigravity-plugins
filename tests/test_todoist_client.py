@@ -1,20 +1,22 @@
 import json
-import pytest
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add the plugins directory to sys.path to allow importing the script
 plugins_dir = Path(__file__).parent.parent / "plugins"
 sys.path.append(str(plugins_dir))
 
-from todoist.src.core.todoist_client import TodoistClient
+from todoist.src.core.todoist_client import TodoistClient  # noqa: E402
 
-@patch('todoist.src.core.todoist_client.TodoistAPI')
+
+@patch("todoist.src.core.todoist_client.TodoistAPI")
 def test_tasks_list_success(mock_api_class, capsys):
     mock_api = MagicMock()
     mock_api_class.return_value = mock_api
-    
+
     mock_task = MagicMock()
     mock_task.id = "1"
     mock_task.content = "Test Task"
@@ -31,32 +33,33 @@ def test_tasks_list_success(mock_api_class, capsys):
     mock_task.url = "http://todoist.com/task/1"
     mock_task.due = None
     mock_task.duration = None
-    
+
     mock_api.get_tasks.return_value = [mock_task]
-    
+
     client = TodoistClient(token="fake-token")
     client.tasks_list()
-    
+
     captured = capsys.readouterr()
     output = json.loads(captured.out)
-    
+
     assert output["success"] is True
     assert output["count"] == 1
     assert output["data"][0]["id"] == "1"
 
-@patch('todoist.src.core.todoist_client.TodoistAPI')
+
+@patch("todoist.src.core.todoist_client.TodoistAPI")
 def test_tasks_list_error(mock_api_class, capsys):
     mock_api = MagicMock()
     mock_api_class.return_value = mock_api
     mock_api.get_tasks.side_effect = Exception("API Error")
-    
+
     client = TodoistClient(token="fake-token")
-    
+
     with pytest.raises(SystemExit):
         client.tasks_list()
-        
+
     captured = capsys.readouterr()
     output = json.loads(captured.out)
-    
+
     assert output["error"] is True
     assert "API Error" in output["message"]

@@ -13,7 +13,7 @@ def generate_mermaid(brain_dir: str):
     artifacts = {
         "implementation_plan.md": brain_path / "implementation_plan.md",
         "task.md": brain_path / "task.md",
-        "walkthrough.md": brain_path / "walkthrough.md"
+        "walkthrough.md": brain_path / "walkthrough.md",
     }
 
     present_artifacts = {name: path.exists() for name, path in artifacts.items()}
@@ -25,7 +25,7 @@ def generate_mermaid(brain_dir: str):
         "    classDef missing fill:#2b2b2b,stroke:#555,stroke-width:2px,color:#888,rx:5px,ry:5px,stroke-dasharray: 5 5;",
         "    classDef plugin fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff,rx:5px,ry:5px;",
         "",
-        "    subgraph Brain State [Native Antigravity Brain Directory]"
+        "    subgraph Brain State [Native Antigravity Brain Directory]",
     ]
 
     if present_artifacts["implementation_plan.md"]:
@@ -43,30 +43,37 @@ def generate_mermaid(brain_dir: str):
     else:
         mermaid.append("        WALK[walkthrough.md]:::missing")
 
-    mermaid.extend([
-        "    end",
-        "",
-        "    subgraph Saga Lifecycle Topology",
-        "        IDEATE([/ideate]):::plugin",
-        "        PLAN([/plan]):::plugin",
-        "        WORK([/work]):::plugin",
-        "        QA([/qa]):::plugin",
-        "    end",
-        "",
-        "    IDEATE -->|Generates Ideas| IP",
-        "    PLAN -->|Formalizes| IP",
-        "    PLAN -->|Bootstraps| TASK",
-        "    WORK -->|Executes & Tracks| TASK",
-        "    WORK -->|Creates| WALK",
-        "    QA -->|Validates| WALK",
-    ])
+    mermaid.extend(
+        [
+            "    end",
+            "",
+            "    subgraph Saga Lifecycle Topology",
+            "        IDEATE([/ideate]):::plugin",
+            "        PLAN([/plan]):::plugin",
+            "        WORK([/work]):::plugin",
+            "        QA([/qa]):::plugin",
+            "    end",
+            "",
+            "    IDEATE -->|Generates Ideas| IP",
+            "    PLAN -->|Formalizes| IP",
+            "    PLAN -->|Bootstraps| TASK",
+            "    WORK -->|Executes & Tracks| TASK",
+            "    WORK -->|Creates| WALK",
+            "    QA -->|Validates| WALK",
+        ]
+    )
 
     mermaid.append("```")
     return "\n".join(mermaid)
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate a visual subway map of native artifact state handoffs from a brain directory.")
-    parser.add_argument("--brain-dir", type=str, default=".", help="Path to the brain conversation directory")
+    parser = argparse.ArgumentParser(
+        description="Generate a visual subway map of native artifact state handoffs from a brain directory."
+    )
+    parser.add_argument(
+        "--brain-dir", type=str, default=".", help="Path to the brain conversation directory"
+    )
     args = parser.parse_args()
 
     print(generate_mermaid(args.brain_dir))

@@ -1,5 +1,5 @@
 {
   "name": "mission-control",
-  "version": "1.1.0",
-  "description": "SDLC issue management, board ops, flow metrics, and issue-contract sync for Infiquetra GitHub Projects"
+  "version": "1.7.0",
+  "description": "SDLC management for Operations, Asgard, and CAMPPS: prepared issue drafts, live schema sync, board schemas, labels, project fields, metrics, and card validation."
 }

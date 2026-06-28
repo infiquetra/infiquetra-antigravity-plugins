@@ -26,7 +26,14 @@ def test_loop_references_generic_ask_compiler() -> None:
 
     assert "generic-ask-compiler.md" in command
     assert "generic-ask-compiler.md" in skill
-    for field in ("target", "repo state", "saga phase", "proof", "scope boundary", "mutation boundary"):
+    for field in (
+        "target",
+        "repo state",
+        "saga phase",
+        "proof",
+        "scope boundary",
+        "mutation boundary",
+    ):
         assert field in compiler
 
 

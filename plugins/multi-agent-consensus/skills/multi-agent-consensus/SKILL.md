@@ -59,3 +59,35 @@ Generate a summary report for the user detailing:
 3. Whether consensus was reached.
 4. Any unresolved issues (if the 3-cycle cap was hit).
 5. A summary of the final changes implemented.
+
+## Step 4: Validators and Automation Gates
+
+Before completing the consensus process, you must run automated validators to check for regressions.
+Validators are static subagents in `plugins/multi-agent-consensus/agents/` that should be invoked with `TypeName`.
+
+Validator configurations can be found in `.multi-agent-consensus.json` which specifies:
+- `required_validators`
+- `disabled_validators`
+- `nonprod_workflows`
+- `scenario_hints`
+- `smoke_targets`
+
+Write validator evidence state to `.gemini/multi-agent-consensus/validators/`.
+
+Automation is allowed only when all conditions are true:
+- Remote matches `github.com/infiquetra/*`.
+- The workflow is explicitly nonprod or publish-nonprod.
+- Reviewer consensus and scanner gates passed.
+
+Run testers after deployment. If testers hard-fail, run a maximum 3 remediation loops before escalating to the user.
+
+
+### Reference Files
+- `multi-agent-consensus/skills/multi-agent-consensus/references/reviewer-registry.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/consensus-protocol.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-registry.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-criteria.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-execution-order.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-evidence-state.md`
+- `multi-agent-consensus/skills/multi-agent-consensus/references/validator-spawn-quirks.md`
