@@ -1,5 +1,6 @@
 {
   "name": "mission-control",
-  "version": "1.7.0",
-  "description": "SDLC management for Operations, Asgard, and CAMPPS: prepared issue drafts, live schema sync, board schemas, labels, project fields, metrics, and card validation."
+  "version": "2.6.3",
+  "description": "SDLC management for Operations, Asgard, and CAMPPS: prepared issue drafts, live schema sync, board schemas, labels, project fields, metrics, and card validation.",
+  "keywords": ["campps", "github", "sdlc"]
 }

@@ -1,4 +1,4 @@
-# Validator Registry - team-execution
+# Validator Registry - multi-agent-consensus
 
 Validators provide post-review evidence. Select them by context; do not spawn every
 validator for every plan.
@@ -15,9 +15,9 @@ Phase A considers:
 - Contracts and schemas.
 - Docs, runbooks, and scenario hints.
 - Existing tests and quality commands.
-- Optional `.team-execution.json`.
+- Optional `.multi-agent-consensus.json`.
 
-Supported `.team-execution.json` keys:
+Supported `.multi-agent-consensus.json` keys:
 
 - `required_validators`
 - `disabled_validators`

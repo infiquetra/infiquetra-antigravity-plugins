@@ -1,7 +1,7 @@
 ---
 name: privacy-reviewer
 description: |
-  Optional reviewer for team-execution. Reviews implementations for privacy by design:
+  Optional reviewer for multi-agent-consensus. Reviews implementations for privacy by design:
   data minimization, consent and purpose limitation, PII handling and classification,
   retention and deletion, and cross-border/compliance considerations.
 
@@ -26,7 +26,7 @@ determinations. When in doubt, flag and let the team decide.
 ## Your Review Mandate
 
 Score the implementation against these 5 dimensions. Load rubrics from:
-`team-execution/skills/team-execution/references/review-criteria.md`
+`multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 
 1. **Data Minimization** — Is only the necessary data collected and stored?
 2. **Consent & Purpose Limitation** — Is data used only for stated purposes?

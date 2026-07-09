@@ -114,11 +114,11 @@ def _execution_spec_dict() -> dict[str, Any]:
         "description": "a leaf plan",
         "repo": "/tmp/repo",
         "units": [
-            {"unit_id": "U1", "label": "preflight", "tier": {"model": "haiku", "effort": "low"}},
+            {"unit_id": "U1", "label": "preflight", "tier": {"model": "gemini-3.5-flash", "effort": "low"}},
             {
                 "unit_id": "U2",
                 "label": "build",
-                "tier": {"model": "sonnet", "effort": "high"},
+                "tier": {"model": "gemini-3.1-pro", "effort": "medium"},
                 "depends_on": ["U1"],
             },
         ],
@@ -129,7 +129,7 @@ def test_team_execution_artifact_wires_team_emitter() -> None:
     spec = ES.ExecutionSpec.from_dict(_execution_spec_dict())
     art = D.team_execution_artifact(spec)
     assert "Team Structure" in art  # produced through recompile_for_tier's team_emitter leg (R5)
-    assert "preflight" in art and "build" in art  # units preserved
+    assert "U1" in art and "U2" in art  # units preserved (by unit id)
 
 
 # --------------------------------------------------------------------------- integration with advance
@@ -206,6 +206,117 @@ def test_halt_does_not_starve_other_runnable_leaves(repo: Path) -> None:
     assert [h["subplot_id"] for h in result.halted] == ["b"]
 
 
+# --------------------------------------------------------------------------- #348/R4/KTD4: 429 retriable-pending
+
+
+def _rate_limited_dispatcher(retry_after: float | None = 1.0) -> Any:
+    """A dispatcher that always 429s (a restricted/engine-bridge dispatcher raising the 429-shape)."""
+
+    def _disp(req: Any) -> str:
+        raise D.BackendRateLimitError(
+            D.RateLimitReceipt(
+                outcome_id=req.outcome_id,
+                subplot_id=req.subplot_id,
+                backend=req.backend,
+                reason="rate limited (429)",
+                retry_after=retry_after,
+            )
+        )
+
+    return _disp
+
+
+def test_advance_classifies_429_as_retriable_pending_not_halt(repo: Path) -> None:
+    # A 429 during dispatch is TRANSIENT: surfaced in result.retriable (NOT halted), nothing
+    # dispatched, and NO commit record written -> the leaf's derived state stays ready (KTD4).
+    OUTCOME.start(
+        repo,
+        "ship-x",
+        "Ship X",
+        nodes=[{"subplot_id": "build", "title": "Build", "backend": "team-execution"}],
+    )
+    result = OUTCOME.advance(repo, "ship-x", dispatcher=_rate_limited_dispatcher())
+    assert result.retriable == ["build"]
+    assert result.dispatched == []
+    assert result.halted == []  # a 429 is NOT operator-attention-worthy, unlike a HALT
+    store = STORE.Store.for_outcome("ship-x", repo)
+    # Derived-on-read: no committed dispatch record -> the leaf is still on the ready frontier.
+    assert OUTCOME._dispatch_records(store) == {}
+    assert STORE.completed_subplots(store) == set()
+
+
+def test_retriable_leaf_is_re_picked_on_the_next_advance_call(repo: Path) -> None:
+    # The re-pick contract (KTD4): a 429'd leaf that is left ready dispatches on the very next
+    # advance() call once the backend is no longer rate-limited -- no operator action, no state edit.
+    OUTCOME.start(
+        repo,
+        "ship-x",
+        "Ship X",
+        nodes=[{"subplot_id": "build", "title": "Build", "backend": "team-execution"}],
+    )
+    r1 = OUTCOME.advance(repo, "ship-x", dispatcher=_rate_limited_dispatcher())
+    assert r1.retriable == ["build"] and r1.dispatched == []
+    r2 = OUTCOME.advance(repo, "ship-x", dispatcher=D.make_dispatcher())
+    assert r2.dispatched == ["build"] and r2.retriable == []
+
+
+def test_advance_loop_does_not_hammer_a_rate_limited_backend_within_a_call(repo: Path) -> None:
+    # The per-call de-hammer guard: within one loop=True advance() a 429'd leaf is attempted at most
+    # once, then skipped for the rest of the call while other leaves keep the loop ticking.
+    OUTCOME.start(
+        repo,
+        "ship-x",
+        "Ship X",
+        nodes=[
+            {"subplot_id": "a", "title": "A", "backend": "team-execution"},
+            {"subplot_id": "b", "title": "B", "backend": "team-execution"},
+        ],
+    )
+    calls: dict[str, int] = {"a": 0, "b": 0}
+
+    def _disp(req: Any) -> str:
+        calls[req.subplot_id] += 1
+        if req.subplot_id == "a":
+            raise D.BackendRateLimitError(
+                D.RateLimitReceipt(
+                    outcome_id=req.outcome_id,
+                    subplot_id=req.subplot_id,
+                    backend=req.backend,
+                    reason="429",
+                    retry_after=1.0,
+                )
+            )
+        return f"leaf-{req.outcome_id}-{req.subplot_id}"
+
+    result = OUTCOME.advance(repo, "ship-x", dispatcher=_disp, loop=True)
+    assert result.dispatched == ["b"]
+    assert result.retriable == ["a"]
+    assert result.ticks >= 2  # the loop ticked again after b dispatched...
+    assert calls["a"] == 1  # ...but a was NOT re-attempted (skipped via retriable_seen)
+
+
+def test_make_dispatcher_translates_rate_limited_status_to_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Production-capable translation: a `rate_limited` dispatch result surfaces as BackendRateLimitError
+    # (mirroring the halt branch), carrying the Retry-After hint. No in-scope backend emits this yet
+    # (agy/codex bridge deferred, KTD2) -- this proves the dispatcher is CAPABLE the instant one does.
+    receipt = D.RateLimitReceipt(
+        outcome_id="ship-x",
+        subplot_id="build",
+        backend="team-execution",
+        reason="429",
+        retry_after=2.5,
+    ).to_dict()
+    monkeypatch.setattr(
+        D, "dispatch", lambda req, **kw: {"status": "rate_limited", "receipt": receipt}
+    )
+    with pytest.raises(D.BackendRateLimitError) as exc:
+        D.make_dispatcher()(_req("team-execution"))
+    assert exc.value.receipt.retry_after == 2.5
+    assert exc.value.receipt.to_dict()["kind"] == "rate_limited"
+
+
 def test_cli_advance_uses_the_real_backend_seam(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -238,3 +349,44 @@ def test_cli_dispatch_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
     assert D.main(["ship-x", "build", "fork"]) == 0
     halt = json.loads(capsys.readouterr().out)
     assert halt["status"] == "halt"
+
+
+# --------------------------------------------------------- sandbox enforceability (U3)
+# The resolved backend must be able to enforce the leaf's declared sandbox, or dispatch HALTs
+# with the offending axis named -- never silently runs the leaf uncontained (R4).
+
+OS = _load("outcome_spec")
+
+
+def _req_sandbox(backend: str, sandbox: Any, **kw: Any) -> Any:
+    req = _req(backend, **kw)
+    req.sandbox = sandbox
+    return req
+
+
+def test_dispatch_halts_when_backend_cannot_enforce_sandbox() -> None:
+    # inline cannot provide owned-worktree (halt-v1) -> halt receipt naming the axis.
+    sb = OS.Sandbox.from_dict("sandboxed-mutate", "w")
+    out = D.dispatch(_req_sandbox("inline", sb))
+    assert out["status"] == "halt"
+    assert "workspace_isolation" in out["receipt"]["reason"]
+    assert out["receipt"]["backend"] == "inline"
+
+
+def test_dispatch_enforceable_sandbox_dispatches() -> None:
+    sb = OS.Sandbox.from_dict("read-only-verify", "w")
+    assert D.dispatch(_req_sandbox("inline", sb))["status"] == "dispatched"
+
+
+def test_dispatch_no_sandbox_is_backward_compatible() -> None:
+    # A req without a sandbox attribute dispatches exactly as before (getattr default None).
+    assert D.dispatch(_req("inline"))["status"] == "dispatched"
+
+
+def test_make_dispatcher_raises_backend_halt_on_unenforceable_sandbox() -> None:
+    # The halt flows through the make_dispatcher seam outcome.advance uses (BackendHaltError).
+    sb = OS.Sandbox.from_dict("sandboxed-mutate", "w")
+    dispatcher = D.make_dispatcher()
+    with pytest.raises(D.BackendHaltError) as exc:
+        dispatcher(_req_sandbox("inline", sb))
+    assert "workspace_isolation" in exc.value.receipt.reason

@@ -18,6 +18,7 @@ no I/O at import.
 from __future__ import annotations
 
 import json
+import re
 import subprocess  # nosec B404 — gh CLI only, fixed argv, no shell
 import sys
 from collections.abc import Callable
@@ -49,13 +50,54 @@ def _run_gh(args: list[str], *, runner: Callable[..., Any] | None = None) -> tup
     return 0, (result.stdout or "").strip(), stderr
 
 
+# Ref normalization (#495 U1) — make every stored ref format gh-consumable.
+# Decompose/ingestion stores refs as ``owner/repo#N``, but ``gh issue view "owner/repo#N"`` errors
+# (invalid issue format) and ``gh pr view "owner/repo#N"`` misreads it as a branch. A full URL and a
+# bare number both work, so normalize ``owner/repo#N`` -> a full URL and pass the other two through.
+_OWNER_REPO_NUM = re.compile(r"^(?P<owner>[^/\s#]+)/(?P<repo>[^/\s#]+)#(?P<number>\d+)$")
+_GITHUB_URL = re.compile(
+    r"^https?://github\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/(?:pull|issues)/(?P<number>\d+)"
+    r"(?:[/?#].*)?$"
+)
+
+
+def _parse_ref(ref: str) -> tuple[str, str, str] | None:
+    """``(owner, repo, number)`` from an ``owner/repo#N`` ref or a full github ``pull``/``issues`` URL.
+
+    Returns ``None`` for a bare number or anything unparseable, so a caller that needs owner/repo (the
+    REST events path in ``_closed_by``) degrades safely rather than fabricating one.
+    """
+    s = str(ref).strip()
+    for rx in (_OWNER_REPO_NUM, _GITHUB_URL):
+        m = rx.match(s)
+        if m:
+            return m["owner"], m["repo"], m["number"]
+    return None
+
+
+def _gh_ref(ref: str, kind: str) -> str:
+    """A gh-consumable token for ``ref``. ``owner/repo#N`` -> a full URL (cwd-independent); a full URL or
+    a bare number passes through unchanged. ``kind`` is the URL path segment: ``pull`` (PRs), ``issues``.
+    """
+    s = str(ref).strip()
+    if s.lower().startswith(("http://", "https://")):
+        return s  # already a full URL — pass through byte-for-byte
+    parsed = _parse_ref(s)
+    if parsed is None:
+        return s  # bare number or unparseable — hand to gh as-is (resolved in the repo cwd)
+    owner, repo, number = parsed
+    return f"https://github.com/{owner}/{repo}/{kind}/{number}"
+
+
 def pr_state(pr_ref: str, *, runner: Callable[..., Any] | None = None) -> str:
     """Canonical state of a PR: ``merged`` / ``closed`` / ``open`` / ``unknown``.
 
     ``merged`` requires a real merge (``mergedAt`` set), so a PR that is CLOSED-unmerged reads
     ``closed`` (a NEGATIVE terminal, R32), never ``merged``. Any read failure -> ``unknown``.
     """
-    rc, out, _err = _run_gh(["pr", "view", str(pr_ref), "--json", "state,mergedAt"], runner=runner)
+    rc, out, _err = _run_gh(
+        ["pr", "view", _gh_ref(pr_ref, "pull"), "--json", "state,mergedAt"], runner=runner
+    )
     if rc != 0 or not out:
         return "unknown"
     try:
@@ -78,7 +120,9 @@ def pr_state(pr_ref: str, *, runner: Callable[..., Any] | None = None) -> str:
 
 def issue_state(issue_ref: str, *, runner: Callable[..., Any] | None = None) -> str:
     """Canonical state of an issue: ``closed`` / ``open`` / ``unknown`` (any read failure -> unknown)."""
-    rc, out, _err = _run_gh(["issue", "view", str(issue_ref), "--json", "state"], runner=runner)
+    rc, out, _err = _run_gh(
+        ["issue", "view", _gh_ref(issue_ref, "issues"), "--json", "state"], runner=runner
+    )
     if rc != 0 or not out:
         return "unknown"
     try:
@@ -89,6 +133,112 @@ def issue_state(issue_ref: str, *, runner: Callable[..., Any] | None = None) -> 
         return "unknown"
     state = str(data.get("state", "")).upper()
     return {"CLOSED": "closed", "OPEN": "open"}.get(state, "unknown")
+
+
+def board_status(issue_ref: str, *, project: str, runner: Callable[..., Any] | None = None) -> str:
+    """Live board Status option name for ``issue_ref`` on the ``project`` board; "" on any failure.
+
+    Reads ``gh issue view <ref> --json projectItems`` (probed live 2026-07-03: each item carries
+    ``{"status": {"name": ...}, "title": <project title>}``) and returns the Status name of the
+    project whose ``title`` matches ``project`` case-insensitively ("Operations" ↔ "operations").
+    Every failure — gh down, malformed JSON, no matching project item, a null/absent status —
+    degrades to "" (the reconcile caller treats "" as unreadable, never as drift), mirroring
+    ``issue_state``'s never-raise contract. This is the board-Status half of the saga-owned field
+    class (#295 U1); it adds no GraphQL and no mission-control surface.
+    """
+    rc, out, _err = _run_gh(
+        ["issue", "view", _gh_ref(issue_ref, "issues"), "--json", "projectItems"], runner=runner
+    )
+    if rc != 0 or not out:
+        return ""
+    try:
+        data = json.loads(out)
+    except (json.JSONDecodeError, ValueError):
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    items = data.get("projectItems")
+    if not isinstance(items, list):
+        return ""
+    want = project.strip().lower()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("title", "")).strip().lower() != want:
+            continue
+        status = item.get("status")
+        if isinstance(status, dict):
+            name = status.get("name")
+            if isinstance(name, str) and name:
+                return name
+        return ""  # matched the project but its Status is unset/null → unreadable
+    return ""
+
+
+# stateReason values gh reports (upper-cased on the wire), normalized to lowercase snake_case.
+_STATE_REASONS = {"COMPLETED": "completed", "NOT_PLANNED": "not_planned", "REOPENED": "reopened"}
+
+
+def _closed_by(issue_ref: str, *, runner: Callable[..., Any] | None = None) -> str:
+    """Best-effort login of whoever last closed ``issue_ref``; "" when undiscoverable.
+
+    ``gh issue view`` exposes no close-actor field, so this rides the REST events endpoint, which
+    needs an ``owner/repo`` — only an ``owner/repo#N`` ref yields one, so a bare or unqualified ref
+    degrades to "". ``--paginate`` concatenates every event page into one array (an issue with >30
+    events would otherwise drop the close), and the LAST ``closed`` event is selected AFTER the
+    concatenation (never per-page). Any failure → "".
+    """
+    parsed = _parse_ref(issue_ref)
+    if parsed is None:
+        return ""  # a bare/unqualified ref yields no owner/repo — the REST events path needs one
+    owner, repo, number = parsed
+    path = f"repos/{owner}/{repo}/issues/{number}/events"
+    rc, out, _err = _run_gh(["api", path, "--paginate"], runner=runner)
+    if rc != 0 or not out:
+        return ""
+    try:
+        events = json.loads(out)
+    except (json.JSONDecodeError, ValueError):
+        return ""
+    if not isinstance(events, list):
+        return ""
+    login = ""
+    for ev in events:
+        if isinstance(ev, dict) and ev.get("event") == "closed":
+            actor = ev.get("actor")
+            if isinstance(actor, dict) and isinstance(actor.get("login"), str):
+                login = actor["login"]
+    return login
+
+
+def issue_close_info(issue_ref: str, *, runner: Callable[..., Any] | None = None) -> dict[str, str]:
+    """How an issue was closed: ``{"state", "state_reason", "closed_by"}`` — every field degrade-safe.
+
+    ``state`` ∈ {open, closed, unknown}; ``state_reason`` ∈ {completed, not_planned, reopened,
+    unknown}; ``closed_by`` is a best-effort login or "". Powers the reconcile close semantics
+    (#295 KTD4): a contract-satisfying ``completed`` close is the harvester's sanctioned silent
+    path, while a ``not_planned`` close — or an unreadable reason on a contract a close does not
+    satisfy — is drift. ``issue_state`` is left untouched so the harvester barrier keeps its exact
+    open/closed semantics.
+    """
+    rc, out, _err = _run_gh(
+        ["issue", "view", _gh_ref(issue_ref, "issues"), "--json", "state,stateReason"],
+        runner=runner,
+    )
+    state = "unknown"
+    reason = "unknown"
+    if rc == 0 and out:
+        try:
+            data = json.loads(out)
+        except (json.JSONDecodeError, ValueError):
+            data = None
+        if isinstance(data, dict):
+            state = {"CLOSED": "closed", "OPEN": "open"}.get(
+                str(data.get("state", "")).upper(), "unknown"
+            )
+            reason = _STATE_REASONS.get(str(data.get("stateReason", "") or "").upper(), "unknown")
+    closed_by = _closed_by(issue_ref, runner=runner) if state == "closed" else ""
+    return {"state": state, "state_reason": reason, "closed_by": closed_by}
 
 
 # ---------------------------------------------------------------------------

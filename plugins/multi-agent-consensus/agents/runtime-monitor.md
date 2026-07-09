@@ -1,9 +1,10 @@
 ---
 name: runtime-monitor
 description: |
-  Monitor validator for team-execution. Checks runtime health using repository-appropriate
+  Monitor validator for multi-agent-consensus. Checks runtime health using repository-appropriate
   observability after nonprod deploy or publish.
-model: haiku
+model: gemini-3.5-flash
+effort: high
 color: blue
 ---
 

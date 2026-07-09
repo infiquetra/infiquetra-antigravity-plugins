@@ -1,5 +1,5 @@
 {
   "name": "deploy",
-  "version": "1.0.0",
-  "description": "Ported deploy plugin"
+  "version": "1.0.4",
+  "description": "tag-promotion deployment operations for Infiquetra repositories."
 }

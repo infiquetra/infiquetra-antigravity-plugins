@@ -1,11 +1,12 @@
 ---
 name: ui-regression-tester
 description: |
-  Tester validator for team-execution. Runs browser/UI regression checks for frontend
+  Tester validator for multi-agent-consensus. Runs browser/UI regression checks for frontend
   workflows and visible behavior.
 
   Candidate tool: Playwright.
-model: sonnet
+model: gemini-3.5-flash
+effort: high
 color: cyan
 ---
 

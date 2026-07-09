@@ -1,9 +1,10 @@
 ---
 name: github-actions-monitor
 description: |
-  Monitor validator for team-execution. Checks GitHub Actions status and relevant logs for
+  Monitor validator for multi-agent-consensus. Checks GitHub Actions status and relevant logs for
   PR, CI, merge, and nonprod workflow gates.
-model: haiku
+model: gemini-3.5-flash
+effort: high
 color: blue
 ---
 

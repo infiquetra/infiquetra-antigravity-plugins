@@ -1,9 +1,10 @@
 ---
 name: concurrency-tester
 description: |
-  Tester validator for team-execution. Tests concurrent execution, locks, retries,
+  Tester validator for multi-agent-consensus. Tests concurrent execution, locks, retries,
   idempotency, races, and worker coordination.
-model: sonnet
+model: gemini-3.5-flash
+effort: high
 color: purple
 ---
 

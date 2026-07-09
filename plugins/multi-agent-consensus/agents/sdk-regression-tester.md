@@ -1,9 +1,10 @@
 ---
 name: sdk-regression-tester
 description: |
-  Tester validator for team-execution. Checks SDK compatibility, generated client behavior,
+  Tester validator for multi-agent-consensus. Checks SDK compatibility, generated client behavior,
   packaging smoke tests, and regression fixtures.
-model: sonnet
+model: gemini-3.5-flash
+effort: high
 color: green
 ---
 

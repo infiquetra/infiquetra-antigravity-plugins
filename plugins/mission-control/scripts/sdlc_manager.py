@@ -79,6 +79,43 @@ from typing import Any, cast
 # ===========================
 
 ORG = "infiquetra"
+MAX_GITHUB_LABEL_DESCRIPTION_LENGTH = 100
+
+
+def _normalize_repo_arg(value: str) -> str:
+    """Normalize a CLI repo argument to the script's internal bare-name contract."""
+    repo = value.strip()
+    if not repo:
+        raise argparse.ArgumentTypeError("repo cannot be empty")
+    if "/" not in repo:
+        return repo
+    owner, name = repo.split("/", 1)
+    if not owner or not name or "/" in name:
+        raise argparse.ArgumentTypeError("repo must be a bare repository name or infiquetra/<repo>")
+    if owner.lower() != ORG.lower():
+        raise argparse.ArgumentTypeError(
+            f"unsupported repo owner {owner!r}; pass a bare Infiquetra repo name or {ORG}/<repo>"
+        )
+    return name
+
+
+def _parse_numbers_arg(value: str) -> list[int]:
+    """Parse a comma-separated issue-number list for CLI batch commands."""
+    numbers: list[int] = []
+    for part in value.split(","):
+        raw = part.strip()
+        if not raw:
+            raise argparse.ArgumentTypeError("numbers must be comma-separated issue numbers")
+        try:
+            number = int(raw)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(f"invalid issue number {raw!r}") from exc
+        if number <= 0:
+            raise argparse.ArgumentTypeError("issue numbers must be positive integers")
+        numbers.append(number)
+    if not numbers:
+        raise argparse.ArgumentTypeError("numbers cannot be empty")
+    return numbers
 
 
 def get_sdlc_path() -> Path:
@@ -92,7 +129,7 @@ def get_sdlc_path() -> Path:
 # ===========================
 # PER-USER DEFAULTS
 # ===========================
-# Sticky defaults persisted at ~/.gemini/sdlc-defaults.json. The first-run
+# Sticky defaults persisted at ~/.claude/sdlc-defaults.json. The first-run
 # wizard (`config init-defaults`) seeds the file. Subsequent commands read
 # defaults from here and present them as prompt-default values; operators
 # override per-card by typing a different value at the prompt.
@@ -113,7 +150,7 @@ _USER_DEFAULTS_KEYS = (
 
 
 def load_user_defaults() -> dict[str, Any]:
-    """Read ~/.gemini/sdlc-defaults.json. Returns {} on:
+    """Read ~/.claude/sdlc-defaults.json. Returns {} on:
       - file missing (first run)
       - malformed JSON (warn + return {})
       - non-object root (warn + return {})
@@ -144,7 +181,7 @@ def load_user_defaults() -> dict[str, Any]:
 
 
 def save_user_defaults(data: dict[str, Any]) -> None:
-    """Atomically write ~/.gemini/sdlc-defaults.json. Creates parent dir
+    """Atomically write ~/.claude/sdlc-defaults.json. Creates parent dir
     if missing. Atomic via tempfile + rename so a crash mid-write doesn't
     corrupt the file."""
     _USER_DEFAULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -685,6 +722,18 @@ def _rest_patch(path: str, body: dict) -> Any:
     """Execute a REST PATCH via gh CLI."""
     result = _gh(["api", "--method", "PATCH", path, "--input", "-"], input_data=json.dumps(body))
     return json.loads(result)
+
+
+def _rest_put(path: str, body: dict) -> Any:
+    """Execute a REST PUT via gh CLI."""
+    result = _gh(["api", "--method", "PUT", path, "--input", "-"], input_data=json.dumps(body))
+    return json.loads(result)
+
+
+def _rest_delete(path: str) -> Any:
+    """Execute a REST DELETE via gh CLI. May return empty body (e.g. 204 No Content)."""
+    result = _gh(["api", "--method", "DELETE", path])
+    return json.loads(result) if result else ""
 
 
 # ===========================
@@ -1451,6 +1500,7 @@ def labels_deploy(repo: str, fmt: str) -> None:
     """Create/update all SDLC labels in target repo."""
     config = load_config()
     label_defs = config.get("labels", {}).get("labels", [])
+    _validate_label_taxonomy(label_defs)
 
     results = []
     for label in label_defs:
@@ -1484,6 +1534,53 @@ def labels_deploy(repo: str, fmt: str) -> None:
         for r in results:
             if r.startswith("FAIL"):
                 print(f"  {r}")
+
+
+def _required_issue_taxonomy_labels() -> set[str]:
+    required: set[str] = set()
+    for labels in _ISSUE_TYPE_LABELS.values():
+        required.update(labels)
+    return required
+
+
+def _validate_label_taxonomy(label_defs: list[dict[str, Any]]) -> None:
+    """Validate loaded SDLC label definitions before any GitHub label mutation."""
+    errors: list[str] = []
+    if not label_defs:
+        errors.append("label taxonomy has no labels")
+
+    seen: set[str] = set()
+    names: set[str] = set()
+    for index, label in enumerate(label_defs):
+        raw_name = label.get("name", "")
+        name = raw_name.strip() if isinstance(raw_name, str) else ""
+        if not name:
+            errors.append(f"label at index {index} is missing a name")
+            continue
+        if name in seen:
+            errors.append(f"{name}: duplicate label name")
+        seen.add(name)
+        names.add(name)
+
+        raw_color = label.get("color", "")
+        color = raw_color.strip() if isinstance(raw_color, str) else ""
+        if not color:
+            errors.append(f"{name}: missing color")
+
+        description = label.get("description", "") or ""
+        if len(description) > MAX_GITHUB_LABEL_DESCRIPTION_LENGTH:
+            errors.append(
+                f"{name}: description is {len(description)} chars; "
+                f"GitHub max is {MAX_GITHUB_LABEL_DESCRIPTION_LENGTH}"
+            )
+
+    missing_required = sorted(_required_issue_taxonomy_labels() - names)
+    if missing_required:
+        errors.append("missing required issue taxonomy labels: " + ", ".join(missing_required))
+
+    if errors:
+        details = "\n".join(f"- {error}" for error in errors)
+        raise RuntimeError(f"Invalid SDLC label taxonomy:\n{details}")
 
 
 def labels_auto_label(repo: str, number: int, fmt: str) -> None:
@@ -2048,10 +2145,7 @@ def rollout_deploy_templates(repo: str, fmt: str) -> None:
             body["sha"] = sha
 
         try:
-            if not sha:
-                _rest_post(api_path, body)
-            else:
-                _rest_patch(api_path, body)
+            _rest_put(api_path, body)
             results.append(f"OK: {template_path.name}")
         except Exception as e:
             results.append(f"FAIL: {template_path.name}: {e}")
@@ -2133,21 +2227,34 @@ def rollout_update(repo: str, field: str, status: str, fmt: str) -> None:
 def _resolve_project_field(project_name: str, field_name: str) -> dict:
     """Look up a project field by name. Returns the field node (with
     id, name, options if SINGLE_SELECT). Raises RuntimeError if missing."""
+    return _resolve_project_fields(project_name, [field_name])[field_name]
+
+
+def _resolve_project_fields(project_name: str, field_names: list[str]) -> dict[str, dict[str, Any]]:
+    """Look up project fields by name with one live discovery query."""
     config = load_config()
     proj = get_project_config(config, project_name)
     data = _graphql(QUERY_GET_PROJECT_FIELDS, {"org": ORG, "number": proj["number"]})
     fields = data.get("organization", {}).get("projectV2", {}).get("fields", {}).get("nodes", [])
-    for f in fields:
-        if f.get("name", "").lower() == field_name.lower():
-            return {**f, "_project_id": data["organization"]["projectV2"]["id"]}
-    raise RuntimeError(
-        f"Field '{field_name}' not found on project '{project_name}'. "
-        f"Available fields: {[f.get('name') for f in fields]}. "
-        f"If you expected this field to exist (e.g., Initiative or Objective), "
-        f"the field-creation runbook is in "
-        f"`infiquetra-sdlc/docs/operations/operational-reference.md` "
-        f"under 'Initiative/Objective Tracking'."
-    )
+    requested = {name.lower(): name for name in field_names}
+    resolved: dict[str, dict[str, Any]] = {}
+    project_id = data["organization"]["projectV2"]["id"]
+    for field in fields:
+        requested_name = requested.get(field.get("name", "").lower())
+        if requested_name:
+            resolved[requested_name] = {**field, "_project_id": project_id}
+
+    missing = [name for name in field_names if name not in resolved]
+    if missing:
+        raise RuntimeError(
+            f"Field(s) {missing} not found on project '{project_name}'. "
+            f"Available fields: {[f.get('name') for f in fields]}. "
+            f"If you expected this field to exist (e.g., Initiative or Objective), "
+            f"the field-creation runbook is in "
+            f"`infiquetra-sdlc/docs/operations/operational-reference.md` "
+            f"under 'Initiative/Objective Tracking'."
+        )
+    return resolved
 
 
 def flow_field_options(project_name: str, field_name: str, fmt: str) -> None:
@@ -2181,8 +2288,27 @@ def flow_set_field(
     with the same option produces the same final state."""
     field = _resolve_project_field(project_name, field_name)
     project_id = field["_project_id"]
+    option = _resolve_field_option(project_name, field_name, field, option_name)
+    item_by_number = _project_items_by_number(project_name, repo)
 
-    # Find the option by name (case-insensitive)
+    target_item = item_by_number.get(number)
+    if not target_item:
+        raise RuntimeError(
+            f"Issue {repo}#{number} is not on project '{project_name}'. "
+            f"Use `sdlc_manager.py board add --repo {repo} --number {number}` first."
+        )
+
+    _set_project_field_value(project_id, field, option, target_item)
+    _out(f"Set {field_name}='{option_name}' on {repo}#{number} ({project_name})", fmt)
+
+
+def _resolve_field_option(
+    project_name: str,
+    field_name: str,
+    field: dict[str, Any],
+    option_name: str,
+) -> dict[str, Any]:
+    """Find a single-select option by name with the existing operator hint."""
     options = field.get("options", [])
     option = next(
         (o for o in options if o.get("name", "").lower() == option_name.lower()),
@@ -2195,24 +2321,28 @@ def flow_set_field(
             f"Hint: use `flow field-options --project {project_name} --field {field_name}` "
             f"to see current options."
         )
+    return cast(dict[str, Any], option)
 
-    # Find the project item for this repo+number
-    _, items = get_project_items(get_project_config(load_config(), project_name)["number"])
-    target_item = next(
-        (
-            i
-            for i in items
-            if i.get("content", {}).get("number") == number
-            and i.get("content", {}).get("repository", {}).get("name") == repo
-        ),
-        None,
-    )
-    if not target_item:
-        raise RuntimeError(
-            f"Issue {repo}#{number} is not on project '{project_name}'. "
-            f"Use `sdlc_manager.py board add --repo {repo} --number {number}` first."
-        )
 
+def _project_items_by_number(project_name: str, repo: str) -> dict[int, dict[str, Any]]:
+    """Index current project items for one repo; callers decide missing-item semantics."""
+    config = load_config()
+    project_number = get_project_config(config, project_name)["number"]
+    _, items = get_project_items(project_number)
+    return {
+        cast(int, item.get("content", {}).get("number")): cast(dict[str, Any], item)
+        for item in items
+        if item.get("content", {}).get("repository", {}).get("name") == repo
+        and isinstance(item.get("content", {}).get("number"), int)
+    }
+
+
+def _set_project_field_value(
+    project_id: str,
+    field: dict[str, Any],
+    option: dict[str, Any],
+    target_item: dict[str, Any],
+) -> None:
     _graphql(
         QUERY_SET_FIELD_VALUE,
         {
@@ -2222,7 +2352,101 @@ def flow_set_field(
             "optionId": option["id"],
         },
     )
-    _out(f"Set {field_name}='{option_name}' on {repo}#{number} ({project_name})", fmt)
+
+
+def flow_set_field_bulk(
+    project_name: str,
+    repo: str,
+    numbers: list[int],
+    field_name: str,
+    option_name: str,
+    fmt: str,
+) -> None:
+    """Set one single-select field value across multiple cards in one discovery pass."""
+    flow_set_fields_bulk(project_name, repo, numbers, [(field_name, option_name)], fmt)
+
+
+def flow_set_fields_bulk(
+    project_name: str,
+    repo: str,
+    numbers: list[int],
+    assignments: list[tuple[str, str]],
+    fmt: str,
+) -> None:
+    """Set one or more single-select fields across multiple cards in one discovery pass."""
+    if not numbers:
+        raise RuntimeError("numbers cannot be empty")
+    if not assignments:
+        raise RuntimeError("field assignments cannot be empty")
+
+    field_names = [field_name for field_name, _ in assignments]
+    fields = _resolve_project_fields(project_name, field_names)
+    resolved_assignments = [
+        (
+            field_name,
+            option_name,
+            fields[field_name],
+            _resolve_field_option(project_name, field_name, fields[field_name], option_name),
+        )
+        for field_name, option_name in assignments
+    ]
+    item_by_number = _project_items_by_number(project_name, repo)
+
+    updated: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
+    for number in numbers:
+        target_item = item_by_number.get(number)
+        if not target_item:
+            failed.append(
+                {
+                    "repo": repo,
+                    "number": number,
+                    "error": (
+                        f"Issue {repo}#{number} is not on project '{project_name}'. "
+                        f"Use `sdlc_manager.py board add --repo {repo} --number {number}` first."
+                    ),
+                }
+            )
+            continue
+        for field_name, option_name, field, option in resolved_assignments:
+            try:
+                _set_project_field_value(field["_project_id"], field, option, target_item)
+            except RuntimeError as exc:
+                failed.append(
+                    {
+                        "repo": repo,
+                        "number": number,
+                        "field": field_name,
+                        "option": option_name,
+                        "error": str(exc),
+                    }
+                )
+                continue
+            updated.append(
+                {
+                    "repo": repo,
+                    "number": number,
+                    "field": field_name,
+                    "option": option_name,
+                }
+            )
+
+    result = {
+        "action": "set-field",
+        "project": project_name,
+        "repo": repo,
+        "assignments": [
+            {"field": field_name, "option": option_name} for field_name, option_name in assignments
+        ],
+        "updated": updated,
+        "failed": failed,
+    }
+    _out(result, fmt)
+    if failed:
+        raise RuntimeError(
+            f"flow set-field failed for {len(failed)} of "
+            f"{len(numbers) * len(assignments)} field update(s); see results above"
+        )
 
 
 def flow_discover_project(repo: str, fmt: str) -> None:
@@ -2244,6 +2468,79 @@ def flow_discover_project(repo: str, fmt: str) -> None:
         print(f"\n{repo} maps to:")
         for p in projects:
             print(f"  - {p['name']} (#{p['number']})")
+
+
+# ===========================
+# ISSUE WRITE VERBS (U3 — #279)
+# ===========================
+
+
+def issue_close(repo: str, number: int, fmt: str = "text") -> None:
+    """Close a GitHub issue. Idempotent: re-closing an already-closed issue succeeds."""
+    _rest_patch(f"repos/{ORG}/{repo}/issues/{number}", {"state": "closed"})
+    _out({"action": "closed", "repo": repo, "number": number}, fmt)
+
+
+def issue_reopen(repo: str, number: int, fmt: str = "text") -> None:
+    """Reopen a closed GitHub issue. Idempotent: re-opening an open issue succeeds."""
+    _rest_patch(f"repos/{ORG}/{repo}/issues/{number}", {"state": "open"})
+    _out({"action": "reopened", "repo": repo, "number": number}, fmt)
+
+
+def issue_comment(repo: str, number: int, body: str, fmt: str = "text") -> None:
+    """Post a comment on a GitHub issue. Plain POST — consumer's idempotency ledger
+    (KTD4) ensures one comment per meaningful transition; this verb just posts."""
+    result = _rest_post(f"repos/{ORG}/{repo}/issues/{number}/comments", {"body": body})
+    _out(
+        {"action": "commented", "repo": repo, "number": number, "comment_id": result.get("id")}, fmt
+    )
+
+
+def issue_label_add(repo: str, number: int, label: str, fmt: str = "text") -> None:
+    """Add a label to a GitHub issue. Idempotent: GitHub no-ops if the label is
+    already present (returns 200)."""
+    _rest_post(f"repos/{ORG}/{repo}/issues/{number}/labels", {"labels": [label]})
+    _out({"action": "label_added", "repo": repo, "number": number, "label": label}, fmt)
+
+
+def issue_label_remove(repo: str, number: int, label: str, fmt: str = "text") -> None:
+    """Remove a label from a GitHub issue. Idempotent: treats 404 (label already
+    absent) as success; lets other errors propagate for the U4 retry path.
+
+    The label is URL-encoded into the path — label names routinely contain spaces (``good first
+    issue``) or ``/``, which would otherwise yield a malformed/mis-targeted path.
+    """
+    from urllib.parse import quote
+
+    label_seg = quote(label, safe="")
+    try:
+        _rest_delete(f"repos/{ORG}/{repo}/issues/{number}/labels/{label_seg}")
+    except ApiNotFoundError as e:
+        # Before treating 404 as idempotent success, verify that the issue itself exists (Finding 9)
+        try:
+            _rest_get(f"repos/{ORG}/{repo}/issues/{number}")
+        except ApiNotFoundError:
+            raise e from None
+        # Label was already absent — idempotent success.
+        _out({"action": "label_remove_noop", "repo": repo, "number": number, "label": label}, fmt)
+        return
+    except GhApiError as e:
+        is_404 = (
+            e.status_code == 404
+            or (e.stderr and "404" in e.stderr)
+            or (e.stdout and "404" in e.stdout)
+            or "label does not exist" in str(e).lower()
+        )
+        if is_404:
+            # Before treating 404 as idempotent success, verify that the issue itself exists (Finding 9)
+            try:
+                _rest_get(f"repos/{ORG}/{repo}/issues/{number}")
+            except Exception:
+                raise e from None
+            _out({"action": "label_remove_noop", "repo": repo, "number": number, "label": label}, fmt)
+            return
+        raise
+    _out({"action": "label_removed", "repo": repo, "number": number, "label": label}, fmt)
 
 
 def flow_link_sub_issue(
@@ -2652,7 +2949,7 @@ def config_show(fmt: str) -> None:
 
 
 def config_show_defaults(fmt: str) -> None:
-    """Display the current per-user defaults from ~/.gemini/sdlc-defaults.json."""
+    """Display the current per-user defaults from ~/.claude/sdlc-defaults.json."""
     defaults = load_user_defaults()
     if fmt == "json":
         _out({"path": str(_USER_DEFAULTS_PATH), "defaults": defaults}, fmt)
@@ -2669,7 +2966,7 @@ def config_show_defaults(fmt: str) -> None:
 
 
 def config_init_defaults(non_interactive: bool, fmt: str) -> None:
-    """First-run wizard: seed ~/.gemini/sdlc-defaults.json.
+    """First-run wizard: seed ~/.claude/sdlc-defaults.json.
 
     Interactive by default — prompts for each key with the existing value
     (or a sensible suggestion) as the default. Type a value to override;
@@ -3376,7 +3673,111 @@ def _contract_scaffold_body(
     return "\n\n".join(sections)
 
 
+# Issue-carried recommended tier band (#368 AC5): a coarse issue-time seed for
+# /plan's per-unit tier table (saga's tier_defaults.resolve_tier_for_plan reads
+# it; precedence there is repo overlay > this band > shared registry). The map
+# mirrors tier_policy.json's work-shape bands: judgment→gemini-3.1-pro/high,
+# mechanical→gemini-3.1-pro/medium, read-only-survey→gemini-3.1-pro/low. `objective` is a
+# parent tracking card with no execution tier of its own — no band stamped.
+_TIER_BAND_HEADER = "Recommended Tier Band"
+_ISSUE_TYPE_TIER_BANDS: dict[str, tuple[str, str] | None] = {
+    "capability": ("gemini-3.1-pro", "high"),
+    "enhancement": ("gemini-3.5-flash", "medium"),
+    "defect": ("gemini-3.1-pro", "high"),
+    "exploration": ("gemini-3.5-flash", "low"),
+    "context-update": ("gemini-3.5-flash", "medium"),
+    "objective": None,
+}
+
+
+def derive_tier_band(issue_type: str) -> dict[str, str] | None:
+    """Type→band mapping for the stamped `### Recommended Tier Band` field (AC5).
+
+    Returns ``{"model", "effort"}`` or None (unknown type / objective — no band).
+    """
+    band = _ISSUE_TYPE_TIER_BANDS.get(issue_type)
+    if band is None:
+        return None
+    return {"model": band[0], "effort": band[1]}
+
+
+def _has_tier_band_section(body: str) -> bool:
+    """True when a real H3 tier-band header exists outside fenced code blocks.
+
+    The idempotence guard must be fence-aware, not a substring test: a prose or
+    code-block *mention* of the header text (e.g. a Verification section showing
+    example output) must not silently suppress the stamp. Mirrored by saga's
+    ``tier_defaults._unfenced_lines`` on the parse side of the format contract.
+    """
+    header_re = re.compile(rf"###\s+{re.escape(_TIER_BAND_HEADER)}\s*")
+    in_fence = False
+    for line in body.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if not in_fence and header_re.fullmatch(line):
+            return True
+    return False
+
+
+def _open_fence_closer(body: str) -> str | None:
+    """The marker that closes a fence still open at end-of-body, or None.
+
+    An unclosed fence runs to end-of-document (CommonMark), so a section
+    appended after it would render — and parse — as code text. Returns the
+    opening marker's own prefix (``` or ~~~) so the closer matches the flavor.
+    """
+    open_marker: str | None = None
+    for line in body.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            open_marker = None if open_marker else stripped[:3]
+    return open_marker
+
+
+def _append_tier_band(body: str, issue_type: str) -> str:
+    """Stamp the derived band as an auto-populated H3 section (idempotent).
+
+    Mirrors the Lifecycle Origin discipline: auto-populated at compile time,
+    never author-required. The card validator only checks *required* sections,
+    so the extra section is accepted as-is. A fence left open at end-of-body is
+    closed first — render-neutral for the author's content (the fence ran to
+    end-of-document anyway), and it keeps the stamped band a real section
+    instead of code text the saga-side parser can never see.
+    """
+    band = derive_tier_band(issue_type)
+    if band is None or _has_tier_band_section(body):
+        return body
+    base = body.rstrip()
+    closer = _open_fence_closer(base)
+    if closer is not None:
+        base += f"\n{closer}"
+    return base + f"\n\n### {_TIER_BAND_HEADER}\n{band['model']}/{band['effort']}\n"
+
+
 def _source_to_issue_body(
+    source: str,
+    issue_type: str,
+    team: str,
+    repo: str,
+    risk: str | None,
+    mode: str | None,
+    handoff_maturity: str | None = None,
+    source_artifact: SourceArtifact | None = None,
+) -> str:
+    """Assemble the issue body, then stamp the recommended tier band (AC5).
+
+    The stamp lives on this wrapper (not the single current call site) so every
+    body the compile path emits carries the band — a future call site cannot
+    silently miss it.
+    """
+    body = _source_to_issue_body_unstamped(
+        source, issue_type, team, repo, risk, mode, handoff_maturity, source_artifact
+    )
+    return _append_tier_band(body, issue_type)
+
+
+def _source_to_issue_body_unstamped(
     source: str,
     issue_type: str,
     team: str,
@@ -4582,7 +4983,7 @@ def issue_create(
       2. Sub-issue-first prompt: parent issue?
       3. Discover project the repo maps to (if any)
       4. Per-project schema discovery: which project fields exist?
-      5. Prompt for field values, defaults from ~/.gemini/sdlc-defaults.json
+      5. Prompt for field values, defaults from ~/.claude/sdlc-defaults.json
       6. Capability-adaptive: prompt for Size if type is capability/objective AND project exposes the field
       7. Open `gh issue create --web` in browser; operator fills body
       8. Operator pastes back the issue number
@@ -4785,7 +5186,12 @@ def main() -> None:
             "(e.g. --project operations --project asgard)."
         ),
     )
-    board_add_p.add_argument("--repo", required=True, help="Repository name (without org)")
+    board_add_p.add_argument(
+        "--repo",
+        required=True,
+        type=_normalize_repo_arg,
+        help="Repository name (bare or infiquetra/<repo>)",
+    )
     board_add_p.add_argument("--number", required=True, type=int, help="Issue or PR number")
 
     board_move_p = board_sp.add_parser("move", help="Move item to different column")
@@ -4794,7 +5200,7 @@ def main() -> None:
         choices=PROJECT_CHOICES,
         help="Target a specific project instead of repo-based default routing",
     )
-    board_move_p.add_argument("--repo", required=True)
+    board_move_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     board_move_p.add_argument("--number", required=True, type=int)
     board_move_p.add_argument(
         "--status", required=True, help="Target status (e.g. 'Assigned', 'In Review', 'Active')"
@@ -4827,7 +5233,7 @@ def main() -> None:
         "create",
         help="Sub-issue-first interactive issue creation with metadata application",
     )
-    issue_create_p.add_argument("--repo", required=True)
+    issue_create_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     issue_create_p.add_argument(
         "--type",
         choices=[
@@ -4855,7 +5261,7 @@ def main() -> None:
         "prepare",
         help="Prepare a team-aware issue draft and readiness sidecar without GitHub mutation",
     )
-    issue_prepare_p.add_argument("--repo", required=True)
+    issue_prepare_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     issue_prepare_p.add_argument(
         "--type",
         required=True,
@@ -4922,6 +5328,34 @@ def main() -> None:
         help="One or more prepared draft markdown paths to approve",
     )
 
+    # U3 (#279): issue write verbs — close / reopen / comment / label-add / label-remove
+    issue_close_p = issue_sp.add_parser("close", help="Close a GitHub issue (idempotent)")
+    issue_close_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
+    issue_close_p.add_argument("--number", required=True, type=int)
+
+    issue_reopen_p = issue_sp.add_parser("reopen", help="Reopen a closed GitHub issue (idempotent)")
+    issue_reopen_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
+    issue_reopen_p.add_argument("--number", required=True, type=int)
+
+    issue_comment_p = issue_sp.add_parser("comment", help="Post a comment on a GitHub issue")
+    issue_comment_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
+    issue_comment_p.add_argument("--number", required=True, type=int)
+    issue_comment_p.add_argument("--body", required=True)
+
+    issue_label_add_p = issue_sp.add_parser(
+        "label-add", help="Add a label to a GitHub issue (idempotent)"
+    )
+    issue_label_add_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
+    issue_label_add_p.add_argument("--number", required=True, type=int)
+    issue_label_add_p.add_argument("--label", required=True)
+
+    issue_label_remove_p = issue_sp.add_parser(
+        "label-remove", help="Remove a label from a GitHub issue (idempotent — 404 = success)"
+    )
+    issue_label_remove_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
+    issue_label_remove_p.add_argument("--number", required=True, type=int)
+    issue_label_remove_p.add_argument("--label", required=True)
+
     # ===========================
     # LABELS
     # ===========================
@@ -4931,17 +5365,17 @@ def main() -> None:
     labels_sync_p = labels_sp.add_parser(
         "sync-fields", help="Sync initiative/objective labels to project fields"
     )
-    labels_sync_p.add_argument("--repo", required=True)
+    labels_sync_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     labels_sync_p.add_argument("--number", required=True, type=int)
 
     labels_audit_p = labels_sp.add_parser("audit", help="Check repo has all SDLC labels")
-    labels_audit_p.add_argument("--repo", required=True)
+    labels_audit_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
 
     labels_deploy_p = labels_sp.add_parser("deploy", help="Create/update all labels in repo")
-    labels_deploy_p.add_argument("--repo", required=True)
+    labels_deploy_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
 
     labels_auto_p = labels_sp.add_parser("auto-label", help="Apply auto-label rules to issue")
-    labels_auto_p.add_argument("--repo", required=True)
+    labels_auto_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     labels_auto_p.add_argument("--number", required=True, type=int)
 
     # ===========================
@@ -4993,7 +5427,7 @@ def main() -> None:
     ms_sp = ms_p.add_subparsers(dest="action", required=True)
 
     ms_create_p = ms_sp.add_parser("create", help="Create milestone for Objective")
-    ms_create_p.add_argument("--repo", required=True)
+    ms_create_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     ms_create_p.add_argument(
         "--title", required=True, help="Milestone title (e.g. 'Pilot: Auth MVP')"
     )
@@ -5001,15 +5435,15 @@ def main() -> None:
     ms_create_p.add_argument("--description", default="", help="Milestone description")
 
     ms_list_p = ms_sp.add_parser("list", help="List milestones")
-    ms_list_p.add_argument("--repo", required=True)
+    ms_list_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     ms_list_p.add_argument("--state", choices=["open", "closed", "all"], default="open")
 
     ms_progress_p = ms_sp.add_parser("progress", help="Show milestone completion percent")
-    ms_progress_p.add_argument("--repo", required=True)
+    ms_progress_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     ms_progress_p.add_argument("--milestone", required=True, type=int, help="Milestone number")
 
     ms_link_p = ms_sp.add_parser("link", help="Link issue to milestone")
-    ms_link_p.add_argument("--repo", required=True)
+    ms_link_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     ms_link_p.add_argument("--issue", required=True, type=int)
     ms_link_p.add_argument("--milestone", required=True, type=int)
 
@@ -5023,21 +5457,21 @@ def main() -> None:
     rollout_status_p.add_argument("--team", help="Filter by team")
 
     rollout_gap_p = rollout_sp.add_parser("gap-analysis", help="Check what's missing from a repo")
-    rollout_gap_p.add_argument("--repo", required=True)
+    rollout_gap_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
 
     rollout_labels_p = rollout_sp.add_parser("deploy-labels", help="Deploy all SDLC labels to repo")
-    rollout_labels_p.add_argument("--repo", required=True)
+    rollout_labels_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
 
     rollout_templates_p = rollout_sp.add_parser(
         "deploy-templates", help="Deploy all SDLC templates to repo"
     )
-    rollout_templates_p.add_argument("--repo", required=True)
+    rollout_templates_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
 
     rollout_all_p = rollout_sp.add_parser("deploy-all", help="Full SDLC deployment to repo")
-    rollout_all_p.add_argument("--repo", required=True)
+    rollout_all_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
 
     rollout_update_p = rollout_sp.add_parser("update", help="Update beads-config.json")
-    rollout_update_p.add_argument("--repo", required=True)
+    rollout_update_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     rollout_update_p.add_argument(
         "--field", required=True, choices=["labels", "templates", "claude_md", "project"]
     )
@@ -5056,12 +5490,22 @@ def main() -> None:
         help="Set a single-select project field on a card",
     )
     flow_setfield_p.add_argument("--project", required=True, help="Project name (e.g., operations)")
-    flow_setfield_p.add_argument("--repo", required=True)
-    flow_setfield_p.add_argument("--number", required=True, type=int)
+    flow_setfield_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
+    flow_setfield_numbers = flow_setfield_p.add_mutually_exclusive_group(required=True)
+    flow_setfield_numbers.add_argument("--number", type=int)
+    flow_setfield_numbers.add_argument("--numbers", type=_parse_numbers_arg)
     flow_setfield_p.add_argument(
-        "--field", required=True, help="Field name (e.g., Initiative, Objective, Status)"
+        "--field",
+        required=True,
+        action="append",
+        help="Field name (repeat with --option to set multiple fields)",
     )
-    flow_setfield_p.add_argument("--option", required=True, help="Option name (case-insensitive)")
+    flow_setfield_p.add_argument(
+        "--option",
+        required=True,
+        action="append",
+        help="Option name, case-insensitive (repeat with --field)",
+    )
 
     flow_options_p = flow_sp.add_parser(
         "field-options",
@@ -5074,22 +5518,22 @@ def main() -> None:
         "discover-project",
         help="Resolve which project(s) a repo is mapped to",
     )
-    flow_disc_p.add_argument("--repo", required=True)
+    flow_disc_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
 
     flow_link_p = flow_sp.add_parser(
         "link-sub-issue",
         help="Link child as native sub-issue of parent (cross-repo supported, idempotent)",
     )
-    flow_link_p.add_argument("--parent-repo", required=True)
+    flow_link_p.add_argument("--parent-repo", required=True, type=_normalize_repo_arg)
     flow_link_p.add_argument("--parent-number", required=True, type=int)
-    flow_link_p.add_argument("--child-repo", required=True)
+    flow_link_p.add_argument("--child-repo", required=True, type=_normalize_repo_arg)
     flow_link_p.add_argument("--child-number", required=True, type=int)
 
     flow_label_p = flow_sp.add_parser(
         "verify-label",
         help="Self-healing label create (404 → create; exists → no-op; other errors raise)",
     )
-    flow_label_p.add_argument("--repo", required=True)
+    flow_label_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     flow_label_p.add_argument("--name", required=True)
     flow_label_p.add_argument("--color", default=None, help="Hex color without leading '#'")
     flow_label_p.add_argument("--description", default=None)
@@ -5098,7 +5542,7 @@ def main() -> None:
         "validate-card",
         help="Run card_validator schema check on an existing issue body",
     )
-    flow_validate_p.add_argument("--repo", required=True)
+    flow_validate_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     flow_validate_p.add_argument("--number", required=True, type=int)
 
     # ===========================
@@ -5108,7 +5552,7 @@ def main() -> None:
     config_sp = config_p.add_subparsers(dest="action", required=True)
     config_sp.add_parser("show", help="Show loaded configuration")
     config_sp.add_parser(
-        "show-defaults", help="Show per-user defaults from ~/.gemini/sdlc-defaults.json"
+        "show-defaults", help="Show per-user defaults from ~/.claude/sdlc-defaults.json"
     )
     config_init_p = config_sp.add_parser(
         "init-defaults",
@@ -5184,6 +5628,17 @@ def main() -> None:
                 )
             elif args.action == "approve":
                 prepared_approve_batch([Path(d) for d in args.drafts], fmt=fmt)
+            # U3 (#279): issue write verbs
+            elif args.action == "close":
+                issue_close(args.repo, args.number, fmt)
+            elif args.action == "reopen":
+                issue_reopen(args.repo, args.number, fmt)
+            elif args.action == "comment":
+                issue_comment(args.repo, args.number, args.body, fmt)
+            elif args.action == "label-add":
+                issue_label_add(args.repo, args.number, args.label, fmt)
+            elif args.action == "label-remove":
+                issue_label_remove(args.repo, args.number, args.label, fmt)
 
         elif args.resource == "labels":
             if args.action == "sync-fields":
@@ -5237,7 +5692,22 @@ def main() -> None:
 
         elif args.resource == "flow":
             if args.action == "set-field":
-                flow_set_field(args.project, args.repo, args.number, args.field, args.option, fmt)
+                if len(args.field) != len(args.option):
+                    raise RuntimeError(
+                        "flow set-field requires the same number of --field and --option values"
+                    )
+                if args.numbers is not None or len(args.field) > 1:
+                    flow_set_fields_bulk(
+                        args.project,
+                        args.repo,
+                        args.numbers if args.numbers is not None else [args.number],
+                        list(zip(args.field, args.option, strict=True)),
+                        fmt,
+                    )
+                else:
+                    flow_set_field(
+                        args.project, args.repo, args.number, args.field[0], args.option[0], fmt
+                    )
             elif args.action == "field-options":
                 flow_field_options(args.project, args.field, fmt)
             elif args.action == "discover-project":

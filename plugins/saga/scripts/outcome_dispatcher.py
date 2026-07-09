@@ -36,6 +36,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import execution_spec  # noqa: E402  (after the sys.path shim, by design)
 import outcome_spec  # noqa: E402  (after the sys.path shim, by design)
 
 # The always-available floor (R6): the agent can always run inline, emit a team-execution artifact, or
@@ -97,6 +98,48 @@ class BackendHaltError(Exception):
         self.receipt = receipt
 
 
+@dataclass(frozen=True)
+class RateLimitReceipt:
+    """A visible record that a chosen backend was RATE-LIMITED (HTTP 429) during dispatch.
+
+    Unlike a :class:`HaltReceipt` (backend down -> operator attention), a rate-limit is TRANSIENT:
+    the coordinator re-picks the leaf on the next advance tick with no operator action (#348 KTD4).
+    ``retry_after`` carries the backend's Retry-After hint (seconds) when known, mirroring the
+    fleet-commons ``retry_backoff`` primitive's ``retry_after`` seam.
+    """
+
+    outcome_id: str
+    subplot_id: str
+    backend: str
+    reason: str
+    retry_after: float | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "rate_limited",
+            "outcome_id": self.outcome_id,
+            "subplot_id": self.subplot_id,
+            "backend": self.backend,
+            "reason": self.reason,
+            "retry_after": self.retry_after,
+        }
+
+
+class BackendRateLimitError(Exception):
+    """A backend 429 during dispatch (#348 KTD4): TRANSIENT, not a HALT. Carries the receipt.
+
+    Owned by this backend module (never run as ``__main__``) so ``outcome._reconcile_once``'s
+    per-leaf ``except`` catches the SAME class regardless of how the engine is launched -- the same
+    identity discipline as :class:`BackendHaltError`. A 429'd dispatch leaves NO commit record, so
+    the leaf's derived state stays ``ready`` and the ready frontier re-picks it; ``retriable-pending``
+    is a derived-on-read RESULT label, never a committed ``NODE_STATE``.
+    """
+
+    def __init__(self, receipt: RateLimitReceipt) -> None:
+        super().__init__(receipt.reason)
+        self.receipt = receipt
+
+
 def dispatch(req: Any, *, available: Sequence[str] = DEFAULT_AVAILABLE) -> dict[str, Any]:
     """Route a leaf to its backend. Returns a ``dispatched`` or a ``halt`` result dict.
 
@@ -122,6 +165,25 @@ def dispatch(req: Any, *, available: Sequence[str] = DEFAULT_AVAILABLE) -> dict[
             available=tuple(available),
         )
         return {"status": "halt", "receipt": receipt.to_dict()}
+    # Sandbox enforceability probe (#287 U3, R4): the resolved backend must be able to enforce the
+    # leaf's declared containment. If it cannot, HALT with the axis named rather than silently
+    # running the leaf without the requested sandbox. Duck-typed ``sandbox`` (a Node carries it as
+    # of #287 U1; older reqs simply lack it) keeps this backward compatible.
+    offending = execution_spec.unenforceable_sandbox_axis(backend, getattr(req, "sandbox", None))
+    if offending is not None:
+        axis_name, axis_value = offending
+        receipt = HaltReceipt(
+            outcome_id=str(req.outcome_id),
+            subplot_id=str(req.subplot_id),
+            backend=backend,
+            reason=(
+                f"backend {backend!r} cannot enforce sandbox {axis_name}={axis_value!r} "
+                f"(#287 R4 halt-not-downgrade) -- it would run the leaf without the requested "
+                f"containment. HALT and page rather than silently drop the sandbox."
+            ),
+            available=tuple(available),
+        )
+        return {"status": "halt", "receipt": receipt.to_dict()}
     leaf_saga_id = f"leaf-{req.outcome_id}-{req.subplot_id}"
     return {
         "status": "dispatched",
@@ -140,6 +202,12 @@ def make_dispatcher(*, available: Sequence[str] = DEFAULT_AVAILABLE) -> Callable
         result = dispatch(req, available=available)
         if result["status"] == "halt":
             raise BackendHaltError(HaltReceipt(**_receipt_kwargs(result["receipt"])))
+        # #348 KTD4: a ``rate_limited`` dispatch result surfaces as a TRANSIENT 429, distinct from a
+        # HALT. No in-scope backend emits this status yet (agy/codex bridge adoption is deferred per
+        # KTD2 -- the fleet-commons primitive is import-ready); this translation makes the production
+        # dispatcher CAPABLE the instant a backend returns it, mirroring the halt branch.
+        if result["status"] == "rate_limited":
+            raise BackendRateLimitError(RateLimitReceipt(**_rate_limit_kwargs(result["receipt"])))
         return str(result["leaf_saga_id"])
 
     return _dispatch
@@ -155,6 +223,16 @@ def _receipt_kwargs(receipt: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _rate_limit_kwargs(receipt: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "outcome_id": receipt["outcome_id"],
+        "subplot_id": receipt["subplot_id"],
+        "backend": receipt["backend"],
+        "reason": receipt["reason"],
+        "retry_after": receipt.get("retry_after"),
+    }
+
+
 # ---------------------------------------------------------------------------
 # team-execution artifact (R5 — wiring the existing team_emitter)
 # ---------------------------------------------------------------------------
@@ -164,19 +242,13 @@ def team_execution_artifact(execution_spec_obj: Any) -> str:
     """Emit the team-execution ``## Team Structure`` markdown for a leaf's execution spec (R5).
 
     Delegates to ``execution_spec.recompile_for_tier(spec, "team-execution")`` — the by-mode
-    dispatcher seam whose third leg is now ``team_emitter`` — so the team-execution backend's runnable
-    artifact is produced through the single seam, not reinvented here. Lazily loaded by path so this
-    module is importable standalone.
+    dispatcher seam whose third leg is ``team_emitter`` — so the team-execution backend's runnable
+    artifact is produced through the single seam, not reinvented here. Uses the module-level
+    ``execution_spec`` import (loaded under the sys.path shim) so this and ``team_emitter`` reach the
+    SAME class objects — a fresh per-call ``exec_module`` would mint a second ``SpecError`` that an
+    upstream ``except`` misses (the #287 U3 dynamic-reload identity trap).
     """
-    import importlib.util
-
-    path = Path(__file__).resolve().parent / "execution_spec.py"
-    loaded = importlib.util.spec_from_file_location("execution_spec", path)
-    assert loaded is not None and loaded.loader is not None
-    module = importlib.util.module_from_spec(loaded)
-    sys.modules.setdefault("execution_spec", module)
-    loaded.loader.exec_module(module)
-    return str(module.recompile_for_tier(execution_spec_obj, "team-execution"))
+    return str(execution_spec.recompile_for_tier(execution_spec_obj, "team-execution"))
 
 
 # ---------------------------------------------------------------------------
@@ -268,7 +340,10 @@ def degrade_decision(
             backend,
             f"{backend} unavailable but the leaf is guarantee-bearing -> HALT even when away (R23)",
         )
-    if had_side_effect:
+    import reversibility_certificate  # lazy, mirrors lifecycle_state idiom; certificate is the authority (R10, R11)
+
+    side_effected = reversibility_certificate.side_effected(had_side_effect)
+    if side_effected:
         return (
             "halt",
             backend,

@@ -1,11 +1,12 @@
 ---
 name: api-compat-scanner
 description: |
-  Scanner validator for team-execution. Checks API compatibility for contract and endpoint
+  Scanner validator for multi-agent-consensus. Checks API compatibility for contract and endpoint
   changes.
 
   Candidate tools: oasdiff, Schemathesis.
-model: haiku
+model: gemini-3.5-flash
+effort: high
 color: green
 ---
 

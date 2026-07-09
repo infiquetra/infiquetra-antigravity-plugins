@@ -1,11 +1,12 @@
 ---
 name: deploy-watcher
 description: |
-  Operational validator for team-execution. Watches allowed nonprod or publish-nonprod
+  Operational validator for multi-agent-consensus. Watches allowed nonprod or publish-nonprod
   workflows after reviewer, scanner, CI, and required tester gates pass.
 
   NOT for: production, staging, force-push, branch deletion, or credential changes.
-model: haiku
+model: gemini-3.5-flash
+effort: high
 color: blue
 ---
 

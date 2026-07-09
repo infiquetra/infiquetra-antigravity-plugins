@@ -1,9 +1,10 @@
 ---
 name: event-flow-tester
 description: |
-  Tester validator for team-execution. Validates queues, streams, webhooks, pub/sub,
+  Tester validator for multi-agent-consensus. Validates queues, streams, webhooks, pub/sub,
   retries, idempotency, and async event paths.
-model: sonnet
+model: gemini-3.5-flash
+effort: high
 color: purple
 ---
 

@@ -127,6 +127,11 @@ closed). `/work` **owns this re-entry** — it does not depend on `/resume` bein
 through `--rounds-seen` (never `next_round`). Branches that re-execute units re-enter Phases 2-5 with the
 round incremented; branches that merge or pause set `status`/`phase_status` and stop.
 
+On a failure row, run the **between-rounds tier escalation proposal** (#364) in
+`references/pr-continuation-loop.md` before re-executing: when the failure is depth-shaped, propose
+exactly one `escalate_tier` rung with its ordinal cost delta, gated on operator confirmation
+(end-clamped at the ladder top / session ceiling — never silently applied).
+
 ### 0.5 Complexity triage
 
 For a fresh build (no `pr_refs`), size the execution strategy with the CE complexity triage in
@@ -195,6 +200,12 @@ python3 plugins/saga/scripts/saga.py save \
   --rounds-seen "1"
 ```
 
+**Front-loaded ceremony start (R7, issue #345).** Immediately after this mint, when `issue_ref` is set,
+offer to run `ship_ceremony.py start --issue-ref <issue_ref>` — it pushes the working branch and opens a
+draft PR carrying the plan link, recording `pr_refs` on the saga right away. Reaching "ship" later then
+flips this same draft ready instead of opening a fresh PR. Skip this offer for `--kind task` work (no
+`issue_ref` to link) or when the operator declines.
+
 `--id` is the only strictly required flag (`--kind` defaults to `issue`); for ad-hoc `task` work pass
 `--kind task --id <slug>` and omit `--issue-ref` (then `--plan-path` + the on-branch save are the match
 keys). `save` mints unconditionally (correct here — `/work` is the minter), and when Phase 0.3 matched it
@@ -241,8 +252,8 @@ hand-rolled serial subagents or any other inline fallback:
 
 On a HALT, surface the reason and one recovery line, e.g.:
 
-- Workflow tool absent: "HALT — Workflow tool not available in this session. Recovery: resume in a
-  Claude Code session where the Workflow tool is present, or ask the operator to switch the backend to
+- Workflow tool absent: "HALT — Workflow tool not available in this session. Recovery: resume in an
+  Antigravity session where the Workflow tool is present, or ask the operator to switch the backend to
   `team-execution` or `inline`."
 - Spec/ref missing: "HALT — saga `orchestration_ref` is empty or the spec file does not exist at
   `<path>`. Recovery: re-run `/plan` to author the spec and record the ref, then resume `/work`."
@@ -260,6 +271,27 @@ divergence through (its note was checked when that earlier tick saved). The only
 the operator picks a backend, `/work` records exactly that pick via `--orchestration-mode` (so
 `orchestration_operator_choice` derives equal to it — no divergence), and a genuine capability degrade is
 recorded as `orchestration_downgrade` WITH the divergence (operator-choice §6).
+
+**Post-run manifest persistence (U4/KTD7).** A Workflow script has no filesystem access, so it cannot
+write its own provenance manifest — the *driving session* (this `/work` run) is the producer of record
+for `cc-workflows-ultracode` units. Once the Workflow returns, before moving on to Phase 2 wrap-up:
+
+1. Collect the run's per-unit returned results into a JSON object mapping `unit_id -> result` (the same
+   shape each unit returned to the Workflow — a dict of the unit's `returns` keys, a fan-out list, or
+   `null`/absent for a prose-only leaf).
+2. Persist one manifest per spec-declared unit:
+
+   ```bash
+   python3 plugins/saga/scripts/manifest_store.py --repo-root . --saga-id <saga-id> \
+     record-completeness --spec <orchestration_ref_spec.json> --results <results.json>
+   ```
+
+3. A non-zero exit means at least one **contract-bearing** unit (a unit with a non-empty `returns` or an
+   enumerated fan-out) tripped `missing-output` (R10) — every manifest is still written (the trip is
+   reported, not silently dropped), so treat this like any other Phase 3 completeness finding: investigate
+   the named unit before treating the round as PR-ready.
+4. Team-execution runs follow the same CLI, called by the worker at exit per `references/*` in
+   `team-execution` (U5) — `/work` does not additionally persist those on the worker's behalf.
 
 ---
 
@@ -331,10 +363,21 @@ python3 plugins/saga/scripts/saga.py save \
   --work-session-paths "docs/work-sessions/YYYY-MM-DD-<topic>.md" \
   --files-modified "path/a.py|path/b.py" \
   --rounds-seen "1" \
+  --gate-verdict "tests:<done|failed|in-progress|not-reached>:<short-ref>" \
   --next-step "<the one imperative resume anchor>"
 ```
 
+The `--gate-verdict` state MUST be one of the six canonical gate states (`done` / `in-progress` /
+`blocked` / `failed` / `halted` / `not-reached`) — the same wire vocabulary `status_card.py` renders.
+A passing test gate is `tests:done:<ref>`, a failure is `tests:failed:<ref>`, still-running is
+`tests:in-progress:<ref>`; a non-canonical value (e.g. `pass`/`skip`) parses to *unknown* and the card
+renders the Tests cell as not-reached, silently dropping the verdict.
+
 List fields are full-snapshot (saga-spec §6) — pass the complete current set each tick, not a delta.
+
+When a team-execution run stored Layer-2 artifacts (`artifact_pointer.py store`), record their typed
+pointers on the tick via `--artifact-pointers "<pointer-json>|<pointer-json>"` (pipe-separated, omit =
+carry forward) so a resuming thread can `deref` the exact bytes instead of re-inlining them.
 
 ### 4.3 Issue progress (mission-control)
 
@@ -356,6 +399,26 @@ python3 plugins/saga/scripts/issue_progress.py \
 
 Record durable learnings/decisions in the engineering journal as they surface. `/work` **renders and
 hands** the comment to `mission-control`; it does not file or mutate the issue itself.
+
+### 4.4 Autonomous board progression (post-merge allowlisted moves, #344)
+
+After a merge, drive the **allowlisted** post-merge board moves autonomously through the shared
+certificate-gated writer instead of prompting — the same reversibility contract `/outcome` uses. For
+each move (Status → Done, then the sub-issue close):
+
+```bash
+python3 plugins/saga/scripts/board_progression.py write \
+  --op set-field-status --repo <owner/repo> --number <N> --target-state Done
+python3 plugins/saga/scripts/board_progression.py write \
+  --op sub-issue-close --repo <owner/repo> --number <N>
+```
+
+The CLI prints a record JSON. On `{"status":"written"}` (or `"skipped"`) the move fired with **no
+operator prompt**. On `{"status":"gated"}` — which merge/deploy and any non-allowlisted op **always**
+return, because the allowlist lives in `reversibility_certificate`, not in the writer — fall back to
+the existing operator-prompted `mission-control` path unchanged. A `gated` result is the certificate
+correctly withholding an op that needs a human, never a failure. `/work` still does **not** merge or
+deploy autonomously (permanently gated).
 
 ---
 
@@ -403,15 +466,27 @@ via `--doc-review-override` / the work-session). Never a silent skip.
 
 On a clean gate (or recorded override):
 
-1. **Offer to open the PR + request review** (`gh pr create` + reviewer request) — outward-facing,
-   **offered/confirmed, never auto-fired**. If the operator declines auto-open, hand them the prepared
-   PR body (links the plan, work-sessions, and the code-review artifact) + branch.
-2. **Record `pr_refs`** in the saga and set `next_step="await review on PR #N"`; comment the PR status to
-   the issue via the extended `issue_progress.py` CLI (`--pr-url`, `--review-status`).
-3. **Present continuation routing** and pause. On re-entry, Phase 0.4 reads the live PR state and runs the
+1. **Render the operator status header** via the shared card renderer
+   (`plugins/saga/scripts/status_card.py`, `project_work`) — the single emitter of operator-facing
+   status for `/work`. Pass the restored saga object; the card derives its cells on-read from durable
+   state (`gate_verdicts`, `review_paths`, `pr_refs`, `phase_status`, `destination`) and renders as a
+   fixed-position glyph card with an indexed footer pointing to the underlying evidence. The detailed
+   work-session notes, code-review findings body, and test outputs remain as drill-down detail below
+   the card — they are the evidence the card cells reference, not replaced by the card.
+2. **Offer to open the PR + request review** by running `plugins/saga/scripts/ship_ceremony.py run`
+   through its `open_pr` and `request_review` transitions (issue #345) — outward-facing,
+   **offered/confirmed, never auto-fired**. If the operator declines, hand them the prepared PR body
+   (links the plan, work-sessions, and the code-review artifact) + branch and let them run
+   `ship_ceremony.py` themselves (or `git ship`, once installed).
+3. **Record `pr_refs`** — `ship_ceremony.py`'s `open_pr` transition writes this on the saga itself; set
+   `next_step="await review on PR #N"`; comment the PR status to the issue via the extended
+   `issue_progress.py` CLI (`--pr-url`, `--review-status`).
+4. **Present continuation routing** and pause. On re-entry, Phase 0.4 reads the live PR state and runs the
    transition table in `references/pr-continuation-loop.md`. When destination ⊇ merge and the PR is
-   approved + clean + fresh, **offer `gh pr merge`** (explicitly confirmed) — merge is a git op `/work`
-   owns under confirmation. On merge, set `phase_status=complete` and route to `/qa` **advisorily**.
+   approved + clean + fresh, **offer to run `ship_ceremony.py run`** through `merge` → `checkout_main` →
+   `pull` → `branch_delete` (explicitly confirmed) — merge is a git op `/work` owns under confirmation,
+   `ship_ceremony.py` is the mechanism, not a new authority. On merge, set `phase_status=complete` and
+   route to `/qa` **advisorily**.
 
 At thread completion set `status=done`.
 

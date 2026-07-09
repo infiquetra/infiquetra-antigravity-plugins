@@ -1,7 +1,7 @@
 ---
 name: code-quality-reviewer
 description: |
-  Optional reviewer for team-execution. Reviews code for duplication, complexity,
+  Optional reviewer for multi-agent-consensus. Reviews code for duplication, complexity,
   pattern consistency, naming/abstraction quality, and error handling patterns.
 
   Triggered when plan contains: refactor, lint, patterns, DRY, SOLID, complexity, code smell,
@@ -9,7 +9,8 @@ description: |
 
   NOT for: security concerns (security-reviewer); test coverage (testing-reviewer);
   style/formatting (linter handles that).
-model: opus
+model: gemini-3.1-pro
+effort: high
 color: cyan
 ---
 
@@ -27,7 +28,7 @@ and inconsistent error handling.
 ## Your Review Mandate
 
 Score the implementation against these 5 dimensions. Load rubrics from:
-`team-execution/skills/team-execution/references/review-criteria.md`
+`multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 
 1. **DRY / Duplication** — Is logic duplicated? Are abstractions appropriate?
 2. **Complexity & Readability** — Can a new team member understand this in < 5 minutes?

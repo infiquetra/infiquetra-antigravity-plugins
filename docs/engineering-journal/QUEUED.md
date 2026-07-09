@@ -58,3 +58,36 @@
 - This plan's adoption of the journal in `infiquetra-claude-plugins` is **not** the plugin — it's a hand-built journal for this repo's own meta-work. The plugin work is downstream and uses this repo + home-lab as proven references when it's built.
 
 ---
+
+## P2 — important (Deferred Ports)
+
+### Team Execution & External Bridges (U6/U7 Claude Port Deferral) {#team-execution-claude-deferral}
+
+**Priority.** P2.
+
+**Effort.** Multi-day.
+
+**Worth it when.** The Antigravity `multi-agent-consensus` plugin needs external execution boundaries or complex multi-agent event loops matching the legacy Claude team-execution plugin.
+
+**Context.**
+- During the U6/U7 port of the July 2026 Claude plugins update, we deliberately deferred porting the following components because Antigravity uses native subagents (`invoke_subagent` and `multi-agent-consensus`) instead:
+  - `team-execution` plugin execution specs and multi-agent loops.
+  - Codex execution runners.
+  - External HTTP engine bridges.
+  - `.claude-plugin` manifest specifications.
+- Fulfills R11 (Document deferrals) from the porting plan.
+
+---
+
+### Follow-up port: Claude updates 099ec4c..44a774e {#claude-source-drift-deferral}
+
+**Priority.** P2.
+
+**Effort.** Day.
+
+**Worth it when.** We need the newer features from the Claude plugins source repo that were added between 099ec4c and 44a774e.
+
+**Context.**
+- During the initial port of the July 2026 Claude plugins update, the target sync commit was `099ec4c`. However, the source repository `infiquetra-claude-plugins` advanced to `44a774e` before the port was completed.
+- The delta `099ec4c..44a774e` contains additional source changes under saga engine routing, model releases, `commands/engines.md`, and team-execution references.
+- We explicitly deferred this delta to merge the completed work for `099ec4c`.

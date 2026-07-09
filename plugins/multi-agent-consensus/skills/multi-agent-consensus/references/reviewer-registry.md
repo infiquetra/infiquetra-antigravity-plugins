@@ -1,4 +1,4 @@
-# Reviewer Registry — team-execution
+# Reviewer Registry — multi-agent-consensus
 
 This file defines the base reviewers (always spawned) and optional reviewers (triggered by keyword
 detection in the plan). Read this file during Phase A (Step A2) to determine which optional

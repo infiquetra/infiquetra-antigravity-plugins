@@ -324,3 +324,253 @@ def test_cli_missing_outcome_errors(repo: Path, capsys: pytest.CaptureFixture[st
     assert rc == 1
     err = json.loads(capsys.readouterr().err)
     assert err["ok"] is False
+
+
+# --------------------------------------------------------------------------- reconcile (#295 U5)
+
+
+class _RecWriter:
+    """A fake board_writer that records calls and never touches gh."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def __call__(self, *, op_kind: str, repo: str, number: int, payload: dict[str, Any]) -> None:
+        self.calls.append({"op_kind": op_kind, "repo": repo, "number": number, "payload": payload})
+
+
+def _seed_ledger(store: Any, *, op_kind: str, repo: str, number: int, target_state: str) -> None:
+    d = Path(store.root) / "board-sync"
+    d.mkdir(parents=True, exist_ok=True)
+    rec = {
+        "op_kind": op_kind,
+        "repo": repo,
+        "number": number,
+        "target_state": target_state,
+        "ts": 1.0,
+    }
+    (d / f"seed_{op_kind}_{number}.json").write_text(json.dumps(rec), encoding="utf-8")
+
+
+def _issue_leaves() -> list[dict[str, Any]]:
+    return [
+        {
+            "subplot_id": "a",
+            "title": "A",
+            "kind": "non-code",
+            "github": {"issue": "infiquetra/x#42"},
+        },
+        {
+            "subplot_id": "b",
+            "title": "B",
+            "kind": "non-code",
+            "github": {"issue": "infiquetra/x#99"},
+        },
+    ]
+
+
+def test_advance_autonomous_drift_holds_only_drifted_issue(repo: Path) -> None:
+    """advance --autonomous detects drift BEFORE writing: the drifted issue is held, others proceed."""
+    M.start(repo, "o", "obj", nodes=_issue_leaves())
+    store = STORE.Store.for_outcome("o", repo)
+    _seed_ledger(
+        store,
+        op_kind="set-field-status",
+        repo="infiquetra/x",
+        number=42,
+        target_state="In Progress",
+    )
+    _seed_ledger(
+        store, op_kind="set-field-status", repo="infiquetra/x", number=99, target_state="Ready"
+    )
+
+    def board_reader(ref: str) -> str:
+        return "Blocked" if "#42" in ref else "Ready"  # #42 drifted, #99 matches
+
+    def issue_reader(ref: str) -> dict[str, str]:
+        return {"state": "open", "state_reason": "unknown", "closed_by": ""}
+
+    writer = _RecWriter()
+    dispatcher, _ = _recorder()
+    result = M.advance(
+        repo,
+        "o",
+        dispatcher=dispatcher,
+        autonomous=True,
+        board_reader=board_reader,
+        issue_reader=issue_reader,
+        board_writer=writer,
+    )
+    # drift surfaced for #42, on the AdvanceResult
+    assert any(d["kind"] == "status-drift" and d["number"] == 42 for d in result.drift)
+    # #42's ops were drift-held (never driven); #99's were written
+    held = [r for r in result.board_synced if r.get("status") == "drift-hold"]
+    assert held and all(r["number"] == 42 for r in held)
+    driven = {c["number"] for c in writer.calls}
+    assert 42 not in driven and 99 in driven
+
+
+def test_advance_non_autonomous_never_detects(repo: Path) -> None:
+    """The default (non-autonomous) advance performs no drift detection — no board/issue reads."""
+    M.start(repo, "o", "obj", nodes=_issue_leaves())
+    store = STORE.Store.for_outcome("o", repo)
+    _seed_ledger(
+        store,
+        op_kind="set-field-status",
+        repo="infiquetra/x",
+        number=42,
+        target_state="In Progress",
+    )
+    reads: list[str] = []
+
+    def board_reader(ref: str) -> str:
+        reads.append(ref)
+        return "Blocked"
+
+    dispatcher, _ = _recorder()
+    result = M.advance(repo, "o", dispatcher=dispatcher, board_reader=board_reader)
+    assert reads == []  # detection never ran on the non-autonomous path
+    assert result.drift == []
+
+
+def test_reconcile_cli_empty_when_no_ledger(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """`outcome reconcile <id>` on an outcome that never board-synced prints an empty drift list."""
+    M.start(repo, "o", "obj", nodes=_issue_leaves())
+    rc = M.main(["--repo-root", str(repo), "reconcile", "o"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert out == {"drift": []}
+
+
+def test_reconcile_cli_resolve_requires_action(repo: Path) -> None:
+    """`--resolve` without `--action` is rejected (no silent guess at the operator's decision)."""
+    M.start(repo, "o", "obj", nodes=_issue_leaves())
+    rc = M.main(["--repo-root", str(repo), "reconcile", "o", "--resolve", "abc123"])
+    assert rc != 0  # OutcomeError surfaced as a non-zero exit
+
+
+# --------------------------------------------------------------------------- link-pr (#495 U2)
+
+_PR = "https://github.com/infiquetra/infiquetra-claude-plugins/pull/500"
+
+
+def _code_nodes() -> list[dict[str, Any]]:
+    return [
+        {"subplot_id": "build", "title": "B", "kind": "code", "github": {"issue": "o/r#7"}},
+        {"subplot_id": "docs", "title": "D", "kind": "non-code", "github": {"issue": "o/r#8"}},
+    ]
+
+
+def test_link_pr_writes_ref_and_leaves_others_untouched(repo: Path) -> None:
+    M.start(repo, "o", "obj", nodes=_code_nodes())
+    res = M.link_pr(repo, "o", "build", _PR)
+    assert res["pr"] == _PR and res["changed"] is True
+    spec = M.load_spec(repo, "o")
+    assert spec.node_by_id("build").github["pr"] == _PR
+    assert "pr" not in spec.node_by_id("docs").github  # only the target node mutated
+
+
+def test_link_pr_is_idempotent(repo: Path) -> None:
+    M.start(repo, "o", "obj", nodes=_code_nodes())
+    M.link_pr(repo, "o", "build", _PR)
+    again = M.link_pr(repo, "o", "build", _PR)
+    assert again["changed"] is False  # re-linking the same URL is a no-op flag
+    assert M.load_spec(repo, "o").node_by_id("build").github["pr"] == _PR
+
+
+def test_link_pr_unknown_subplot_errors(repo: Path) -> None:
+    M.start(repo, "o", "obj", nodes=_code_nodes())
+    with pytest.raises(M.OutcomeError, match="no subplot"):
+        M.link_pr(repo, "o", "nope", _PR)
+
+
+def test_link_pr_rejects_non_code_node(repo: Path) -> None:
+    M.start(repo, "o", "obj", nodes=_code_nodes())
+    with pytest.raises(M.OutcomeError, match="not 'code'"):
+        M.link_pr(repo, "o", "docs", _PR)
+
+
+def test_link_pr_rejects_non_pr_url(repo: Path) -> None:
+    M.start(repo, "o", "obj", nodes=_code_nodes())
+    with pytest.raises(M.OutcomeError, match="pull-request URL"):
+        M.link_pr(repo, "o", "build", "o/r#500")  # a bare ref is NOT accepted — URL required
+
+
+def test_cli_link_pr_happy_path(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    M.start(repo, "o", "obj", nodes=_code_nodes())
+    assert M.main(["--repo-root", str(repo), "link-pr", "o", "build", _PR]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["subplot_id"] == "build" and out["pr"] == _PR and out["changed"] is True
+
+
+def test_cli_link_pr_bad_url_nonzero(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    M.start(repo, "o", "obj", nodes=_code_nodes())
+    rc = M.main(["--repo-root", str(repo), "link-pr", "o", "build", "not-a-url"])
+    assert rc == 1
+    err = json.loads(capsys.readouterr().err)
+    assert err["ok"] is False
+
+
+# --------------------------------------------------------------------------- attend handoff (#491 U1)
+
+
+def _node(**github: Any) -> Any:
+    return SPEC.Node(subplot_id="x", title="X", github=github)
+
+
+def test_leaf_handoff_id_resolves_issue_backed() -> None:
+    assert M._leaf_handoff_id(_node(sub_issue=491), "leaf-o-x") == "issue-491"
+    assert M._leaf_handoff_id(_node(sub_issue="491"), "leaf-o-x") == "issue-491"
+    assert M._leaf_handoff_id(_node(issue="infiquetra/plugins#362"), "leaf-o-x") == "issue-362"
+
+
+def test_leaf_handoff_id_falls_back_when_no_issue() -> None:
+    assert M._leaf_handoff_id(_node(pr="https://github.com/o/r/pull/1"), "leaf-o-x") == "leaf-o-x"
+    assert M._leaf_handoff_id(_node(), "leaf-o-x") == "leaf-o-x"
+    assert M._leaf_handoff_id(None, "leaf-o-x") == "leaf-o-x"  # node miss -> raw id
+
+
+def test_leaf_handoff_id_hardening_non_positive_and_non_dict() -> None:
+    # #491 adversarial-gate hardening: a non-positive/garbage issue number is a DEAD pointer -> fall back
+    # to the raw id (never emit issue-0 / issue--5); a corrupt non-dict github must not raise (R3).
+    assert M._leaf_handoff_id(_node(sub_issue=0), "leaf-o-x") == "leaf-o-x"
+    assert M._leaf_handoff_id(_node(sub_issue=-5), "leaf-o-x") == "leaf-o-x"
+    assert (
+        M._leaf_handoff_id(_node(sub_issue=True), "leaf-o-x") == "leaf-o-x"
+    )  # bool is not an issue no.
+    assert M._leaf_handoff_id(_node(issue="o/r#0"), "leaf-o-x") == "leaf-o-x"
+    corrupt = SPEC.Node(subplot_id="x", title="X")
+    corrupt.github = ["not", "a", "dict"]  # type: ignore[assignment]
+    assert M._leaf_handoff_id(corrupt, "leaf-o-x") == "leaf-o-x"
+
+
+def _dispatch_one(repo: Path, sid: str, **github: Any) -> None:
+    M.start(
+        repo,
+        "o",
+        "obj",
+        nodes=[{"subplot_id": sid, "title": "B", "kind": "code", "github": github}],
+    )
+    dispatcher, _ = _recorder()
+    M.advance(repo, "o", dispatcher=dispatcher)
+
+
+def test_attend_emits_issue_backed_saga_id_from_sub_issue(repo: Path) -> None:
+    _dispatch_one(repo, "build", sub_issue=491)
+    assert M.attend(repo, "o", "build") == "/resume issue-491"
+
+
+def test_attend_emits_issue_saga_from_owner_repo_num(repo: Path) -> None:
+    _dispatch_one(repo, "build", issue="infiquetra/infiquetra-claude-plugins#362")
+    assert M.attend(repo, "o", "build") == "/resume issue-362"
+
+
+def test_attend_falls_back_to_raw_leaf_when_no_issue(repo: Path) -> None:
+    _dispatch_one(repo, "build")  # a task/ad-hoc leaf with no issue on its node
+    assert M.attend(repo, "o", "build") == "/resume leaf-build"
+
+
+def test_attend_not_dispatched_still_raises(repo: Path) -> None:
+    M.start(repo, "o", "obj", nodes=[{"subplot_id": "build", "title": "B", "kind": "code"}])
+    with pytest.raises(M.OutcomeError, match="not dispatched"):
+        M.attend(repo, "o", "build")

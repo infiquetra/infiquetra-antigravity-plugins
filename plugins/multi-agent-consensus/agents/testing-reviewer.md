@@ -1,14 +1,15 @@
 ---
 name: testing-reviewer
 description: |
-  Optional reviewer for team-execution. Reviews test coverage adequacy, test quality,
+  Optional reviewer for multi-agent-consensus. Reviews test coverage adequacy, test quality,
   edge case testing, mock/fixture appropriateness, and test maintainability.
 
   Triggered when plan contains: pytest, test, coverage, integration test, mock, fixture,
   unit test, e2e, test suite.
 
   NOT for: code quality concerns (code-quality-reviewer); infrastructure testing.
-model: opus
+model: gemini-3.1-pro
+effort: high
 color: yellow
 ---
 
@@ -22,7 +23,7 @@ and poorly designed tests. Your philosophy: tests should validate behavior, not 
 ## Your Review Mandate
 
 Score the implementation against these 5 dimensions. Load rubrics from:
-`team-execution/skills/team-execution/references/review-criteria.md`
+`multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 
 1. **Coverage Adequacy** — Are new code paths covered by tests?
 2. **Test Quality** — Do tests actually validate behavior or just exercise code paths?

@@ -253,8 +253,11 @@ def test_save_writes_timestamped_envelope_and_full_frontmatter(
     assert envelope.name == "20260602-140510.md"
     assert envelope.parent == tmp_path / SAGAS_DIR / "issue-42"
     text = envelope.read_text(encoding="utf-8")
-    # Full frontmatter machine fields present.
+    # Full frontmatter machine fields present, except fields that render no key when empty
+    # (artifact_pointers omits when absent, keeping pre-field sagas byte-identical).
     for key in saga.FRONTMATTER_FIELDS:
+        if key in saga._OMIT_WHEN_EMPTY_FIELDS:
+            continue
         assert f"{key}:" in text
     assert "lifecycle_phase: work" in text
     assert "## Summary" in text and "## Decisions" in text
@@ -371,6 +374,107 @@ def test_save_captures_git_state_from_runner(
     restored = saga.restore(tmp_path, "issue-42")
     assert restored.branch == "feature/saga"
     assert restored.head_sha == "abc1234"
+
+
+def test_save_refreshes_branch_on_later_save(saga: ModuleType, tmp_path: Path) -> None:
+    """``branch`` tracks the CURRENT git branch on EVERY save, not just the first (issue #480).
+
+    Mirrors the ``/plan`` mints-on-``main`` then ``/work`` re-saves-on-branch lifecycle: the
+    first save captures ``main``; a later save on the work branch must OVERWRITE it, not carry
+    ``main`` forward through scalar merge.
+    """
+
+    def git_on(branch: str) -> Callable[..., SimpleNamespace]:
+        def fake_git(args: list[str], **_kwargs: Any) -> SimpleNamespace:
+            if "--show-current" in args:
+                return SimpleNamespace(returncode=0, stdout=f"{branch}\n", stderr="")
+            return SimpleNamespace(returncode=0, stdout="abc1234\n", stderr="")
+
+        return fake_git
+
+    saga.save(tmp_path, _make_saga(saga), now=FIXED_NOW, runner=git_on("main"))
+    assert saga.restore(tmp_path, "issue-42").branch == "main"
+
+    later = datetime(2026, 6, 2, 14, 12, 33, tzinfo=UTC)
+    saga.save(tmp_path, _make_saga(saga), now=later, runner=git_on("fix/pf-work"))
+    assert saga.restore(tmp_path, "issue-42").branch == "fix/pf-work"
+
+
+def test_save_empty_branch_does_not_clobber_stored_branch(saga: ModuleType, tmp_path: Path) -> None:
+    """A detached-HEAD / no-git save (empty ``git branch --show-current``) must NOT wipe a
+    previously-stored branch — the ``git["branch"]`` non-empty guard preserves carry-forward
+    (issue #480, R2)."""
+
+    def fake_git_on_branch(args: list[str], **_kwargs: Any) -> SimpleNamespace:
+        if "--show-current" in args:
+            return SimpleNamespace(returncode=0, stdout="fix/pf-work\n", stderr="")
+        return SimpleNamespace(returncode=0, stdout="abc1234\n", stderr="")
+
+    def fake_git_detached(args: list[str], **_kwargs: Any) -> SimpleNamespace:
+        if "--show-current" in args:
+            return SimpleNamespace(returncode=0, stdout="\n", stderr="")
+        return SimpleNamespace(returncode=0, stdout="def5678\n", stderr="")
+
+    saga.save(tmp_path, _make_saga(saga), now=FIXED_NOW, runner=fake_git_on_branch)
+    assert saga.restore(tmp_path, "issue-42").branch == "fix/pf-work"
+
+    later = datetime(2026, 6, 2, 14, 12, 33, tzinfo=UTC)
+    saga.save(tmp_path, _make_saga(saga), now=later, runner=fake_git_detached)
+    assert saga.restore(tmp_path, "issue-42").branch == "fix/pf-work"
+
+
+def test_save_on_default_branch_preserves_stored_work_branch(
+    saga: ModuleType, tmp_path: Path
+) -> None:
+    """Once a real work branch is recorded, a later save made back on ``main`` must NOT overwrite
+    it (issue #480). ship_ceremony's ``checkout_main`` progress-save runs on ``main`` right before
+    ``branch_delete`` — which still needs the work branch — so this mirrors that exact sequence and
+    guards against the refresh downgrading a real branch to the default one.
+    """
+
+    def git_on(branch: str) -> Callable[..., SimpleNamespace]:
+        def fake_git(args: list[str], **_kwargs: Any) -> SimpleNamespace:
+            if "--show-current" in args:
+                return SimpleNamespace(returncode=0, stdout=f"{branch}\n", stderr="")
+            return SimpleNamespace(returncode=0, stdout="abc1234\n", stderr="")
+
+        return fake_git
+
+    saga.save(tmp_path, _make_saga(saga), now=FIXED_NOW, runner=git_on("feat/pf-throwaway-345"))
+    assert saga.restore(tmp_path, "issue-42").branch == "feat/pf-throwaway-345"
+
+    later = datetime(2026, 6, 2, 14, 12, 33, tzinfo=UTC)
+    saga.save(tmp_path, _make_saga(saga), now=later, runner=git_on("main"))
+    assert saga.restore(tmp_path, "issue-42").branch == "feat/pf-throwaway-345"
+
+
+def test_save_refreshes_head_and_last_commit_on_later_save(
+    saga: ModuleType, tmp_path: Path
+) -> None:
+    """`head_sha`/`last_commit_sha` track the current commit on EVERY save, not just the first
+    (the #480 follow-up). Unlike `branch`, SHAs have no default-branch downgrade concern, so a
+    plain non-empty guard suffices."""
+
+    def git_at(short: str, full: str) -> Callable[..., SimpleNamespace]:
+        def fake_git(args: list[str], **_kwargs: Any) -> SimpleNamespace:
+            if "--show-current" in args:
+                return SimpleNamespace(returncode=0, stdout="feat/work\n", stderr="")
+            if "--short" in args:
+                return SimpleNamespace(returncode=0, stdout=f"{short}\n", stderr="")
+            return SimpleNamespace(returncode=0, stdout=f"{full}\n", stderr="")
+
+        return fake_git
+
+    saga.save(tmp_path, _make_saga(saga), now=FIXED_NOW, runner=git_at("aaa1111", "aaa1111ffff"))
+    first = saga.restore(tmp_path, "issue-42")
+    assert first.head_sha == "aaa1111"
+    assert first.last_commit_sha == "aaa1111ffff"
+
+    later = datetime(2026, 6, 2, 14, 12, 33, tzinfo=UTC)
+    saga.save(tmp_path, _make_saga(saga), now=later, runner=git_at("bbb2222", "bbb2222ffff"))
+    second = saga.restore(tmp_path, "issue-42")
+    assert second.head_sha == "bbb2222"
+    assert second.last_commit_sha == "bbb2222ffff"
 
 
 # ===========================================================================
@@ -1340,21 +1444,128 @@ def test_orchestration_override_rate_fields_present_in_frontmatter_output(saga: 
 # ===========================================================================
 
 
-def test_suite_does_not_create_claude_dir_under_repo_root() -> None:
+# Collection-time snapshot: real operator saga state already on this machine (the repo's
+# .gemini/saga is live, machine-local state on a dev box) is NOT test leakage. Only dirs
+# that appear AFTER collection — i.e. created by this test run — count as leaks.
+_PREEXISTING_SAGA_DIRS = (
+    frozenset(p.name for p in (ROOT / SAGAS_DIR).iterdir())
+    if (ROOT / SAGAS_DIR).exists()
+    else frozenset()
+)
+# Same collection-time baseline for the legacy-checkpoint format (#314 AC#4): a legacy
+# checkpoint that predates the run is real operator state, not leakage.
+_PREEXISTING_LEGACY_CHECKPOINTS = (
+    frozenset(p.name for p in (ROOT / LEGACY_CHECKPOINT_DIR).glob("issue-*-phase*.md"))
+    if (ROOT / LEGACY_CHECKPOINT_DIR).exists()
+    else frozenset()
+)
+
+
+def _leaked_children(current: frozenset[str], baseline: frozenset[str]) -> list[str]:
+    """Names present now but absent from the collection-time baseline.
+
+    Both guard branches share this: a name in ``current`` that was not in ``baseline``
+    appeared *during* the run and is therefore test leakage. A pre-existing live saga (or
+    legacy checkpoint) sits in the baseline and is ignored — the false positive #314 fixed.
+    Returns a sorted list so failure messages are deterministic.
+    """
+    return sorted(current - baseline)
+
+
+def test_suite_does_not_create_gemini_dir_under_repo_root() -> None:
     """Every test must land its state in tmp_path; none under the repo's .gemini/.
 
     ``.gitignore`` hides ``.gemini/``, so a test that forgot to ``chdir`` (or
     passed the real cwd as ``root``) would silently pollute the working tree
-    without ``git status`` noticing. This guard fails loudly instead.
+    without ``git status`` noticing. This guard fails loudly instead — but only
+    on dirs created during this run (baseline above), so live operator saga
+    state on a dev machine does not false-positive the gate.
     """
     stray_sagas = ROOT / SAGAS_DIR
     if stray_sagas.exists():
-        leaked = [p.name for p in stray_sagas.iterdir()]
+        current = frozenset(p.name for p in stray_sagas.iterdir())
+        leaked = _leaked_children(current, _PREEXISTING_SAGA_DIRS)
         assert leaked == [], f"saga tests leaked state under repo-root .gemini/: {leaked}"
     stray_legacy = ROOT / LEGACY_CHECKPOINT_DIR
     if stray_legacy.exists():
-        leaked_cp = [p.name for p in stray_legacy.glob("issue-*-phase*.md")]
+        current_cp = frozenset(p.name for p in stray_legacy.glob("issue-*-phase*.md"))
+        leaked_cp = _leaked_children(current_cp, _PREEXISTING_LEGACY_CHECKPOINTS)
         assert leaked_cp == [], f"saga tests leaked legacy checkpoints: {leaked_cp}"
+
+
+# --- #314: leak-guard precision — helper logic + guard-wiring proofs -------
+
+
+def test_leaked_children_flags_new_entries() -> None:
+    """A name absent from the baseline is reported as leaked (R2: a new dir is caught)."""
+    assert _leaked_children(frozenset({"issue-99"}), frozenset()) == ["issue-99"]
+
+
+def test_leaked_children_ignores_preexisting_entries() -> None:
+    """A name already in the baseline (a live saga) is not a leak — the #314 fix."""
+    assert _leaked_children(frozenset({"issue-42"}), frozenset({"issue-42"})) == []
+
+
+def test_leaked_children_flags_only_the_new_among_preexisting() -> None:
+    """A new dir is caught even while a pre-existing live saga coexists (the #281 case)."""
+    assert _leaked_children(frozenset({"issue-42", "issue-99"}), frozenset({"issue-42"})) == [
+        "issue-99"
+    ]
+
+
+def test_guard_raises_on_new_saga_dir_under_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The guard itself (not just the helper) fails when a NEW saga dir appears.
+
+    Redirect the guard's ROOT to tmp_path so a fresh saga dir can be created without
+    polluting the real repo (honoring the guard's own contract), then prove the guard
+    raises — the literal #314 AC#1 protection.
+    """
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "_PREEXISTING_SAGA_DIRS", frozenset())
+    (tmp_path / SAGAS_DIR / "issue-99").mkdir(parents=True)
+    with pytest.raises(AssertionError, match="leaked state"):
+        test_suite_does_not_create_gemini_dir_under_repo_root()
+
+
+def test_guard_passes_when_only_preexisting_saga_dir_present(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The guard does NOT fire on a saga dir that existed before the run (baseline)."""
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "_PREEXISTING_SAGA_DIRS", frozenset({"issue-99"}))
+    (tmp_path / SAGAS_DIR / "issue-99").mkdir(parents=True)
+    # No raise: the pre-existing dir is baselined out (the false positive #314 fixed).
+    test_suite_does_not_create_gemini_dir_under_repo_root()
+
+
+def test_guard_raises_on_new_legacy_checkpoint(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Legacy-checkpoint branch parity: a NEW checkpoint file trips the guard (#314 AC#4)."""
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "_PREEXISTING_LEGACY_CHECKPOINTS", frozenset())
+    (tmp_path / LEGACY_CHECKPOINT_DIR).mkdir(parents=True)
+    (tmp_path / LEGACY_CHECKPOINT_DIR / "issue-1-phase2.md").write_text("x", encoding="utf-8")
+    with pytest.raises(AssertionError, match="legacy checkpoints"):
+        test_suite_does_not_create_gemini_dir_under_repo_root()
+
+
+def test_guard_passes_when_only_preexisting_legacy_checkpoint(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Legacy branch: a pre-existing checkpoint in the baseline does not false-positive."""
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "_PREEXISTING_LEGACY_CHECKPOINTS", frozenset({"issue-1-phase2.md"}))
+    (tmp_path / LEGACY_CHECKPOINT_DIR).mkdir(parents=True)
+    (tmp_path / LEGACY_CHECKPOINT_DIR / "issue-1-phase2.md").write_text("x", encoding="utf-8")
+    # No raise: baselined out.
+    test_suite_does_not_create_gemini_dir_under_repo_root()
 
 
 # ===========================================================================
@@ -1398,3 +1609,134 @@ def test_orchestration_mode_labels_covers_all_modes(saga: ModuleType) -> None:
             "ORCHESTRATION_MODE_LABELS — add a display label or the offer will "
             "fall back to the raw enum string silently."
         )
+
+
+# ===========================================================================
+# U2: gate_verdicts — capture in saga envelope (KTD4 / R1)
+# ===========================================================================
+
+
+def test_gate_verdicts_round_trips_through_render_parse(saga: ModuleType) -> None:
+    """gate_verdicts survives render -> parse and appears in frontmatter."""
+    verdicts = ["tests:done:https://github.com/o/r/pull/9", "lint:failed:path/to/file:42"]
+    s = _make_saga(saga, gate_verdicts=verdicts)
+    rendered = saga.render_envelope(s)
+    # Field is present in frontmatter.
+    assert "gate_verdicts:" in rendered
+    restored = saga.parse_envelope(rendered)
+    assert restored.gate_verdicts == verdicts
+
+
+def test_gate_verdicts_save_restore_round_trip(
+    saga: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """gate_verdicts written through save() are readable via restore()."""
+    _stub_no_git(saga, monkeypatch)
+    verdicts = ["tests:done:https://github.com/o/r/pull/9"]
+    saga.save(tmp_path, _make_saga(saga, gate_verdicts=verdicts), now=FIXED_NOW)
+    restored = saga.restore(tmp_path, "issue-42")
+    assert restored is not None
+    assert restored.gate_verdicts == verdicts
+
+
+def test_gate_verdicts_merge_full_snapshot_replace(
+    saga: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An incoming populated gate_verdicts list REPLACES the prior tick's list."""
+    _stub_no_git(saga, monkeypatch)
+    saga.save(
+        tmp_path,
+        _make_saga(saga, gate_verdicts=["tests:done:ref-a", "lint:done:ref-b"]),
+        now=FIXED_NOW,
+    )
+    later = datetime(2026, 6, 2, 14, 12, 33, tzinfo=UTC)
+    saga.save(tmp_path, _make_saga(saga, gate_verdicts=["tests:failed:ref-c"]), now=later)
+    restored = saga.restore(tmp_path, "issue-42")
+    assert restored.gate_verdicts == ["tests:failed:ref-c"]  # replaced, not unioned
+
+
+def test_gate_verdicts_merge_absent_carries_forward(
+    saga: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ABSENT (omitted) gate_verdicts carries the prior tick's list forward."""
+    _stub_no_git(saga, monkeypatch)
+    verdicts = ["tests:done:ref-a"]
+    saga.save(tmp_path, _make_saga(saga, gate_verdicts=verdicts), now=FIXED_NOW)
+    later = datetime(2026, 6, 2, 14, 12, 33, tzinfo=UTC)
+    # ABSENT default for gate_verdicts -> carry forward; bump only phase.
+    saga.save(tmp_path, _make_saga(saga, phase=5), now=later)
+    restored = saga.restore(tmp_path, "issue-42")
+    assert restored.gate_verdicts == verdicts
+    assert restored.phase == 5
+
+
+def test_gate_verdicts_merge_empty_list_clears(
+    saga: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An explicit [] gate_verdicts clears the prior tick's list."""
+    _stub_no_git(saga, monkeypatch)
+    saga.save(tmp_path, _make_saga(saga, gate_verdicts=["tests:done:ref"]), now=FIXED_NOW)
+    later = datetime(2026, 6, 2, 14, 12, 33, tzinfo=UTC)
+    saga.save(tmp_path, _make_saga(saga, gate_verdicts=[]), now=later)
+    assert saga.restore(tmp_path, "issue-42").gate_verdicts == []
+
+
+def test_parse_gate_verdict_splits_on_first_two_colons(saga: ModuleType) -> None:
+    """parse_gate_verdict preserves a colon-bearing ref intact."""
+    gate, state, ref = saga.parse_gate_verdict("tests:done:https://github.com/o/r/pull/9")
+    assert gate == "tests"
+    assert state == "done"
+    assert ref == "https://github.com/o/r/pull/9"
+
+
+def test_parse_gate_verdict_all_valid_states(saga: ModuleType) -> None:
+    """All six R1 states are accepted without raising."""
+    for state in ("done", "in-progress", "blocked", "failed", "halted", "not-reached"):
+        g, s, r = saga.parse_gate_verdict(f"gate:{state}:some-ref")
+        assert s == state
+
+
+def test_parse_gate_verdict_rejects_unknown_state(saga: ModuleType) -> None:
+    """An unknown state raises ValueError."""
+    with pytest.raises(ValueError, match="unknown gate state"):
+        saga.parse_gate_verdict("tests:bogus:x")
+
+
+def test_gate_verdict_cli_flag_is_repeatable(
+    saga: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--gate-verdict is repeatable and entries with colon-bearing refs survive."""
+    monkeypatch.chdir(tmp_path)
+    _stub_no_git(saga, monkeypatch)
+
+    rc, payload = _run_main(
+        saga,
+        [
+            "save",
+            "--kind",
+            "issue",
+            "--id",
+            "42",
+            "--gate-verdict",
+            "tests:done:https://github.com/o/r/pull/9",
+            "--gate-verdict",
+            "lint:failed:src/foo.py:12",
+        ],
+        capsys,
+        monkeypatch,
+    )
+
+    assert rc == 0
+    restored = saga.restore(tmp_path, "issue-42")
+    assert restored is not None
+    assert "tests:done:https://github.com/o/r/pull/9" in restored.gate_verdicts
+    assert "lint:failed:src/foo.py:12" in restored.gate_verdicts
+
+
+def test_gate_verdicts_absent_by_default_on_new_saga(saga: ModuleType) -> None:
+    """A freshly-built Saga has gate_verdicts == ABSENT (sentinel, not [])."""
+    s = _make_saga(saga)
+    assert s.gate_verdicts is saga.ABSENT

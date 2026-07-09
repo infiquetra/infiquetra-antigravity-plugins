@@ -1,0 +1,7 @@
+{
+  "_comment": "Ordinal cost-weight table. Validates strictly against tier_palette.",
+  "weights": {
+    "gemini-3.1-pro": { "low": 8, "medium": 16, "high": 32, "xhigh": 56 },
+    "gemini-3.5-flash": { "low": 3, "medium": 6, "high": 12, "xhigh": 21 }
+  }
+}

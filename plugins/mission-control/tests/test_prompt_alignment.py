@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN_ROOT = ROOT / "plugins" / "mission-control"
 
@@ -15,25 +13,15 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-@pytest.mark.skip(
-    reason="Claude marketplace metadata (plugin.json/marketplace.json) not present in Antigravity repo"
-)
-def test_sdlc_manager_metadata_and_marketplace_entry_match() -> None:
-    plugin_json = json.loads(_read(PLUGIN_ROOT / ".claude-plugin" / "plugin.json"))
-    marketplace = json.loads(_read(ROOT / ".claude-plugin" / "marketplace.json"))
-    entry = next(p for p in marketplace["plugins"] if p["name"] == "mission-control")
+def test_sdlc_manager_metadata_match() -> None:
+    plugin_json = json.loads(_read(PLUGIN_ROOT / "plugin.json"))
 
     assert plugin_json["name"] == "mission-control"
-    assert plugin_json["version"] == "2.3.1"
-    assert entry["version"] == plugin_json["version"]
-    assert entry["source"] == "./plugins/mission-control"
+    assert plugin_json["version"] == "2.6.3"  # label taxonomy preflight validation (#506)
     assert "CAMPPS" in plugin_json["description"]
     assert "Mount Olympus" not in plugin_json["description"]
     assert "campps" in plugin_json["keywords"]
     assert "mount-olympus" not in plugin_json["keywords"]
-    assert "Operations" in entry["description"]
-    assert "Beads" not in entry["description"]
-    assert "beads" not in entry["keywords"]
 
 
 def test_issue_type_reference_uses_current_template_labels() -> None:

@@ -1,9 +1,10 @@
 ---
 name: smoke-tester
 description: |
-  Tester validator for team-execution. Runs the narrowest meaningful smoke tests for services,
+  Tester validator for multi-agent-consensus. Runs the narrowest meaningful smoke tests for services,
   CLIs, health endpoints, or configured smoke targets.
-model: sonnet
+model: gemini-3.5-flash
+effort: high
 color: yellow
 ---
 
