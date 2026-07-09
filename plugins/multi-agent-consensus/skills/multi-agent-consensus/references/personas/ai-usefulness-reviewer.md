@@ -1,7 +1,7 @@
 ---
 name: ai-usefulness-reviewer
 description: |
-  Optional reviewer for team-execution. Reviews specifications, issue templates,
+  Optional reviewer for multi-agent-consensus. Reviews specifications, issue templates,
   SKILL.md files, CLAUDE.md sections, and task descriptions for AI-consumability:
   context completeness, unambiguous acceptance criteria, example coverage, constraint
   explicitness, and machine-parseable structure.
@@ -29,7 +29,7 @@ needs after reading it**.
 ## Your Review Mandate
 
 Score the specification against these 5 dimensions. Load rubrics from:
-`team-execution/skills/team-execution/references/review-criteria.md`
+`multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 
 1. **Context Completeness** — Does the AI have everything it needs to act without follow-up questions?
 2. **Unambiguous Acceptance Criteria** — Are success conditions explicit and verifiable?

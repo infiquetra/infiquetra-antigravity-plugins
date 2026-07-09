@@ -49,21 +49,20 @@ def main() -> None:
     tool_input: dict = payload.get("tool_input", {})
 
     # Only intercept file-write tools.
-    if tool_name not in ("Edit", "Write", "MultiEdit"):
+    if tool_name not in ("replace_file_content", "write_to_file", "multi_replace_file_content"):
         sys.exit(0)
 
-    file_path: str = tool_input.get("file_path", "")
+    file_path: str = tool_input.get("TargetFile", "")
 
     if not any(file_path.endswith(suffix) for suffix in _TARGET_SUFFIXES):
         sys.exit(0)
 
     # Determine the post-edit content to validate.
-    if tool_name == "Write":
-        content = tool_input.get("content", "")
-    elif tool_name == "Edit":
-        # For Edit we only have the snippet being replaced, not the full file.
+    if tool_name == "write_to_file":
+        content = tool_input.get("CodeContent", "")
+    elif tool_name == "replace_file_content":
         # Read the full current file, apply the replacement in-memory, then
-        # validate.  If we cannot read the file (new file or race) fall
+        # validate. If we cannot read the file (new file or race) fall
         # through — don't block a legitimate first write.
         try:
             with open(file_path, encoding="utf-8") as fh:
@@ -71,25 +70,20 @@ def main() -> None:
         except OSError:
             sys.exit(0)
 
-        old_string: str = tool_input.get("old_string", "")
-        new_string: str = tool_input.get("new_string", "")
-        replace_all: bool = tool_input.get("replace_all", False)
-        if replace_all:
-            content = existing.replace(old_string, new_string)
-        else:
-            content = existing.replace(old_string, new_string, 1)
-    elif tool_name == "MultiEdit":
+        old_string: str = tool_input.get("TargetContent", "")
+        new_string: str = tool_input.get("ReplacementContent", "")
+        content = existing.replace(old_string, new_string)
+    elif tool_name == "multi_replace_file_content":
         try:
             with open(file_path, encoding="utf-8") as fh:
                 content = fh.read()
         except OSError:
             sys.exit(0)
 
-        for edit in tool_input.get("edits", []):
-            old = edit.get("old_string", "")
-            new = edit.get("new_string", "")
-            replace_all = edit.get("replace_all", False)
-            content = content.replace(old, new) if replace_all else content.replace(old, new, 1)
+        for chunk in tool_input.get("ReplacementChunks", []):
+            old = chunk.get("TargetContent", "")
+            new = chunk.get("ReplacementContent", "")
+            content = content.replace(old, new)
     else:
         sys.exit(0)
 

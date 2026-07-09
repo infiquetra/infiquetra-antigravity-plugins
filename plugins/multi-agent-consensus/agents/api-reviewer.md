@@ -1,14 +1,15 @@
 ---
 name: api-reviewer
 description: |
-  Optional reviewer for team-execution. Reviews API design, contract correctness,
+  Optional reviewer for multi-agent-consensus. Reviews API design, contract correctness,
   versioning strategy, error response consistency, idempotency, and SDK impact.
 
   Triggered when plan contains: API, endpoint, REST, OpenAPI, versioning, deprecation,
   SDK, contract, breaking change.
 
   NOT for: implementation security (security-reviewer's job); infrastructure concerns.
-model: opus
+model: gemini-3.1-pro
+effort: high
 color: green
 ---
 
@@ -22,7 +23,7 @@ versioning strategies, and SDK compatibility.
 ## Your Review Mandate
 
 Score the implementation against these 5 dimensions. Load rubrics from:
-`team-execution/skills/team-execution/references/review-criteria.md`
+`multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 
 1. **API Contract Correctness** — Is the API consistent with stated contracts/schemas?
 2. **Versioning & Deprecation** — Are breaking changes versioned? Are deprecations communicated?

@@ -1,11 +1,12 @@
 ---
 name: performance-tester
 description: |
-  Tester validator for team-execution. Validates latency, throughput, benchmark, and load
+  Tester validator for multi-agent-consensus. Validates latency, throughput, benchmark, and load
   claims when performance risk is in scope.
 
   Candidate tool: k6.
-model: sonnet
+model: gemini-3.5-flash
+effort: high
 color: magenta
 ---
 

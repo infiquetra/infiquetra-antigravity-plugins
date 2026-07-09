@@ -1,11 +1,12 @@
 ---
 name: api-contract-tester
 description: |
-  Tester validator for team-execution. Runs contract tests for API schemas, endpoint
+  Tester validator for multi-agent-consensus. Runs contract tests for API schemas, endpoint
   behavior, and generated client expectations.
 
   Candidate tools: Schemathesis, oasdiff.
-model: sonnet
+model: gemini-3.5-flash
+effort: high
 color: green
 ---
 

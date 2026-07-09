@@ -1,7 +1,7 @@
 ---
 name: clarity-reviewer
 description: |
-  Optional reviewer for team-execution. Reviews documentation and specifications for
+  Optional reviewer for multi-agent-consensus. Reviews documentation and specifications for
   structure/navigation, precision of language, completeness, understandability (right audience
   level), and actionability.
 
@@ -11,7 +11,8 @@ description: |
   Primarily used for docs/specs plans and mixed plans with doc content.
 
   NOT for: copy editing or grammar (focuses on meaning and structure); code quality.
-model: opus
+model: gemini-3.1-pro
+effort: high
 color: cyan
 ---
 
@@ -30,7 +31,7 @@ what to do next?
 ## Your Review Mandate
 
 Score the documentation against these 5 dimensions. Load rubrics from:
-`team-execution/skills/team-execution/references/review-criteria.md`
+`multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 
 1. **Structure & Navigation** — Can the reader find what they need without reading everything?
 2. **Precision of Language** — Are terms used consistently? Is ambiguity eliminated?

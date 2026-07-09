@@ -28,6 +28,7 @@ are injectable so offline tests are deterministic and never shell out.
 from __future__ import annotations
 
 import argparse
+import base64
 import contextlib
 import json
 import os
@@ -55,6 +56,13 @@ def _migrate_legacy_state_dir() -> None:
 SAGAS_DIR = STATE_DIR / "sagas"
 LEGACY_CHECKPOINT_DIR = STATE_DIR / "checkpoints"
 
+# Default branch names a saved ``branch`` field must not be silently overwritten with once a real
+# work branch is already recorded (issue #480). ``ship_ceremony.py``'s ``_do_checkout_main`` runs
+# ``git checkout main`` before ``branch_delete``, so a live-git refresh on that progress-save would
+# otherwise erase the very branch ``branch_delete`` still needs to delete. Mirrors the ceremony's
+# own hard-coded ``main`` checkout (``master`` included for older repos).
+_DEFAULT_BRANCHES = frozenset({"main", "master"})
+
 ENVELOPE_RE = re.compile(r"^(?P<ts>\d{8}-\d{6})(?:-(?P<seq>\d+))?\.md$")
 ROUND_RE = re.compile(r"round-(\d+)", re.IGNORECASE)
 LEGACY_CHECKPOINT_RE = re.compile(
@@ -69,6 +77,11 @@ PHASE_STATUSES = ("pending", "in_progress", "complete")
 STATUSES = ("active", "blocked", "paused", "handed-off", "done", "abandoned")
 DESTINATIONS = ("plan-only", "pr", "merge", "nonprod-deploy")
 ORCHESTRATION_MODES = ("inline", "team-execution", "cc-workflows-ultracode")
+# ship_ceremony.py's reversibility-tier vocabulary (issue #345). saga.py only validates the
+# closed set here; the transition ORDER and index-derivation are ship_ceremony.py's own
+# domain (CeremonyTier), never saga.py's — keeps the generic engine decoupled from one
+# consumer's transition table.
+CEREMONY_TIERS = ("reversible", "additive", "always_operator")
 
 # Display-label map (R8 / KTD5).  Maps the stored enum string to the human-readable
 # label surfaced in every offer.  The enum values in ORCHESTRATION_MODES are the
@@ -193,6 +206,7 @@ class Saga:
     work_session_paths: ListOrAbsent = ABSENT
     review_paths: ListOrAbsent = ABSENT
     qa_paths: ListOrAbsent = ABSENT
+    artifact_pointers: ListOrAbsent = ABSENT
 
     # Git snapshot (cached for offline display; never the authority).
     branch: str = ""
@@ -209,10 +223,19 @@ class Saga:
     adr_refs: ListOrAbsent = ABSENT
     journal_refs: ListOrAbsent = ABSENT
 
+    # ship_ceremony.py state (issue #345, KTD2): the last transition it ran and that
+    # transition's reversibility tier. No index is stored — ship_ceremony.py derives the
+    # index from `ceremony_transition` against its own canonical TRANSITIONS order each
+    # time, so there is never a stored index to drift out of sync with the name.
+    ceremony_transition: str = ""
+    ceremony_tier: str = ""
+
     # Disposition detail.
     blockers: str = ""
     open_questions: ListOrAbsent = ABSENT
     checks_run: ListOrAbsent = ABSENT
+    gate_verdicts: ListOrAbsent = ABSENT
+    gate_divergence: ListOrAbsent = ABSENT
     source: str = ""
 
     # Body sections (free-form prose).
@@ -252,6 +275,7 @@ FRONTMATTER_FIELDS: tuple[str, ...] = (
     "work_session_paths",
     "review_paths",
     "qa_paths",
+    "artifact_pointers",
     "branch",
     "head_sha",
     "last_commit_sha",
@@ -261,9 +285,13 @@ FRONTMATTER_FIELDS: tuple[str, ...] = (
     "pr_refs",
     "adr_refs",
     "journal_refs",
+    "ceremony_transition",
+    "ceremony_tier",
     "blockers",
     "open_questions",
     "checks_run",
+    "gate_verdicts",
+    "gate_divergence",
     "source",
 )
 
@@ -272,6 +300,7 @@ _LIST_FIELDS = {
     "work_session_paths",
     "review_paths",
     "qa_paths",
+    "artifact_pointers",
     "files_modified",
     "rounds_seen",
     "pr_refs",
@@ -279,7 +308,15 @@ _LIST_FIELDS = {
     "journal_refs",
     "open_questions",
     "checks_run",
+    "gate_verdicts",
+    "gate_divergence",
 }
+
+# List fields that render NO key at all when empty/absent (rather than the ``key: []`` the
+# legacy list fields emit). This keeps a saga that never records artifact pointers byte-identical
+# to a pre-field envelope — the same absent-emits-no-key contract #287's ``sandbox`` field adopted —
+# while a populated value still round-trips through save/load.
+_OMIT_WHEN_EMPTY_FIELDS = {"artifact_pointers"}
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +386,10 @@ def render_envelope(saga: Saga) -> str:
     """Render a saga to a gstack-style frontmatter + body envelope (str)."""
     lines: list[str] = ["---"]
     for key in FRONTMATTER_FIELDS:
-        lines.append(_render_value(key, getattr(saga, key)))
+        value = getattr(saga, key)
+        if key in _OMIT_WHEN_EMPTY_FIELDS and not _materialize(value):
+            continue
+        lines.append(_render_value(key, value))
     for key in sorted(saga.extra):
         lines.append(_render_value(key, saga.extra[key]))
     lines.append("---")
@@ -711,11 +751,28 @@ def save(
     merged = _merge(prior, saga, moment)
 
     git = current_git_state(root, runner=runner)
-    if not merged.branch and git["branch"]:
-        merged = _replace(merged, branch=git["branch"])
-    if not merged.head_sha and git["head"]:
+    # ``branch`` refreshes from live git on EVERY save (issue #480), not just the first, so a saga
+    # minted on ``main`` by ``/plan`` — before its work branch exists — starts tracking the real
+    # branch as soon as ``/work`` re-saves on it, and ship_ceremony's ``branch_delete`` guard then
+    # sees the actual branch instead of the mint-time ``main``. Two guards on the refresh: the
+    # empty ``git["branch"]`` read (detached HEAD / no git) never clobbers a stored value, and a
+    # save made back on the default branch never overwrites an already-recorded real work branch
+    # (else the ceremony's own ``checkout_main`` progress-save would erase what ``branch_delete``
+    # needs). ``head_sha``/``last_commit_sha`` refresh on every save too (they were the #480
+    # follow-up): SHAs have no default-branch downgrade concern, so a plain non-empty guard
+    # suffices, and the stored SHAs then track the current commit instead of freezing at the
+    # mint-time HEAD (``status_card`` renders ``head_sha`` as its CI reference).
+    live_branch = git["branch"]
+    downgrades_work_branch = (
+        live_branch in _DEFAULT_BRANCHES
+        and bool(merged.branch)
+        and merged.branch not in _DEFAULT_BRANCHES
+    )
+    if live_branch and not downgrades_work_branch:
+        merged = _replace(merged, branch=live_branch)
+    if git["head"]:
         merged = _replace(merged, head_sha=git["head"])
-    if not merged.last_commit_sha and git["last_commit"]:
+    if git["last_commit"]:
         merged = _replace(merged, last_commit_sha=git["last_commit"])
 
     _assert_orchestration_provenance(saga, merged, prior)
@@ -781,6 +838,8 @@ def _tick_snapshot(saga: Saga) -> dict[str, Any]:
             "summary": saga.summary,
             "open_questions": _materialize(saga.open_questions),
             "rounds_seen": _materialize(saga.rounds_seen),
+            "ceremony_transition": saga.ceremony_transition,
+            "ceremony_tier": saga.ceremony_tier,
         }
     )
     return snapshot
@@ -1118,6 +1177,109 @@ def aggregate_context(
 
 
 # ---------------------------------------------------------------------------
+# Gate verdict helpers (R1 / KTD4 / U2)
+# ---------------------------------------------------------------------------
+
+# The six canonical R1 gate states (wire values — never change these).
+_GATE_STATES: frozenset[str] = frozenset(
+    {"done", "in-progress", "blocked", "failed", "halted", "not-reached"}
+)
+
+
+def parse_gate_verdict(entry: str) -> tuple[str, str, str]:
+    """Parse a ``gate:state:ref`` entry into ``(gate, state, ref)``.
+
+    Splits on the FIRST TWO colons only so a ref that contains colons
+    (e.g. a GitHub URL ``https://github.com/o/r/pull/9`` or a ``path:line``
+    citation) survives intact.  Raises ``ValueError`` when the state is not one
+    of the six R1 canonical values.
+    """
+    first_colon = entry.find(":")
+    if first_colon == -1:
+        raise ValueError(f"gate_verdict entry has no colon separator: {entry!r}")
+    second_colon = entry.find(":", first_colon + 1)
+    if second_colon == -1:
+        raise ValueError(
+            f"gate_verdict entry has only one colon — expected gate:state:ref: {entry!r}"
+        )
+    gate = entry[:first_colon]
+    state = entry[first_colon + 1 : second_colon]
+    ref = entry[second_colon + 1 :]
+    if state not in _GATE_STATES:
+        raise ValueError(
+            f"unknown gate state {state!r} in {entry!r}; "
+            f"must be one of: {', '.join(sorted(_GATE_STATES))}"
+        )
+    return gate, state, ref
+
+
+_GATE_DIVERGENCE_REQUIRED_KEYS = ("gate_id", "offered", "answer", "divergence")
+
+
+def encode_gate_divergence_entry(
+    gate_id: str,
+    offered: str,
+    answer: str,
+    divergence: bool,
+    latency_seconds: float | int | None = None,
+) -> str:
+    """Encode one gate-divergence interaction as a base64-wrapped JSON blob.
+
+    Base64 (KTD1, docs/plans/2026-07-04-gate-divergence-telemetry-plan.md) so the entry never
+    depends on ``_yaml_scalar``'s quoting/escaping being exercised correctly for arbitrary
+    ``offered``/``answer`` free text (embedded newlines, a leading ``-``, an embedded ``: ``,
+    etc.) — the field is a repeatable ``--gate-divergence`` CLI arg rendered as a plain YAML
+    list item (``_render_value``), not a pipe-joined value passed through ``_split_list`` (that
+    machinery is only used for single-flag multi-value fields like ``--artifact-pointers``).
+    ``_yaml_scalar`` already quotes/escapes these characters correctly today, so this is
+    defense-in-depth rather than a fix for a live corruption bug — but it means a future change
+    to ``_yaml_scalar``'s escaping logic cannot silently corrupt ``gate_divergence`` entries,
+    since base64's alphabet (``A-Za-z0-9+/=``) never needs the quoting path at all.
+    """
+    blob = json.dumps(
+        {
+            "gate_id": gate_id,
+            "offered": offered,
+            "answer": answer,
+            "divergence": divergence,
+            "latency_seconds": latency_seconds,
+        }
+    )
+    return base64.b64encode(blob.encode("utf-8")).decode("ascii")
+
+
+def parse_gate_divergence_entry(entry: str) -> dict[str, Any]:
+    """Decode and validate one base64-wrapped ``gate_divergence`` JSON entry.
+
+    Raises ``ValueError`` (echoing the offending entry) when the entry is not valid base64,
+    not valid JSON, or missing a required key.
+    """
+    try:
+        blob = base64.b64decode(entry.encode("ascii"), validate=True).decode("utf-8")
+    except Exception as exc:
+        raise ValueError(f"gate_divergence entry is not valid base64: {entry!r}") from exc
+    try:
+        parsed = json.loads(blob)
+    except (json.JSONDecodeError, RecursionError) as exc:
+        # RecursionError is caught alongside JSONDecodeError: a maliciously deep-nested JSON
+        # payload (e.g. thousands of nested ``[``) exhausts Python's recursion limit inside
+        # json.loads rather than raising JSONDecodeError, and an uncaught RecursionError would
+        # crash gate_divergence_reader.py's main() instead of skipping the malformed entry.
+        raise ValueError(f"gate_divergence entry decoded to invalid JSON: {entry!r}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(f"gate_divergence entry must decode to a JSON object: {entry!r}")
+    missing = [key for key in _GATE_DIVERGENCE_REQUIRED_KEYS if key not in parsed]
+    if missing:
+        raise ValueError(f"gate_divergence entry missing required key(s) {missing}: {entry!r}")
+    latency = parsed.get("latency_seconds")
+    if latency is not None and not isinstance(latency, (int, float)):
+        raise ValueError(
+            f"gate_divergence entry latency_seconds must be int, float, or null: {entry!r}"
+        )
+    return parsed
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1178,14 +1340,19 @@ def _build_save_saga(args: argparse.Namespace) -> Saga:
         work_session_paths=_split_list(args.work_session_paths),
         review_paths=_split_list(args.review_paths),
         qa_paths=_split_list(args.qa_paths),
+        artifact_pointers=_split_list(args.artifact_pointers),
         files_modified=_split_list(args.files_modified),
         rounds_seen=_split_int_list(args.rounds_seen),
         pr_refs=_split_list(args.pr_refs),
         adr_refs=_split_list(args.adr_refs),
         journal_refs=_split_list(args.journal_refs),
+        ceremony_transition=args.ceremony_transition,
+        ceremony_tier=args.ceremony_tier,
         blockers=args.blockers,
         open_questions=_split_list(args.open_questions),
         checks_run=_split_list(args.checks_run),
+        gate_verdicts=ABSENT if args.gate_verdict is None else list(args.gate_verdict),
+        gate_divergence=ABSENT if args.gate_divergence is None else list(args.gate_divergence),
         source=args.source,
         summary=args.summary,
         decisions=args.decisions,
@@ -1238,13 +1405,47 @@ def _add_save_parser(sub: Any) -> None:
     )
     p.add_argument("--review-paths", default=None, help="pipe-separated; omit = carry forward")
     p.add_argument("--qa-paths", default=None, help="pipe-separated; omit = carry forward")
+    p.add_argument(
+        "--artifact-pointers",
+        default=None,
+        help="pipe-separated typed artifact-pointer JSON blocks; omit = carry forward",
+    )
     p.add_argument("--files-modified", default=None, help="pipe-separated; omit = carry forward")
     p.add_argument("--rounds-seen", default=None, help="pipe-separated ints; omit = carry forward")
     p.add_argument("--pr-refs", default=None, help="pipe-separated; omit = carry forward")
     p.add_argument("--adr-refs", default=None, help="pipe-separated; omit = carry forward")
     p.add_argument("--journal-refs", default=None, help="pipe-separated; omit = carry forward")
+    p.add_argument(
+        "--ceremony-transition",
+        default="",
+        help="ship_ceremony.py: last transition run (e.g. 'open_pr'); omit = carry forward",
+    )
+    p.add_argument(
+        "--ceremony-tier",
+        default="",
+        choices=[*CEREMONY_TIERS, ""],
+        help="ship_ceremony.py: reversibility tier of that transition; omit = carry forward",
+    )
     p.add_argument("--open-questions", default=None, help="pipe-separated; omit = carry forward")
     p.add_argument("--checks-run", default=None, help="pipe-separated; omit = carry forward")
+    p.add_argument(
+        "--gate-verdict",
+        action="append",
+        default=None,
+        metavar="GATE:STATE:REF",
+        help="repeatable; each value is 'gate:state:ref' (omit = carry forward)",
+    )
+    p.add_argument(
+        "--gate-divergence",
+        action="append",
+        default=None,
+        metavar="BASE64_JSON",
+        help=(
+            "repeatable; each value is a base64-wrapped JSON blob "
+            "{gate_id, offered, answer, divergence, latency_seconds} "
+            "(see encode_gate_divergence_entry; omit = carry forward)"
+        ),
+    )
     p.add_argument("--blockers", default="")
     p.add_argument("--source", default="")
     p.add_argument("--summary", default="")

@@ -25,6 +25,22 @@
 
 ---
 
+## 2026-07-09
+
+### Advisory locks must cover the read-compute-write cycle atomically for state ledgers  {#ledger-concurrency-flock}
+
+**Context.** In `run_ledger.py`, facts are appended in a hash-chained sequence where each record carries the hash of the preceding record (the tail hash). When multiple subprocesses or concurrent threads attempt to write to the ledger simultaneously, they can read the same tail hash and generate conflicting hash chains, corrupting the chain sequence.
+
+**Evidence.** [run_ledger.py](../../plugins/saga/scripts/run_ledger.py#L120-L137) and Finding 16 in the code review.
+
+**Mechanism.** Simply opening the file with `a` or appending does not prevent a concurrent writer from reading the tail hash during the brief window before the write happens. Because `flock` is advisory, the file descriptor must be opened in read-write mode (`O_RDWR`), locked exclusively (`LOCK_EX`), read from the end to compute the hash, and then appended to while the lock is held.
+
+**Fix.** Refactored `append_fact` in `run_ledger.py` to open the file via low-level `os.open(..., os.O_RDWR | os.O_CREAT)` to obtain a writable file descriptor, acquired an exclusive advisory lock using `fcntl.flock(fd, fcntl.LOCK_EX)`, and then read the tail hash, computed the new hash, and wrote the record while holding the lock.
+
+**Validation.** Added [test_run_ledger.py](../../plugins/saga/tests/test_run_ledger.py) with concurrent append regression tests that prove the chaining logic under lock, which pass successfully.
+
+**Generalizable rule.** When maintaining hash-chained or sequential log files, serialize access using advisory locks that wrap the entire read-compute-write operation (read tail, compute next, append write) on a single file descriptor rather than locking only the write phase.
+
 ## 2026-06-08
 
 ### Schema fields are consumed visually by humans/models, not regex-parsed  {#saga-formatting-parser-constraints}
@@ -43,7 +59,7 @@
 
 **Refs.**
 - DECISIONS [adopt-shared-formatting-contract](#adopt-shared-formatting-contract)
-- [formatting-style.md](file:///Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/saga/references/formatting-style.md)
+- [formatting-style.md](../../plugins/saga/references/formatting-style.md)
 
 ---
 

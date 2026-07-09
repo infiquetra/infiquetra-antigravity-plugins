@@ -1,4 +1,4 @@
-# Validator Execution Order - team-execution
+# Validator Execution Order - multi-agent-consensus
 
 Validators run after implementation and reviewer consensus.
 

@@ -1413,8 +1413,8 @@ def test_retro_engine_merge_contract() -> None:
     if (PLUGIN_ROOT / "agents").exists():
         agent_files = list((PLUGIN_ROOT / "agents").glob("*.md"))
         agent_names = {f.stem for f in agent_files}
-        assert agent_names == {"lifecycle-router"}, (
-            f"plugins/saga/agents/ must contain ONLY lifecycle-router.md (U14/R16); "
+        assert agent_names == {"lifecycle-router", "readonly-verifier"}, (
+            f"plugins/saga/agents/ must contain ONLY lifecycle-router.md and readonly-verifier.md; "
             f"found: {sorted(agent_names)}. Named ce-* or judgment agents belong outside this dir."
         )
 
@@ -1782,8 +1782,8 @@ def test_investigate_engine_merge_contract() -> None:
     if (PLUGIN_ROOT / "agents").exists():
         agent_files = list((PLUGIN_ROOT / "agents").glob("*.md"))
         agent_names = {f.stem for f in agent_files}
-        assert agent_names == {"lifecycle-router"}, (
-            f"plugins/saga/agents/ must contain ONLY lifecycle-router.md (U14/R16); "
+        assert agent_names == {"lifecycle-router", "readonly-verifier"}, (
+            f"plugins/saga/agents/ must contain ONLY lifecycle-router.md and readonly-verifier.md; "
             f"found: {sorted(agent_names)}. Named ce-* or judgment agents belong outside this dir."
         )
 

@@ -10,7 +10,7 @@ Usage:
   python3 discover_sessions.py --repo <repo-folder> --days <N> \\
       [--projects-root <path>] [--exclude <session-id>]
 
-It globs ``~/.gemini/projects/*<repo>*/*.jsonl`` within an mtime window, drops
+It globs ``~/.gemini/antigravity-cli/brain/*/.system_generated/logs/*.jsonl`` within an mtime window, drops
 ``--exclude``\\d session ids, RECENCY-ranks newest-first, and CAPS at 5.
 
 Output is ``json.dumps`` of ``{"candidates": [{"path", "session_id", "mtime"}],
@@ -49,8 +49,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--days", type=int, required=True, help="mtime window in days")
     parser.add_argument(
         "--projects-root",
-        default=str(Path.home() / ".claude" / "projects"),
-        help="Override the Claude projects root (default ~/.gemini/projects); for testing",
+        default=str(Path.home() / ".gemini" / "antigravity-cli" / "brain"),
+        help="Override the Antigravity brain root (default ~/.gemini/antigravity-cli/brain); for testing",
     )
     parser.add_argument(
         "--exclude",

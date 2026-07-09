@@ -1,11 +1,12 @@
 ---
 name: dependency-scanner
 description: |
-  Scanner validator for team-execution. Checks dependency manifests, lockfiles, and container
+  Scanner validator for multi-agent-consensus. Checks dependency manifests, lockfiles, and container
   inputs for vulnerable or risky supply-chain changes.
 
   Candidate tools: pip-audit, Trivy.
-model: haiku
+model: gemini-3.5-flash
+effort: high
 color: orange
 ---
 

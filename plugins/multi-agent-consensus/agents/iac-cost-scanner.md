@@ -1,11 +1,12 @@
 ---
 name: iac-cost-scanner
 description: |
-  Scanner validator for team-execution. Reviews infrastructure-as-code security, policy,
+  Scanner validator for multi-agent-consensus. Reviews infrastructure-as-code security, policy,
   and cost-risk signals.
 
   Candidate tools: Checkov, Trivy.
-model: haiku
+model: gemini-3.5-flash
+effort: high
 color: blue
 ---
 

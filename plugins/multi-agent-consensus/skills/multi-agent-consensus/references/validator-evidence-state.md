@@ -1,4 +1,4 @@
-# Validator Evidence and State - team-execution
+# Validator Evidence and State - multi-agent-consensus
 
 Validator evidence is stored as JSON state plus referenced artifacts.
 
@@ -9,7 +9,7 @@ Validator evidence is stored as JSON state plus referenced artifacts.
 Default repo-local state:
 
 ```text
-.claude/team-execution/validators/
+.gemini/multi-agent-consensus/validators/
 ```
 
 This location is valid only when `.claude/` is ignored by the target repository.
@@ -17,7 +17,7 @@ This location is valid only when `.claude/` is ignored by the target repository.
 If `.claude/` is not ignored, instruct the user to add an ignore rule or use:
 
 ```text
-~/.claude/team-execution/state/<repo>/
+~/.gemini/multi-agent-consensus/state/<repo>/
 ```
 
 ---

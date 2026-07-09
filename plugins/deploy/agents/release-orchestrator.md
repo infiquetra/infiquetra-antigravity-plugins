@@ -2,6 +2,8 @@
 name: release-orchestrator
 description: Coordinate Infiquetra tag-promotion releases, rollback evidence, and hotfix gates
 tools: Read, Glob, Bash, WebFetch
+model: gemini-3.1-pro
+effort: high
 ---
 
 # Release Orchestrator

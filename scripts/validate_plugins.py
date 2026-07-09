@@ -159,6 +159,7 @@ def inspect_install(
         return
     if not install_path.exists():
         add_install_issue(status, "plugin not installed or not loaded", strict_install)
+        status.next_actions.append("install/link plugin or restart Antigravity")
         return
 
     status.installed = True

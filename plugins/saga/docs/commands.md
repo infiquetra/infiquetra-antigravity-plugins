@@ -1,6 +1,6 @@
 # Saga Command Selection
 
-Saga has 20 command files and 19 routable commands. `/ceo-review` is an alias for `/founder-review`, so it is documented separately but does not add a lifecycle node.
+Saga has 21 command files and 20 routable commands. `/ceo-review` is an alias for `/founder-review`, so it is documented separately but does not add a lifecycle node.
 
 ![Command Matrix](assets/command-matrix.svg)
 
@@ -397,3 +397,22 @@ Outcome coordinator over a DAG of leaf sagas — the layer above a single work-t
 | Boundary | Owns frontier dispatch, harvest, and operator-attention routing; does not run leaf implementations, file issues, or deploy. |
 | Common mistakes | Expecting an `/outcome work` verb; treating status as stored rather than derived on read. |
 | Example | `/outcome advance ship-feature-x` |
+
+### /tier
+
+mid-run model/effort tier lever
+
+| Field | Value |
+|-------|-------|
+| Purpose | Set a run-scoped tier ceiling or patch a not-yet-run unit's tier mid-run, without aborting and re-planning. |
+| Use when | The operator wants to cap model/effort for the rest of a run. The operator wants to change a not-yet-run unit's tier without re-planning. |
+| Do not use when | The tier should be set once up front (use `/plan`'s tier table). The unit has already run (its recorded tier is never edited). |
+| Inputs | A model/effort ceiling, or a unit id plus a new tier; or show/clear. |
+| Outputs | A session-override file write, or a patched + re-validated + re-emitted spec. |
+| Saga state | Writes the git-ignored session override (`.gemini/saga/tier-session-override.json`); does not tick a saga. |
+| Routes in | `/plan`, `/work` |
+| Routes out | `/work` |
+| Gates | An up-ladder mid-run escalation requires operator confirmation before re-emit; a ceiling only ever clamps down. |
+| Boundary | Writes the override and drives patch/validate/emit; does not run leaf work, merge, or deploy. |
+| Common mistakes | Expecting a ceiling to raise a tier (it only clamps down). Patching a unit that already ran (only not-yet-run units are edited). |
+| Example | `/tier gemini-3.5-flash/medium` |

@@ -1,4 +1,4 @@
-# Validator Criteria - team-execution
+# Validator Criteria - multi-agent-consensus
 
 Validators report evidence and gate status. They do not replace reviewer judgment.
 
@@ -11,7 +11,7 @@ Validators report evidence and gate status. They do not replace reviewer judgmen
 | pass | Required checks ran and found no blocking issue | Gate passes |
 | warn | Non-blocking issue or optional missing signal | Report and continue |
 | hard-fail | Blocking scanner/tester finding | Blocks auto-merge, nonprod deploy, and completion |
-| skipped-by-config | Disabled by `.team-execution.json` or explicit user choice | Report as skipped |
+| skipped-by-config | Disabled by `.multi-agent-consensus.json` or explicit user choice | Report as skipped |
 | blocked | Required tool, target, credential, or signal is missing | Blocks required gate until resolved |
 
 ---

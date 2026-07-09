@@ -1,4 +1,4 @@
-# Review Criteria — team-execution
+# Review Criteria — multi-agent-consensus
 
 All reviewers score 5 dimensions (0-10 each). Overall = average of 5 dimensions.
 

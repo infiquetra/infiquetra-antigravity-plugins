@@ -7,6 +7,7 @@ Google Antigravity plugins for Infiquetra engineering workflows.
 | plugin | surfaces |
 |--------|----------|
 | `deploy` | agent, commands, skill |
+| `fleet-core` | scripts |
 | `home-lab-ops` | agent, skills |
 | `mission-control` | agent, commands, config |
 | `multi-agent-consensus` | command, skills |
@@ -21,11 +22,12 @@ Current upstream sync state:
 
 | Plugin | Upstream Source Repo | Synced Commit (SHA) |
 |--------|----------------------|---------------------|
-| `deploy` | `infiquetra-claude-plugins` | `3987510` |
+| `deploy` | `infiquetra-claude-plugins` | `099ec4c` |
+| `fleet-core` | `infiquetra-claude-plugins` | `099ec4c` |
 | `home-lab-ops` | `infiquetra-claude-plugins` | `3987510` |
-| `mission-control` | `infiquetra-claude-plugins` | `3987510` |
-| `multi-agent-consensus` | `infiquetra-claude-plugins` | `3987510` |
-| `saga` | `infiquetra-claude-plugins` | `3987510` |
+| `mission-control` | `infiquetra-claude-plugins` | `099ec4c` |
+| `multi-agent-consensus` | `infiquetra-claude-plugins` | `099ec4c` |
+| `saga` | `infiquetra-claude-plugins` | `099ec4c` |
 | `todoist` | `infiquetra-claude-plugins` | `3987510` |
 | `unifi` | `infiquetra-claude-plugins` | `3987510` |
 

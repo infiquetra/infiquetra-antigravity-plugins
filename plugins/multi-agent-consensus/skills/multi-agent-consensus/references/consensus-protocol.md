@@ -1,4 +1,4 @@
-# Consensus Protocol — team-execution
+# Consensus Protocol — multi-agent-consensus
 
 This file defines the review-revise cycle used in Step B3 of the orchestration protocol.
 Read this before running the review cycle to understand scoring, fix routing, and escalation.
@@ -151,7 +151,7 @@ You are reviewing the implementation of the following plan:
 
 ## Review Instructions
 Score the implementation against your 5 dimensions from:
-team-execution/skills/team-execution/references/review-criteria.md
+multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md
 
 Produce your score table, verdict, and fix requests (if NEEDS REVISION).
 ```

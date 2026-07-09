@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -79,6 +80,9 @@ class DispatchRequest:
     title: str
     backend: str
     repo_root: Path
+    # The leaf's declared sandbox (#287 U3), so the dispatcher can probe backend enforceability and
+    # HALT rather than silently run the leaf uncontained. Absent (None) => ambient x read-write.
+    sandbox: outcome_spec.Sandbox | None = None
 
 
 def _default_dispatcher(req: DispatchRequest) -> str:
@@ -229,6 +233,55 @@ def commit_spec(
     return {"committed": True, "branch": branch, "pushed": pushed}
 
 
+# A github pull-request URL — the gh-consumable, cwd-independent form the harvester barrier re-verifies
+# (#495 U2). link-pr requires this exact shape so the stored ref is unambiguous across machines.
+_PR_URL_RE = re.compile(r"^https?://github\.com/[^/\s]+/[^/\s]+/pull/\d+(?:[/?#].*)?$")
+
+
+def link_pr(
+    repo_root: Path, outcome_id: str, subplot_id: str, pr_url: str, *, push: bool = False
+) -> dict[str, Any]:
+    """Attach a code leaf's merged PR to its coordinator node — the attended gap-1 producer (#495 U2).
+
+    The record-only dispatch -> native ``/work`` -> squash-merge flow never writes a leaf's merged PR
+    back onto the coordinator node, so the ``code:pr-merged`` barrier reads "no PR ref yet" forever
+    (``outcome_orchestrator.py:102-103``). This verb writes ``node.github["pr"]`` so the next ``advance``
+    harvests the leaf. It is the single missing *producer* both consumers wait on — the harvester barrier
+    and the auto-merge queue's ``_is_mergeable_kind``. It attaches a POINTER only: the barrier still
+    re-verifies ``merged`` on GitHub, so a wrong or not-yet-merged URL never falsely completes a node.
+    Idempotent. With ``push`` it commits the spec to the outcome's own branch (run it on that branch).
+    """
+    pr = str(pr_url).strip()
+    if not _PR_URL_RE.match(pr):
+        raise OutcomeError(
+            f"link-pr: {pr_url!r} is not a github pull-request URL "
+            f"(https://github.com/<owner>/<repo>/pull/<N>)"
+        )
+    spec = load_spec(repo_root, outcome_id)
+    node = spec.node_by_id(subplot_id)
+    if node is None:
+        raise OutcomeError(f"link-pr: no subplot {subplot_id!r} in outcome {outcome_id!r}")
+    if node.kind != "code":
+        raise OutcomeError(
+            f"link-pr: subplot {subplot_id!r} is kind={node.kind!r}, not 'code' — only a code leaf's "
+            f"completion is gated on a merged PR"
+        )
+    already = str(node.github.get("pr", ""))
+    changed = already != pr
+    node.github["pr"] = pr
+    spec.validate()
+    save_spec(repo_root, spec)
+    result: dict[str, Any] = {
+        "outcome_id": outcome_id,
+        "subplot_id": subplot_id,
+        "pr": pr,
+        "changed": changed,
+    }
+    if push:
+        result["persisted"] = commit_spec(repo_root, outcome_id, push=True)
+    return result
+
+
 def _store(repo_root: Path, outcome_id: str, *, runner: Callable[..., Any] | None = None) -> Any:
     return outcome_store.Store.for_outcome(outcome_id, Path(repo_root), runner=runner).ensure()
 
@@ -269,6 +322,76 @@ def _starter_nodes() -> list[dict[str, Any]]:
         {"subplot_id": "design", "title": "Design", "kind": "non-code"},
         {"subplot_id": "build", "title": "Build", "kind": "code", "depends_on": ["design"]},
     ]
+
+
+def _ingest_state(state: Any, state_reason: Any) -> str:
+    """Map a GitHub issue state+reason to an authored ``Node.state`` (#375 KTD2).
+
+    OPEN -> ``pending``; CLOSED+NOT_PLANNED -> ``rejected``; any other CLOSED -> ``done``. This is
+    structural authored spec state (permitted), never a committed status field or a completion event.
+    """
+    if str(state or "").upper() != "CLOSED":
+        return "pending"
+    return "rejected" if str(state_reason or "").upper() == "NOT_PLANNED" else "done"
+
+
+def nodes_from_objective(
+    owner: str, repo: str, number: int, *, runner: Callable[..., Any] | None = None
+) -> tuple[list[dict[str, Any]], list[dict[str, str]], str]:
+    """Build outcome node dicts from a GitHub Objective's sub-issues (#375 U3).
+
+    Returns ``(nodes, dropped_edges, objective_title)``. Each node carries a stable ``subplot_id``
+    derived from the sub-issue identity (repo-qualified only on same-number collisions), a ``kind``
+    from labels (``non-code`` -> ``non-code``, else ``code``), an authored ``state`` from the
+    sub-issue's state+reason, a ``github`` provenance stamp the reconcile/board-sync consumers read,
+    and ``depends_on`` from the inferred (cycle-safe) edges.
+    """
+    import discover_subissues  # noqa: PLC0415
+    import outcome_edges  # noqa: PLC0415
+
+    data = discover_subissues.fetch_objective(owner, repo, number, runner=runner)
+    raw_subissues = data.get("subissues", [])
+    subissues = (
+        [sub for sub in raw_subissues if isinstance(sub, dict)]
+        if isinstance(raw_subissues, list)
+        else []
+    )
+    depends_on_by_subplot, dropped = outcome_edges.edges_from_relationships(subissues)
+    subplot_ids = outcome_edges.subplot_ids_for_subissues(subissues)
+
+    repo_full = f"{owner}/{repo}"
+    nodes: list[dict[str, Any]] = []
+    for sub in subissues:
+        n = sub["number"]
+        sub_repo = str(sub.get("repo") or repo_full)
+        sid = subplot_ids[(str(sub.get("repo") or ""), int(n))]
+        labels = [str(x).lower() for x in (sub.get("labels") or [])]
+        kind = "non-code" if "non-code" in labels else "code"
+        node: dict[str, Any] = {
+            "subplot_id": sid,
+            "title": sub.get("title") or sid,
+            "kind": kind,
+            "state": _ingest_state(sub.get("state"), sub.get("state_reason")),
+            # Stamp the sub-issue's OWN repository+number so reconcile/board-sync resolve it, never
+            # the parent Objective (#375 KTD4/R5, #513).
+            "github": {"repo": sub_repo, "issue": f"{sub_repo}#{n}", "sub_issue": n},
+        }
+        deps = depends_on_by_subplot.get(sid)
+        if deps:
+            node["depends_on"] = deps
+        nodes.append(node)
+
+    parent = data.get("parent")
+    objective_title = str(parent.get("title") or "") if isinstance(parent, dict) else ""
+    return nodes, dropped, objective_title
+
+
+def _parse_objective_ref(ref: str) -> tuple[str, str, int]:
+    """Parse ``<owner>/<repo>#<N>`` into ``(owner, repo, number)`` (#375 U4)."""
+    m = re.fullmatch(r"(?P<owner>[^/]+)/(?P<repo>[^#]+)#(?P<number>\d+)", ref.strip())
+    if not m:
+        raise OutcomeError(f"--from-objective must be '<owner>/<repo>#<N>', got {ref!r}")
+    return m.group("owner"), m.group("repo"), int(m.group("number"))
 
 
 def resume(
@@ -337,17 +460,25 @@ def derive_states(spec: outcome_spec.OutcomeSpec, store: Any) -> dict[str, str]:
     its actual negative terminal (``failed`` / ``rejected`` / ``stalled``) so a dead leaf is never
     mislabeled as in-flight; else a settled dispatch -> ``dispatched``; else in the ready frontier ->
     ``ready``; else ``blocked`` (an upstream is not yet done). No node's state is ever read from a
-    stored scalar (R17) — ``Node.state`` on the spec is authoring-time-only and ignored here.
+    stored scalar (R17) — ``Node.state`` on the spec is authoring-time-only but used as a fallback
+    when no store events exist to prevent closed/rejected subissues from re-entering the frontier.
     """
     success = outcome_store.completed_subplots(store, successful_only=True)
     terminals = _terminal_state_map(store)
     dispatched = _dispatch_records(store)
-    frontier = set(outcome_spec.ready_frontier(spec, success))
+
+    # Combined completed set: successful subplots in store + spec nodes closed/rejected at authoring time.
+    spec_completed = {n.subplot_id for n in spec.nodes if n.state in ("done", "rejected", "failed")}
+    completed_all = success | spec_completed
+
+    frontier = set(outcome_spec.ready_frontier(spec, completed_all))
     states: dict[str, str] = {}
     for node in spec.nodes:
         sid = node.subplot_id
         if sid in success:
             states[sid] = LIVE_DONE
+        elif node.state in ("done", "rejected", "failed") and sid not in terminals and sid not in dispatched:
+            states[sid] = LIVE_DONE if node.state == "done" else node.state
         elif sid in terminals:
             states[sid] = terminals[sid]  # negative terminal — surfaced, not masked
         elif sid in dispatched:
@@ -414,9 +545,18 @@ class AdvanceResult:
     gated: list[str] = field(
         default_factory=list
     )  # ready leaves held back by the approval gate (U7/R20)
+    retriable: list[str] = field(
+        default_factory=list
+    )  # leaves whose dispatch hit a 429 -> retriable-pending, left ready to re-pick (#348/R4/KTD4)
     degraded: list[dict[str, Any]] = field(
         default_factory=list
     )  # leaves degraded one rung autonomous+away (U9/R23)
+    board_synced: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # per-tick autonomous board-sync records (U4/#279 — only when autonomous=True)
+    drift: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # per-tick board<->saga drift/recovered records (#295 — only when autonomous=True)
     skipped_busy: bool = False  # coordinator lease held by another tick -> no-op (R13)
     ticks: int = 1
     status: dict[str, Any] = field(default_factory=dict)
@@ -431,11 +571,31 @@ class AdvanceResult:
             "liveness": self.liveness,
             "costs": self.costs,
             "gated": self.gated,
+            "retriable": self.retriable,
             "degraded": self.degraded,
+            "board_synced": self.board_synced,
+            "drift": self.drift,
             "skipped_busy": self.skipped_busy,
             "ticks": self.ticks,
             "status": self.status,
         }
+
+
+def _default_board_writer(
+    repo_root: Path,
+    *,
+    project: str = "operations",
+    runner: Callable[..., Any] | None = None,
+) -> Callable[..., None]:
+    """Re-export of ``board_progression.default_board_writer`` (#344 KTD6).
+
+    The production board_writer (the ``OpKind`` → ``sdlc_manager.py`` verb mapping) moved to
+    ``board_progression`` so the skill consumers (`/work`, `/loop`) can reach it through the CLI.
+    Kept here so ``advance``'s call sites and any test references remain valid.
+    """
+    import board_progression as _m  # noqa: PLC0415
+
+    return _m.default_board_writer(repo_root, project=project, runner=runner)
 
 
 def advance(
@@ -457,6 +617,11 @@ def advance(
     lease_ttl: float = DEFAULT_LEASE_TTL,
     now: Callable[[], float] = time.time,
     runner: Callable[..., Any] | None = None,
+    autonomous: bool = False,
+    board_writer: Callable[..., None] | None = None,
+    board_reader: Callable[[str], str] | None = None,
+    issue_reader: Callable[[str], dict[str, str]] | None = None,
+    project: str = "operations",
 ) -> AdvanceResult:
     """Run one (``loop=False``) or repeated (``loop=True``) reconcile ticks.
 
@@ -469,6 +634,10 @@ def advance(
     leaf's work here (R3); then return the derived status. Idempotent: a leaf with a settled
     (``commit``) dispatch record is skipped, so repeated ticks never double-dispatch. ``loop`` repeats
     until the frontier is empty or ``max_ticks``, which the host (`/loop`/cron) would otherwise drive.
+
+    ``project`` (#326) names the target mission-control board/workflow and is the single source
+    threaded to both the default board writer and ``outcome_board_sync.reconcile_board`` — the two
+    must never disagree about which board they're resolving statuses against.
     """
     holder = holder if holder is not None else _default_holder()
     dispatch = dispatcher if dispatcher is not None else _default_dispatcher
@@ -487,7 +656,14 @@ def advance(
     all_halted: list[dict[str, Any]] = []
     all_harvested: list[str] = []
     all_gated: list[str] = []
+    all_retriable: list[str] = []
+    # #348/KTD4: sids that hit a 429 this advance() CALL are skipped for the rest of the call so a
+    # loop=True run never hammers a rate-limited backend. Per-call (never persisted): a fresh advance
+    # re-derives the leaf as `ready` and re-attempts it -- the derived-on-read re-pick.
+    retriable_seen: set[str] = set()
     all_degraded: list[dict[str, Any]] = []
+    all_board_synced: list[dict[str, Any]] = []
+    all_drift: list[dict[str, Any]] = []
     merge_runs: list[Any] = []
     worktree_runs: list[Any] = []
     liveness_runs: list[Any] = []
@@ -512,26 +688,76 @@ def advance(
                 # Reclaim any hung dispatched leaf as `stalled` (R31) BEFORE the frontier read so its
                 # downstream cascade is reflected this tick (R22).
                 liveness_runs.append(liveness_processor(spec, store))
-            tick_dispatched, tick_halted, tick_gated, tick_degraded = _reconcile_once(
-                repo_root,
-                spec,
-                store,
-                dispatch,
-                holder,
-                lease_ttl,
-                now,
-                dispatch_gate=dispatch_gate,
-                available=available,
-                attending=attending,
+            tick_dispatched, tick_halted, tick_gated, tick_degraded, tick_retriable = (
+                _reconcile_once(
+                    repo_root,
+                    spec,
+                    store,
+                    dispatch,
+                    holder,
+                    lease_ttl,
+                    now,
+                    dispatch_gate=dispatch_gate,
+                    available=available,
+                    attending=attending,
+                    retriable_seen=retriable_seen,
+                )
             )
             all_dispatched.extend(tick_dispatched)
             all_halted.extend(tick_halted)
             all_gated.extend(tick_gated)
             all_degraded.extend(tick_degraded)
+            all_retriable.extend(tick_retriable)
             if cost_processor is not None:
                 # Materialize the realized-cost rollup into spec.cost_rollup AFTER dispatch/harvest so it
                 # reflects this tick's completions (U10/R24). The U8 report renders spec.cost_rollup.
                 cost_runs.append(cost_processor(spec, store))
+            if autonomous:
+                # Autonomous board-sync (U4/#279): reconcile each leaf's derived state to the
+                # reversibility-authorized board ops. The default-GATE certificate + the separate
+                # idempotency ledger bound it; it only fires on the explicit autonomous path, and runs
+                # under the coordinator lease so board-sync is serialized per outcome.
+                import outcome_board_sync
+                import outcome_github
+                import outcome_reconcile
+
+                _bw = (
+                    board_writer
+                    if board_writer is not None
+                    else _default_board_writer(repo_root, project=project)
+                )
+                _br = (
+                    board_reader
+                    if board_reader is not None
+                    else (lambda ref: outcome_github.board_status(ref, project=project))
+                )
+                _ir = issue_reader if issue_reader is not None else outcome_github.issue_close_info
+
+                # #295 U5/KTD2: DETECT board<->saga drift BEFORE any board write. A detected drift
+                # withholds that issue's ops (hold_issues) so the write never acts on a board that
+                # moved underneath saga; a detection failure degrades to a note, never wedges the tick.
+                try:
+                    drift_records = outcome_reconcile.detect(
+                        spec, store, board_reader=_br, issue_reader=_ir, project=project, now=now
+                    )
+                except Exception as exc:  # noqa: BLE001 — best-effort; never tick-fatal
+                    drift_records = [{"kind": "unreadable", "error": str(exc)}]
+                all_drift.extend(drift_records)
+                hold_issues = {
+                    (str(r["repo"]), int(r["number"]))
+                    for r in drift_records
+                    if r.get("kind") in outcome_reconcile.DRIFT_KINDS
+                }
+                all_board_synced.extend(
+                    outcome_board_sync.reconcile_board(
+                        spec,
+                        store,
+                        board_writer=_bw,
+                        now=now,
+                        project=project,
+                        hold_issues=hold_issues,
+                    )
+                )
             if not loop:
                 break
             if not tick_dispatched:
@@ -550,7 +776,10 @@ def advance(
         liveness=liveness_runs,
         costs=cost_runs,
         gated=sorted(set(all_gated)),
+        retriable=sorted(set(all_retriable)),
         degraded=all_degraded,
+        board_synced=all_board_synced,
+        drift=all_drift,
         ticks=ticks,
         status=status(repo_root, outcome_id, spec=spec, store=store),
     )
@@ -568,10 +797,12 @@ def _reconcile_once(
     dispatch_gate: Callable[[str], bool] | None = None,
     available: Sequence[str] | None = None,
     attending: bool = True,
-) -> tuple[list[str], list[dict[str, Any]], list[str], list[dict[str, Any]]]:
+    retriable_seen: set[str] | None = None,
+) -> tuple[list[str], list[dict[str, Any]], list[str], list[dict[str, Any]], list[str]]:
     """One level-triggered pass: dispatch every ready, not-yet-settled leaf exactly once.
 
-    Returns ``(dispatched, halted, gated, degraded)``. Each dispatch is recorded **intent -> effect ->
+    Returns ``(dispatched, halted, gated, degraded, retriable)``. Each dispatch is recorded
+    **intent -> effect ->
     commit** (the store's replay protocol): the intent is written BEFORE the backend is invoked, so a
     crash/append-failure after the effect leaves a durable dangling intent that ``replay_pending``
     surfaces and the next reconcile re-drives. The ``commit`` is the durable dedup marker (and carries an
@@ -590,16 +821,27 @@ def _reconcile_once(
     A backend HALT is recorded in the ledger (durable + visible) and reconcile CONTINUES to other
     runnable leaves — one unavailable backend never starves the frontier, and a HALT/degrade is never a
     silent substitution.
+
+    A backend 429 (``BackendRateLimitError``) is classified **retriable-pending** (#348/R4/KTD4): it
+    writes NO commit, so the leaf's derived state stays ``ready`` and the frontier re-picks it on the
+    next advance() call — a derived-on-read RESULT label, never a committed ``NODE_STATE``. The optional
+    ``retriable_seen`` set is the per-call de-hammer guard: a sid that 429'd earlier in the SAME
+    advance() call is skipped for the rest of the call (a fresh call re-derives + re-attempts it).
     """
     success = outcome_store.completed_subplots(store)  # success-only -> the frontier input
+    spec_completed = {n.subplot_id for n in spec.nodes if n.state in ("done", "rejected", "failed")}
+    completed_all = success | spec_completed
     settled = set(_dispatch_records(store))  # subplots with a COMMIT dispatch record
     dispatched: list[str] = []
     halted: list[dict[str, Any]] = []
     gated: list[str] = []
     degraded: list[dict[str, Any]] = []
-    for sid in outcome_spec.ready_frontier(spec, success):
+    retriable: list[str] = []
+    for sid in outcome_spec.ready_frontier(spec, completed_all):
         if sid in settled:
             continue  # settled dispatch record exists -> idempotent skip (no double-dispatch)
+        if retriable_seen is not None and sid in retriable_seen:
+            continue  # already 429'd this advance() call -> don't hammer; re-picked on the next call
         if dispatch_gate is not None and not dispatch_gate(sid):
             gated.append(sid)  # R20: frontier not approved at the current revision -> hold back
             continue
@@ -660,15 +902,28 @@ def _reconcile_once(
                     title=node.title,
                     backend=resolved_backend,
                     repo_root=Path(repo_root),
+                    # Producer half of the U3 sandbox probe: the resolved backend (post-degrade)
+                    # must be able to enforce this node's declared containment or dispatch HALTs.
+                    sandbox=node.sandbox,
                 )
             )
+        except outcome_dispatcher.BackendRateLimitError:
+            # #348/R4/KTD4: a 429 during dispatch is TRANSIENT, not a HALT. Release the lock and write
+            # NO commit -> the leaf's derived state stays `ready`, so the ready frontier re-picks it on
+            # the next advance() call. `retriable-pending` is a derived-on-read RESULT label, never a
+            # committed NODE_STATE, and this path mutates no git/ledger state (the dangling intent at
+            # `key` is re-driven exactly like the HALT path). Skip it for the rest of THIS call so a
+            # loop=True run never hammers the rate-limited backend. Non-429 failures HALT as before.
+            outcome_store.release_lease(store, f"dispatch-{sid}", holder)
+            retriable.append(sid)
+            if retriable_seen is not None:
+                retriable_seen.add(sid)
+            continue
         except outcome_dispatcher.BackendHaltError as halt:
             # A dispatcher-raised HALT (legacy / a restricted injected dispatcher). Release the lock so a
             # later tick re-attempts + re-surfaces it; record the receipt durably; never abort the tick.
             outcome_store.release_lease(store, f"dispatch-{sid}", holder)
-            receipt = (
-                halt.receipt.to_dict() if hasattr(halt.receipt, "to_dict") else dict(halt.receipt)
-            )
+            receipt = halt.receipt.to_dict()
             _append_ledger_once(store, {"phase": "halt", "kind": "dispatch", "key": key, **receipt})
             halted.append(receipt)
             continue
@@ -691,7 +946,7 @@ def _reconcile_once(
             },
         )
         dispatched.append(sid)
-    return dispatched, halted, gated, degraded
+    return dispatched, halted, gated, degraded, retriable
 
 
 # ---------------------------------------------------------------------------
@@ -699,12 +954,55 @@ def _reconcile_once(
 # ---------------------------------------------------------------------------
 
 
+def _positive_int_str(value: object) -> str:
+    """The decimal string of ``value`` iff it is a **positive** integer, else ``""``.
+
+    A GitHub issue number is always ``>= 1``, so a zero/negative/garbage value is never a valid
+    ``issue-<N>`` saga id — coerce it to ``""`` so the caller falls back to the raw handoff rather than
+    emitting a dead pointer like ``issue-0`` (the very class of bug #491 fixes). ``bool`` is excluded
+    though it is an ``int`` subclass.
+    """
+    if isinstance(value, bool):
+        return ""
+    if isinstance(value, int) and value > 0:
+        return str(value)
+    if isinstance(value, str) and value.strip().isdigit() and int(value.strip()) > 0:
+        return str(int(value.strip()))
+    return ""
+
+
+def _leaf_handoff_id(node: Any, leaf_saga_id: str) -> str:
+    """The operator-facing native saga id for a dispatched leaf's re-entry handoff (#491).
+
+    An issue-backed leaf's REAL native saga is ``issue-<N>`` — what ``/plan``/``/work`` mint via
+    ``saga.derive_saga_id("issue", N)`` (``saga.py:333``) — not the dispatcher's record-keeping
+    ``leaf-<outcome>-<subplot>`` id. Prefer the node's bare ``sub_issue`` number; else parse an
+    ``owner/repo#N`` ``issue`` ref (reusing ``outcome_github._parse_ref``, #495). A leaf with no
+    resolvable **positive** issue number (a task/ad-hoc leaf, or a malformed ref) keeps the raw
+    ``leaf_saga_id`` — never raises, never emits a non-positive ``issue-<N>`` (R3).
+    """
+    if node is None:
+        return leaf_saga_id
+    import outcome_github  # noqa: PLC0415 — lazy, matching this module's outcome_github import sites
+
+    github = node.github if isinstance(getattr(node, "github", None), dict) else {}
+    number = _positive_int_str(github.get("sub_issue"))
+    if not number:
+        parsed = outcome_github._parse_ref(str(github.get("issue", "")))
+        if parsed is not None:
+            number = _positive_int_str(parsed[2])
+    # ``issue-<N>`` mirrors ``saga.derive_saga_id("issue", N)`` (saga.py:333) — inlined to avoid pulling
+    # the heavy ``saga`` module into ``outcome.py`` for a one-line format (KTD2).
+    return f"issue-{number}" if number else leaf_saga_id
+
+
 def attend(repo_root: Path, outcome_id: str, subplot_id: str) -> str:
-    """Return the native ``/resume <leaf-saga-id>`` handoff for a dispatched leaf.
+    """Return the native ``/resume <saga-id>`` handoff for a dispatched leaf.
 
     The coordinator does not run the leaf — it hands the operator the exact native command to drop
     into that leaf's own saga (R16). Leaf verbs (`/work`, `/code-review`, `/qa`) are reused, never
-    shadowed by an `/outcome work`.
+    shadowed by an `/outcome work`. For an issue-backed leaf the handoff is the real ``issue-<N>`` saga
+    (#491), resolved from the node; a non-issue-backed leaf keeps the raw dispatcher id.
     """
     store = _store(repo_root, outcome_id)
     records = _dispatch_records(store)
@@ -714,7 +1012,8 @@ def attend(repo_root: Path, outcome_id: str, subplot_id: str) -> str:
             f"subplot {subplot_id!r} is not dispatched yet — nothing to attend "
             f"(dispatched: {sorted(records)})"
         )
-    return f"/resume {leaf}"
+    node = load_spec(repo_root, outcome_id).node_by_id(subplot_id)
+    return f"/resume {_leaf_handoff_id(node, leaf)}"
 
 
 # ---------------------------------------------------------------------------
@@ -926,7 +1225,13 @@ def main(argv: list[str] | None = None) -> int:
 
     p_start = sub.add_parser("start", help="create the branch-local spec + store")
     p_start.add_argument("outcome_id")
-    p_start.add_argument("objective")
+    p_start.add_argument("objective", nargs="?", default=None)
+    p_start.add_argument(
+        "--from-objective",
+        metavar="<owner>/<repo>#<N>",
+        default=None,
+        help="seed the DAG from a GitHub Objective's sub-issues (#375)",
+    )
 
     p_advance = sub.add_parser("advance", help="run a reconcile tick (dispatch the ready frontier)")
     p_advance.add_argument("outcome_id")
@@ -990,6 +1295,16 @@ def main(argv: list[str] | None = None) -> int:
         "approve", help="approve the current frontier so it may dispatch (R20)"
     )
     p_approve.add_argument("outcome_id")
+    p_approve.add_argument(
+        "--answerer",
+        default=None,
+        help="who answered the gate — provenance for a remote/channel approval (#379)",
+    )
+    p_approve.add_argument(
+        "--transport",
+        default=None,
+        help="transport the approval arrived over, e.g. redis-channel/discord — provenance (#379)",
+    )
 
     p_prune = sub.add_parser("prune", help="prune a node + reconcile its orphans (R33)")
     p_prune.add_argument("outcome_id")
@@ -1000,6 +1315,33 @@ def main(argv: list[str] | None = None) -> int:
     p_promote.add_argument("subplot_id")
     p_promote.add_argument("child_spec_ref")
 
+    p_link_pr = sub.add_parser(
+        "link-pr", help="attach a code leaf's merged PR to its node so harvest fires (#495)"
+    )
+    p_link_pr.add_argument("outcome_id")
+    p_link_pr.add_argument("subplot_id")
+    p_link_pr.add_argument(
+        "pr_url", help="the leaf's PR URL (https://github.com/<owner>/<repo>/pull/<N>)"
+    )
+    p_link_pr.add_argument(
+        "--push",
+        action="store_true",
+        help="commit the spec to the outcome branch (run on that branch)",
+    )
+
+    p_reconcile = sub.add_parser(
+        "reconcile",
+        help="detect board<->saga drift for this outcome (#295); --resolve to apply a decision",
+    )
+    p_reconcile.add_argument("outcome_id")
+    p_reconcile.add_argument("--project", default="operations")
+    p_reconcile.add_argument(
+        "--resolve", metavar="DRIFT_ID", help="apply --action to the drift with this id"
+    )
+    p_reconcile.add_argument(
+        "--action", choices=("accept-board", "re-assert", "hold"), help="resolution for --resolve"
+    )
+
     args = parser.parse_args(argv)
     # Resolve the repo root to an absolute, symlink-collapsed path. The default is ``.`` (relative),
     # and a relative/symlinked root would make the worktree registry paths diverge from git's absolute
@@ -1008,7 +1350,17 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.repo_root).resolve()
     try:
         if args.command == "start":
-            spec = start(root, args.outcome_id, args.objective)
+            if args.from_objective:
+                owner, repo, number = _parse_objective_ref(args.from_objective)
+                nodes, dropped, objective_title = nodes_from_objective(owner, repo, number)
+                objective = args.objective or objective_title or args.from_objective
+                spec = start(root, args.outcome_id, objective, nodes=nodes)
+                if dropped:
+                    print(json.dumps({"dropped_edges": dropped}), file=sys.stderr)
+            else:
+                if not args.objective:
+                    raise OutcomeError("start requires an objective (or --from-objective)")
+                spec = start(root, args.outcome_id, args.objective)
             print(json.dumps({"started": spec.outcome_id, "nodes": len(spec.nodes)}))
         elif args.command == "advance":
             # The production /outcome advance routes through the REAL backend seam (R5/R6), the REAL
@@ -1037,6 +1389,7 @@ def main(argv: list[str] | None = None) -> int:
                 gate_factory=lambda spec, store: outcome_decompose.make_dispatch_gate(store, spec),
                 available=avail,
                 attending=not args.autonomous,
+                autonomous=args.autonomous,
             )
             out = result.to_dict()
             if args.persist:
@@ -1051,8 +1404,19 @@ def main(argv: list[str] | None = None) -> int:
 
             spec = load_spec(root, args.outcome_id)
             store = _store(root, args.outcome_id)
-            rev = outcome_decompose.approve_frontier(store, spec)
-            print(json.dumps({"approved_revision": rev, "outcome_id": spec.outcome_id}))
+            rev = outcome_decompose.approve_frontier(
+                store, spec, answerer=args.answerer, transport=args.transport
+            )
+            print(
+                json.dumps(
+                    {
+                        "approved_revision": rev,
+                        "outcome_id": spec.outcome_id,
+                        "answerer": args.answerer,
+                        "transport": args.transport,
+                    }
+                )
+            )
         elif args.command == "prune":
             import outcome_decompose
             import outcome_worktrees
@@ -1078,6 +1442,12 @@ def main(argv: list[str] | None = None) -> int:
             rev = outcome_decompose.promote(spec, args.subplot_id, args.child_spec_ref)
             save_spec(root, spec)
             print(json.dumps({"promoted": args.subplot_id, "spec_revision": rev}))
+        elif args.command == "link-pr":
+            print(
+                json.dumps(
+                    link_pr(root, args.outcome_id, args.subplot_id, args.pr_url, push=args.push)
+                )
+            )
         elif args.command == "resume":
             print(json.dumps(resume(root, args.outcome_id)))
         elif args.command == "status":
@@ -1114,6 +1484,41 @@ def main(argv: list[str] | None = None) -> int:
             bundle = json.loads(Path(args.path).read_text(encoding="utf-8"))
             spec = import_bundle(root, bundle)
             print(json.dumps({"imported": spec.outcome_id, "nodes": len(spec.nodes)}))
+        elif args.command == "reconcile":
+            # #295 U5: explicit board<->saga drift detection (read-only on the world; no lease).
+            import outcome_github
+            import outcome_reconcile
+
+            spec = load_spec(root, args.outcome_id)
+            store = _store(root, args.outcome_id)
+
+            def _br(ref: str) -> str:
+                return outcome_github.board_status(ref, project=args.project)
+
+            drift = outcome_reconcile.detect(
+                spec,
+                store,
+                board_reader=_br,
+                issue_reader=outcome_github.issue_close_info,
+                project=args.project,
+            )
+            if args.resolve:
+                if not args.action:
+                    raise OutcomeError("--resolve requires --action")
+                match = next((d for d in drift if d.get("drift_id") == args.resolve), None)
+                if match is None:
+                    print(
+                        json.dumps({"ok": False, "error": f"no live drift id {args.resolve!r}"}),
+                        file=sys.stderr,
+                    )
+                    return 1
+                writer = _default_board_writer(root, project=args.project)
+                resolved = outcome_reconcile.apply_resolution(
+                    match, args.action, store=store, board_writer=writer
+                )
+                print(json.dumps({"resolved": resolved}))
+            else:
+                print(json.dumps({"drift": drift}))
     except (OutcomeError, outcome_spec.OutcomeSpecError, outcome_store.OutcomeStoreError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
         return 1

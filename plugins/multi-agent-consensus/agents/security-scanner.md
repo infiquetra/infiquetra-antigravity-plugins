@@ -1,11 +1,12 @@
 ---
 name: security-scanner
 description: |
-  Scanner validator for team-execution. Runs code, secret, and appsec scans using OSS/free
+  Scanner validator for multi-agent-consensus. Runs code, secret, and appsec scans using OSS/free
   tools where available.
 
   Candidate tools: Semgrep, Bandit, Gitleaks, detect-secrets.
-model: haiku
+model: gemini-3.5-flash
+effort: high
 color: orange
 ---
 

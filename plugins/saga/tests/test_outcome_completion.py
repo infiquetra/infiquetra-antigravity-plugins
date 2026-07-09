@@ -315,3 +315,247 @@ def test_production_harvester_child_outcome_recurses(repo: Path) -> None:
     )
     # the child outcome's leaf reads done -> child terminal-successful -> parent's child node unlocks
     assert result.harvested == ["sub"]
+
+
+def test_harvest_attaches_manifest_ref_when_dispatch_manifest_exists(tmp_path: Path) -> None:
+    """A harvested leaf whose dispatch recorded a provenance manifest gets the advisory pointer."""
+    store = STORE.Store(root=tmp_path / "saga-outcomes" / "o").ensure()
+    manifest_dir = tmp_path / "saga-manifests" / "o"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "design.json").write_text("{}", encoding="utf-8")
+    spec = _spec(
+        [
+            {"subplot_id": "design", "title": "d", "kind": "code", "github": {"pr": "1"}},
+            {"subplot_id": "bare", "title": "b", "kind": "code", "github": {"pr": "2"}},
+        ]
+    )
+    runner = _gh(pr={"1": "MERGED", "2": "MERGED"})
+    harvested = ORCH.harvest(spec, store=store, github_runner=runner)
+    assert sorted(harvested) == ["bare", "design"]
+    with_manifest = STORE.read_completion_events(store, "design")[0]
+    assert with_manifest.payload.get("manifest_ref") == "saga-manifests/o/design.json"
+    bare = STORE.read_completion_events(store, "bare")[0]
+    assert "manifest_ref" not in bare.payload
+
+
+# ---------------------------------------------------------------------------
+# board_status + issue_close_info — the saga-owned field-class reads (#295 U1/U2)
+# ---------------------------------------------------------------------------
+
+
+def _gh_reads(
+    *,
+    view: dict[str, Any] | None = None,
+    events: list[dict[str, Any]] | None = None,
+    fail: bool = False,
+    bad_json: bool = False,
+):
+    """Fake gh: ``issue view`` returns ``view`` JSON; ``api .../events`` returns ``events`` JSON."""
+
+    def runner(args: list[str], **_kw: Any) -> SimpleNamespace:
+        if fail:
+            return SimpleNamespace(returncode=1, stdout="", stderr="gh down")
+        if bad_json:
+            return SimpleNamespace(returncode=0, stdout="{not json", stderr="")
+        sub = args[1]  # args = ["gh", <sub>, ...]
+        if sub == "api":
+            return SimpleNamespace(returncode=0, stdout=json.dumps(events or []), stderr="")
+        return SimpleNamespace(returncode=0, stdout=json.dumps(view or {}), stderr="")
+
+    return runner
+
+
+def test_board_status_happy_path() -> None:
+    """The Operations item's Status name is returned for project=operations."""
+    view = {
+        "projectItems": [
+            {"status": {"optionId": "x", "name": "In Progress"}, "title": "Operations"}
+        ]
+    }
+    assert (
+        GH.board_status("o/r#5", project="operations", runner=_gh_reads(view=view)) == "In Progress"
+    )
+
+
+def test_board_status_multi_board_reads_only_slug_match() -> None:
+    """With two project memberships, only the title-matched project's Status is read."""
+    view = {
+        "projectItems": [
+            {"status": {"name": "Todo"}, "title": "Operations"},
+            {"status": {"name": "Active"}, "title": "Asgard"},
+        ]
+    }
+    assert GH.board_status("o/r#5", project="asgard", runner=_gh_reads(view=view)) == "Active"
+    assert GH.board_status("o/r#5", project="operations", runner=_gh_reads(view=view)) == "Todo"
+
+
+def test_board_status_no_matching_project_is_empty() -> None:
+    """An issue on no matching project degrades to ""."""
+    view = {"projectItems": [{"status": {"name": "Todo"}, "title": "Asgard"}]}
+    assert GH.board_status("o/r#5", project="operations", runner=_gh_reads(view=view)) == ""
+
+
+def test_board_status_degrades_on_failure_bad_json_and_null_status() -> None:
+    """gh non-zero, malformed JSON, and a null/absent status all degrade to "" without raising."""
+    assert GH.board_status("o/r#5", project="operations", runner=_gh_reads(fail=True)) == ""
+    assert GH.board_status("o/r#5", project="operations", runner=_gh_reads(bad_json=True)) == ""
+    null_status = {"projectItems": [{"status": None, "title": "Operations"}]}
+    assert GH.board_status("o/r#5", project="operations", runner=_gh_reads(view=null_status)) == ""
+    no_items: dict[str, Any] = {"projectItems": []}
+    assert GH.board_status("o/r#5", project="operations", runner=_gh_reads(view=no_items)) == ""
+
+
+def test_issue_close_info_completed_with_actor() -> None:
+    """A completed close with a discoverable actor returns the full dict."""
+    view = {"state": "CLOSED", "stateReason": "COMPLETED"}
+    events: list[dict[str, Any]] = [
+        {"event": "labeled"},
+        {"event": "closed", "actor": {"login": "namredips"}},
+    ]
+    info = GH.issue_close_info("o/r#5", runner=_gh_reads(view=view, events=events))
+    assert info == {"state": "closed", "state_reason": "completed", "closed_by": "namredips"}
+
+
+def test_issue_close_info_not_planned() -> None:
+    """A not_planned close surfaces state_reason=not_planned (the drift signal)."""
+    view = {"state": "CLOSED", "stateReason": "NOT_PLANNED"}
+    info = GH.issue_close_info("o/r#5", runner=_gh_reads(view=view, events=[]))
+    assert info["state"] == "closed"
+    assert info["state_reason"] == "not_planned"
+    assert info["closed_by"] == ""
+
+
+def test_issue_close_info_open_skips_events() -> None:
+    """An open issue reports open, no reason, empty author — and never reads the events endpoint."""
+    view = {"state": "OPEN", "stateReason": None}
+
+    calls: list[str] = []
+
+    def runner(args: list[str], **_kw: Any) -> SimpleNamespace:
+        calls.append(args[1])
+        return SimpleNamespace(returncode=0, stdout=json.dumps(view), stderr="")
+
+    info = GH.issue_close_info("o/r#5", runner=runner)
+    assert info == {"state": "open", "state_reason": "unknown", "closed_by": ""}
+    assert "api" not in calls  # events endpoint not consulted for an open issue
+
+
+def test_issue_close_info_degrades_on_failure() -> None:
+    """gh failure / malformed JSON degrade to an all-unknown dict without raising."""
+    assert GH.issue_close_info("o/r#5", runner=_gh_reads(fail=True)) == {
+        "state": "unknown",
+        "state_reason": "unknown",
+        "closed_by": "",
+    }
+    assert GH.issue_close_info("o/r#5", runner=_gh_reads(bad_json=True))["state"] == "unknown"
+
+
+def test_issue_close_info_last_closed_event_wins_after_pagination() -> None:
+    """The LAST closed event (post-concatenation) is the author — reopen/close churn resolves right."""
+    view = {"state": "CLOSED", "stateReason": "COMPLETED"}
+    events = [
+        {"event": "closed", "actor": {"login": "first"}},
+        {"event": "reopened", "actor": {"login": "mid"}},
+        {"event": "closed", "actor": {"login": "final"}},
+    ]
+    info = GH.issue_close_info("o/r#5", runner=_gh_reads(view=view, events=events))
+    assert info["closed_by"] == "final"
+
+
+def test_issue_close_info_bare_ref_has_no_author() -> None:
+    """A ref without owner/repo can't build the events path → closed_by degrades to "" (still closed)."""
+    view = {"state": "CLOSED", "stateReason": "COMPLETED"}
+    info = GH.issue_close_info(
+        "5", runner=_gh_reads(view=view, events=[{"event": "closed", "actor": {"login": "x"}}])
+    )
+    assert info["state"] == "closed"
+    assert info["closed_by"] == ""
+
+
+# ---------------------------------------------------------------------------
+# #495 U1 — gh-consumable ref normalization (owner/repo#N | full URL | bare N)
+# ---------------------------------------------------------------------------
+
+
+def _capture(state: str, *, kind: str) -> Any:
+    """A fake gh that RECORDS the ref token argv it receives, so a test can assert gh-consumability."""
+    seen: dict[str, Any] = {}
+
+    def runner(args: list[str], **_kw: Any) -> SimpleNamespace:
+        seen["ref"] = args[3]
+        if kind == "pr":
+            body: dict[str, Any] = {
+                "state": state,
+                "mergedAt": "2026-06-26T00:00:00Z" if state == "MERGED" else None,
+            }
+        else:
+            body = {"state": state}
+        return SimpleNamespace(returncode=0, stdout=json.dumps(body), stderr="")
+
+    runner.seen = seen  # type: ignore[attr-defined]
+    return runner
+
+
+def test_parse_ref_all_formats() -> None:
+    assert GH._parse_ref("infiquetra/plugins#362") == ("infiquetra", "plugins", "362")
+    assert GH._parse_ref("https://github.com/o/r/pull/493") == ("o", "r", "493")
+    assert GH._parse_ref("https://github.com/o/r/issues/7") == ("o", "r", "7")
+    assert GH._parse_ref("42") is None  # bare number — no owner/repo
+    assert GH._parse_ref("garbage") is None
+
+
+def test_pr_state_normalizes_owner_repo_num_to_url() -> None:
+    # The #495 gap-2 core: an `owner/repo#N` ref must reach gh as a consumable URL, never raw.
+    runner = _capture("MERGED", kind="pr")
+    assert GH.pr_state("o/r#493", runner=runner) == "merged"
+    assert runner.seen["ref"] == "https://github.com/o/r/pull/493"
+    assert "#" not in runner.seen["ref"]  # no raw owner/repo#N token reaches gh
+
+
+def test_issue_state_normalizes_owner_repo_num_to_url() -> None:
+    runner = _capture("CLOSED", kind="issue")
+    assert GH.issue_state("o/r#7", runner=runner) == "closed"
+    assert runner.seen["ref"] == "https://github.com/o/r/issues/7"
+
+
+def test_pr_state_passes_full_url_through_unchanged() -> None:
+    url = "https://github.com/o/r/pull/9"
+    runner = _capture("MERGED", kind="pr")
+    assert GH.pr_state(url, runner=runner) == "merged"
+    assert runner.seen["ref"] == url  # byte-for-byte passthrough
+
+
+def test_closed_by_resolves_full_url_coupling_guard() -> None:
+    # The doc-review coupling guard: normalizing the view-ref to a URL must NOT starve _closed_by's
+    # events path — _closed_by now parses a URL into owner/repo/N too, so the actor still resolves.
+    view = {"state": "CLOSED", "stateReason": "COMPLETED"}
+    events = [{"event": "closed", "actor": {"login": "namredips"}}]
+    info = GH.issue_close_info(
+        "https://github.com/o/r/issues/5", runner=_gh_reads(view=view, events=events)
+    )
+    assert info["closed_by"] == "namredips"
+
+
+# ---------------------------------------------------------------------------
+# #495 U4 — code:pr-merged contract regression guard (a closed issue is NOT enough)
+# ---------------------------------------------------------------------------
+
+
+def test_code_leaf_closed_issue_without_merged_pr_never_satisfies(tmp_path: Path) -> None:
+    # The false-positive #495 warns against: a code leaf must require a MERGED github.pr. Even with a
+    # CLOSED tracking issue, absent a merged PR the barrier must stay unsatisfied (never "close is enough").
+    store = _store(tmp_path)
+    node = _node("build", kind="code", github={"issue": "7"})  # closed issue, NO pr
+    v = ORCH.barrier_satisfied(node, store=store, github_runner=_gh(issue={"7": "CLOSED"}))
+    assert not v.satisfied
+    assert v.contract == ORCH.CONTRACT_CODE  # judged on the code contract, not the non-code one
+    # And harvest must not materialize it from the closed issue alone.
+    spec = _spec([{"subplot_id": "build", "title": "b", "kind": "code", "github": {"issue": "7"}}])
+    assert ORCH.harvest(spec, store=store, github_runner=_gh(issue={"7": "CLOSED"})) == []
+
+
+def test_code_leaf_harvests_once_pr_merged(tmp_path: Path) -> None:
+    # The producer→consumer close: attach a merged PR (what link-pr writes) and the leaf harvests.
+    store = _store(tmp_path)
+    spec = _spec([{"subplot_id": "build", "title": "b", "kind": "code", "github": {"pr": "42"}}])
+    assert ORCH.harvest(spec, store=store, github_runner=_gh(pr={"42": "MERGED"})) == ["build"]

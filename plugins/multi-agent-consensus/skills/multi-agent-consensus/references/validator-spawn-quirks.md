@@ -1,4 +1,4 @@
-# Validator Spawn Quirks - team-execution
+# Validator Spawn Quirks - multi-agent-consensus
 
 Validator agents are specialized evidence collectors. Spawn only selected validators.
 
