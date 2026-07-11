@@ -64,7 +64,6 @@ if set(EFFORT_RIDER) != set(EFFORTS):
     )
 
 
-
 def inject_effort(prompt: str, effort: str, spawn_kind: str) -> tuple[str, dict]:
     """Return ``(prompt, payload)`` with the resolved ``effort`` honored for ``spawn_kind``.
 

@@ -33,7 +33,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 # A gate id is ``<outcome_id>@r<spec_revision>`` — it mirrors the ``approvals/r{rev}.json`` key the
 # R20 approval is stored under. ``outcome_id`` is a slug (``[A-Za-z0-9._-]+``, enforced by
@@ -120,7 +120,7 @@ def _first_pending(text: str, pending: Iterable[str]) -> str | None:
     pending_set = set(pending)
     for candidate in _GATE_ID_RE.findall(text):
         if candidate in pending_set:
-            return candidate
+            return cast("str", candidate)
     return None
 
 

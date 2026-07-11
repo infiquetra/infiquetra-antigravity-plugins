@@ -321,7 +321,10 @@ def test_recommended_tier_band_field() -> None:
         "model": "gemini-3.5-flash",
         "effort": "medium",
     }
-    assert sdlc_manager.derive_tier_band("exploration") == {"model": "gemini-3.5-flash", "effort": "low"}
+    assert sdlc_manager.derive_tier_band("exploration") == {
+        "model": "gemini-3.5-flash",
+        "effort": "low",
+    }
     # Parent tracking cards carry no execution tier of their own.
     assert sdlc_manager.derive_tier_band("objective") is None
     assert sdlc_manager.derive_tier_band("nonsense-type") is None

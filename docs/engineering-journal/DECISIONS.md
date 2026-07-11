@@ -120,8 +120,8 @@ sets, or Antigravity stops carrying Mission Control as an active plugin.
 
 **Refs.**
 - LEARNINGS [saga formatting parser constraints](#saga-formatting-parser-constraints)
-- [formatting-style.md](file:///Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/plugins/saga/references/formatting-style.md)
-- [test_saga_doc_formatting.py](file:///Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/tests/test_saga_doc_formatting.py)
+- [formatting-style.md](../../plugins/saga/references/formatting-style.md)
+- [test_saga_doc_formatting.py](../../tests/test_saga_doc_formatting.py)
 
 ---
 

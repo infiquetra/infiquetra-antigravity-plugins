@@ -32,7 +32,7 @@ import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -418,7 +418,8 @@ def recommend_outcome_backend(
             f"frontier width {frontier_width} > {_FRONTIER_BUDGET_THRESHOLD}: a dynamic workflow per "
             f"leaf is expensive -> downgraded to team-execution (R7 frontier budget)"
         )
-        alts = [a for a in rec.get("alternatives", []) if a != "team-execution"]
+        alternatives = cast("list[str]", rec.get("alternatives", []))
+        alts = [a for a in alternatives if a != "team-execution"]
         if "cc-workflows-ultracode" not in alts:
             alts.append("cc-workflows-ultracode")
         rec["recommended"] = "team-execution"

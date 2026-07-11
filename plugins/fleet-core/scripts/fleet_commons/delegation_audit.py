@@ -35,10 +35,17 @@ from typing import Any
 # KTD8: Stop-hook cost bound — stream transcripts with a byte cap, never read_text a whole file.
 TRANSCRIPT_BYTE_CAP = 8 * 1024 * 1024
 
-CLAUDE_FILE_TOOLS = frozenset({
-    "Write", "Edit", "MultiEdit", "NotebookEdit",
-    "write_to_file", "replace_file_content", "multi_replace_file_content"
-})
+CLAUDE_FILE_TOOLS = frozenset(
+    {
+        "Write",
+        "Edit",
+        "MultiEdit",
+        "NotebookEdit",
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    }
+)
 
 REAL = "real"
 FALLBACK_SUSPECTED = "fallback_suspected"

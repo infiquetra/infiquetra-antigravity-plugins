@@ -505,7 +505,12 @@ def apply_resolution(
 
         verdict = cert.authorize_write(write_op_kind)
         if verdict != cert.AUTHORIZED:
-            return {"status": "gated", "drift_id": drift_id, "op_kind": write_op_kind, "verdict": "GATE"}
+            return {
+                "status": "gated",
+                "drift_id": drift_id,
+                "op_kind": write_op_kind,
+                "verdict": "GATE",
+            }
 
         payload: dict[str, Any] = {}
         if op_kind == _STATUS_FAMILY:

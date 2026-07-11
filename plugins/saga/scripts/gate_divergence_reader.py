@@ -101,7 +101,7 @@ class GateSummary:
 # and base64+JSON gate_divergence entries need more than a line-based parser)
 # ---------------------------------------------------------------------------
 
-_SAGAS_DIR = Path(".claude/saga/sagas")
+_SAGAS_DIR = _saga_engine.SAGAS_DIR
 
 
 def _all_latest_envelopes(root: Path) -> list[Path]:

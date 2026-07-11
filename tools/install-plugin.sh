@@ -60,7 +60,8 @@ list_plugins() {
     if [ -d "$REPO_ROOT/plugins" ]; then
         for p in "$REPO_ROOT/plugins"/*; do
             if [ -d "$p" ]; then
-                local p_id=$(basename "$p")
+                local p_id
+                p_id=$(basename "$p")
                 all_plugins["$p_id"]=1
             fi
         done
@@ -68,7 +69,8 @@ list_plugins() {
     
     for p in "$ANTIGRAVITY_PLUGINS_DIR"/*; do
         if [ -d "$p" ] || [ -L "$p" ]; then
-            local p_id=$(basename "$p")
+            local p_id
+            p_id=$(basename "$p")
             all_plugins["$p_id"]=1
         fi
     done
@@ -149,7 +151,8 @@ install_all() {
     print_header "📦 Installing all plugins from repo..."
     for p in "$REPO_ROOT/plugins"/*; do
         if [ -d "$p" ]; then
-            local p_id=$(basename "$p")
+            local p_id
+            p_id=$(basename "$p")
             install_plugin "$p_id"
         fi
     done
@@ -160,7 +163,8 @@ uninstall_all() {
     print_header "🗑️ Uninstalling all repo plugins..."
     for p in "$REPO_ROOT/plugins"/*; do
         if [ -d "$p" ]; then
-            local p_id=$(basename "$p")
+            local p_id
+            p_id=$(basename "$p")
             local dest="$ANTIGRAVITY_PLUGINS_DIR/$p_id"
             if [ -L "$dest" ] || [ -d "$dest" ]; then
                 uninstall_plugin "$p_id"

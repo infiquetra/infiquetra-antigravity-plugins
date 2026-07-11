@@ -64,7 +64,9 @@ def test_delegation_tripwire_hook_registered_for_file_tools() -> None:
     # U3 (#384, KTD3): PreToolUse matcher covering replace_file_content|write_to_file|multi_replace_file_content ->
     # delegation_tripwire_hook.py, as a NEW entry beside validate_json's replace_file_content|write_to_file|multi_replace_file_content one.
     events = _events()
-    cmds = _commands_for(events["PreToolUse"], "replace_file_content|write_to_file|multi_replace_file_content")
+    cmds = _commands_for(
+        events["PreToolUse"], "replace_file_content|write_to_file|multi_replace_file_content"
+    )
     assert any("delegation_tripwire_hook.py" in c for c in cmds), (
         "PreToolUse(replace_file_content|write_to_file|multi_replace_file_content) not wired to delegation_tripwire_hook.py"
     )
@@ -99,5 +101,7 @@ def test_delegation_stop_audit_hook_registered_for_subagent_stop() -> None:
 def test_validate_json_pretooluse_entry_unchanged() -> None:
     # The pre-existing validate_json entry must be untouched by the new registration.
     events = _events()
-    cmds = _commands_for(events["PreToolUse"], "replace_file_content|write_to_file|multi_replace_file_content")
+    cmds = _commands_for(
+        events["PreToolUse"], "replace_file_content|write_to_file|multi_replace_file_content"
+    )
     assert any("validate_json_hook.py" in c for c in cmds)

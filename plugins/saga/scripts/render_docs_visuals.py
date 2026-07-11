@@ -8,7 +8,7 @@ import html
 import sys
 import textwrap
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -393,10 +393,11 @@ def render_all(model: dict[str, Any]) -> dict[str, str]:
 
 
 def _target_path(model: dict[str, Any], visual_id: str, output_dir: Path | None) -> Path:
-    filename = Path(model["visuals"][visual_id]["file"]).name
+    relative_path = cast("str", model["visuals"][visual_id]["file"])
+    filename = Path(relative_path).name
     if output_dir is not None:
         return output_dir / filename
-    return REPO_ROOT / model["visuals"][visual_id]["file"]
+    return REPO_ROOT / relative_path
 
 
 def write_assets(

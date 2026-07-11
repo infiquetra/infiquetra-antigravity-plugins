@@ -40,7 +40,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -118,7 +118,7 @@ def shared_install_ref(repo_root: Path, outcome_id: str) -> str:
 
 
 def _registry_path(store: Any) -> Path:
-    return store.root / "worktrees.json"
+    return cast("Path", store.root) / "worktrees.json"
 
 
 def read_registry(store: Any) -> dict[str, dict[str, Any]]:

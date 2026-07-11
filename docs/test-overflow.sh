@@ -36,7 +36,7 @@ if [ "$current_window" != "1" ]; then
 fi
 
 # Clear previous log
-> /tmp/overflow.log
+: > /tmp/overflow.log
 
 echo "=== agent-overflow routing test ==="
 echo "Start layout:"

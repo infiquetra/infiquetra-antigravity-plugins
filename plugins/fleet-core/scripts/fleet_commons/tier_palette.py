@@ -21,7 +21,9 @@ literal. See ``plugins/fleet-core/references/tier-palette.md``.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
+from typing import Any, cast
 
 MODELS_REGISTRY_PATH = Path(__file__).resolve().parent / "models.json"
 
@@ -30,9 +32,9 @@ class TierPaletteError(ValueError):
     """Raised when ``models.json`` is malformed (bad rank/rung/ceiling)."""
 
 
-def _load_registry(path: Path = MODELS_REGISTRY_PATH) -> dict:
+def _load_registry(path: Path = MODELS_REGISTRY_PATH) -> dict[str, Any]:
     with open(path, encoding="utf-8") as handle:
-        return json.load(handle)
+        return cast("dict[str, Any]", json.load(handle))
 
 
 def _derive_ordered(rows: dict, index_key: str, kind: str) -> tuple[str, ...]:
@@ -196,9 +198,9 @@ def stronger(kind: str, a: str, b: str) -> str:
     return a if _strength(kind, a) >= _strength(kind, b) else b
 
 
-def strongest(kind: str, values: object) -> str:
+def strongest(kind: str, values: Iterable[str]) -> str:
     """The strongest value among ``values`` on the ``kind`` ladder (upgrade-only merge)."""
-    items = list(values)  # type: ignore[call-overload]
+    items = list(values)
     if not items:
         raise ValueError("strongest() requires at least one value")
     best = items[0]
