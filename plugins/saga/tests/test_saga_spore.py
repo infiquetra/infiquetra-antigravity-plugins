@@ -59,7 +59,7 @@ def _spore(
         "repo_root": "/repo",
         "saga_id": (box or {}).get("saga_id", "issue-281") if box is not None else "issue-281",
         "spec_revision": dag.get("spec_revision") if dag else None,
-        "source_tick": ".claude/saga/sagas/issue-281/20260630-200000.md",
+        "source_tick": ".gemini/saga/sagas/issue-281/20260630-200000.md",
     }
     provenance.update(prov)
     pointers: dict[str, Any] = {"plan_path": "docs/plans/p.md", "issue_ref": "o/r#281"}
@@ -332,7 +332,7 @@ def test_build_spore_assembles_provenance_dag_and_pointers(
     monkeypatch.setattr(
         M.saga,
         "latest_envelope_for",
-        lambda _r, _sid: tmp_path / ".claude/saga/sagas/issue-281/t.md",
+        lambda _r, _sid: tmp_path / ".gemini/saga/sagas/issue-281/t.md",
     )
 
     spore = M.build_spore(tmp_path, "sess-1", now=_NOW)

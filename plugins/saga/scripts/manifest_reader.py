@@ -301,10 +301,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--root",
-        default=".claude/saga-manifests",
+        default=".gemini/saga-manifests",
         help=(
             "Manifest-namespace directory (one subdirectory per saga id). Default: "
-            "'.claude/saga-manifests' (repo-local fallback; production trees live under the "
+            "'.gemini/saga-manifests' (repo-local fallback; production trees live under the "
             "resolved git-common-dir's 'saga-manifests/' — pass that path explicitly)."
         ),
     )

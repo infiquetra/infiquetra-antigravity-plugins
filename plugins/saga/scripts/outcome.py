@@ -477,7 +477,11 @@ def derive_states(spec: outcome_spec.OutcomeSpec, store: Any) -> dict[str, str]:
         sid = node.subplot_id
         if sid in success:
             states[sid] = LIVE_DONE
-        elif node.state in ("done", "rejected", "failed") and sid not in terminals and sid not in dispatched:
+        elif (
+            node.state in ("done", "rejected", "failed")
+            and sid not in terminals
+            and sid not in dispatched
+        ):
             states[sid] = LIVE_DONE if node.state == "done" else node.state
         elif sid in terminals:
             states[sid] = terminals[sid]  # negative terminal — surfaced, not masked

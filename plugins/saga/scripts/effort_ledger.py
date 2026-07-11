@@ -16,7 +16,7 @@ ask for more *before* it runs. This ledger closes that gap:
 Policy lives in ``plugins/saga/references/effort-policy.yaml`` (loaded via PyYAML like
 ``engine_registry.py``); an absent file resolves to the documented safe default (refund unused,
 surface escalations, never auto-approve). The ledger state persists as JSON under the git-ignored
-``.claude/saga/`` so ``/plan`` (allocate) and ``/work`` (record / report) share one run's accounting
+``.gemini/saga/`` so ``/plan`` (allocate) and ``/work`` (record / report) share one run's accounting
 across invocations. The CLI verbs ``allocate`` / ``record`` / ``report`` are the surface those skills
 call — a named mechanism, not intent-only prose.
 """
@@ -35,7 +35,7 @@ import yaml
 # Policy file default: beside the other saga reference configs (engine-registry.yaml lives here too).
 DEFAULT_POLICY_PATH = Path(__file__).resolve().parent.parent / "references" / "effort-policy.yaml"
 # Ledger state default: git-ignored machine-local run accounting.
-DEFAULT_LEDGER_PATH = Path(".claude/saga/effort-ledger.json")
+DEFAULT_LEDGER_PATH = Path(".gemini/saga/effort-ledger.json")
 
 
 class EffortLedgerError(ValueError):

@@ -35,7 +35,7 @@ import json
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -68,7 +68,7 @@ def _live_state(spec: Any, store: Any, subplot_id: str) -> str:
 def _commit(spec: Any, *, reason: str, at: str) -> int:
     """Validate the mutated spec, then bump the revision + trail. Caller must have a rollback ready."""
     spec.validate()
-    return spec.bump_revision(reason=reason, at=at)
+    return cast("int", spec.bump_revision(reason=reason, at=at))
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +331,7 @@ def _require_node(spec: Any, subplot_id: str, where: str) -> Any:
 
 
 def _approvals_dir(store: Any) -> Path:
-    return store.root / "approvals"
+    return cast("Path", store.root) / "approvals"
 
 
 def approve_frontier(
@@ -355,7 +355,7 @@ def approve_frontier(
     omitted for a terminal approval, keeping that record byte-identical to today's; ``frontier_approved``
     is existence-only, so the extra keys are backward-compatible (KTD3).
     """
-    rev = spec.spec_revision
+    rev = cast("int", spec.spec_revision)
     d = _approvals_dir(store)
     d.mkdir(parents=True, exist_ok=True)
     record: dict[str, Any] = {"spec_revision": rev, "at": at}

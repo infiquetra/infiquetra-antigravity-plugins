@@ -10,6 +10,7 @@ import sys
 import time
 from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
 ENV_ORDER = ("nonprod", "staging", "production")
 CACHE_TTL_SECONDS = 24 * 60 * 60
@@ -68,7 +69,7 @@ def read_cache(repo_slug: str) -> dict[str, object] | None:
     if not path.exists() or time.time() - path.stat().st_mtime > CACHE_TTL_SECONDS:
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast("dict[str, object]", json.loads(path.read_text(encoding="utf-8")))
     except json.JSONDecodeError:
         return None
 

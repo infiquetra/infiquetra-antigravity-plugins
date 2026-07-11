@@ -88,11 +88,11 @@ def fetch_subissues(
     """Fetch the parent issue + its sub-issues via ``gh api graphql`` with pagination."""
     run = runner if runner is not None else subprocess.run
 
-    nodes = []
+    nodes: list[dict[str, Any]] = []
     has_next = True
     cursor = None
     total_count = 0
-    parent_issue = {}
+    parent_issue: dict[str, Any] = {}
 
     while has_next:
         cmd = [
@@ -195,10 +195,7 @@ def fetch_subissues(
                     "number": parent_issue.get("number"),
                     "title": parent_issue.get("title"),
                     "state": parent_issue.get("state"),
-                    "subIssues": {
-                        "totalCount": total_count,
-                        "nodes": nodes
-                    }
+                    "subIssues": {"totalCount": total_count, "nodes": nodes},
                 }
             }
         }

@@ -114,7 +114,11 @@ def _execution_spec_dict() -> dict[str, Any]:
         "description": "a leaf plan",
         "repo": "/tmp/repo",
         "units": [
-            {"unit_id": "U1", "label": "preflight", "tier": {"model": "gemini-3.5-flash", "effort": "low"}},
+            {
+                "unit_id": "U1",
+                "label": "preflight",
+                "tier": {"model": "gemini-3.5-flash", "effort": "low"},
+            },
             {
                 "unit_id": "U2",
                 "label": "build",

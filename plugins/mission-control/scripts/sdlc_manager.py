@@ -2537,7 +2537,9 @@ def issue_label_remove(repo: str, number: int, label: str, fmt: str = "text") ->
                 _rest_get(f"repos/{ORG}/{repo}/issues/{number}")
             except Exception:
                 raise e from None
-            _out({"action": "label_remove_noop", "repo": repo, "number": number, "label": label}, fmt)
+            _out(
+                {"action": "label_remove_noop", "repo": repo, "number": number, "label": label}, fmt
+            )
             return
         raise
     _out({"action": "label_removed", "repo": repo, "number": number, "label": label}, fmt)
@@ -3101,7 +3103,7 @@ _HANDOFF_MATURITY_CHOICES = (
     "deferred-context",
 )
 _SOURCE_SEARCH_DIRS = (
-    Path(".claude") / "saga",
+    Path(".gemini") / "saga",
     Path("docs") / "plans",
     Path("docs") / "brainstorms",
     Path("docs") / "ideation",
@@ -3117,7 +3119,7 @@ _SOURCE_HINT_DIRS = {
     "ideation": (Path("docs") / "ideation",),
     "review": (Path("docs") / "reviews",),
     "work": (Path("docs") / "work-sessions",),
-    "resume": (Path("docs") / "work-sessions", Path(".claude") / "saga"),
+    "resume": (Path("docs") / "work-sessions", Path(".gemini") / "saga"),
     "draft": (Path("docs") / "sdlc-issue-drafts",),
 }
 

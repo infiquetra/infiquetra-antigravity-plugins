@@ -24,7 +24,9 @@ def test_build_fact_validates_schema():
     with pytest.raises(RunLedgerError, match="reserved chain field"):
         build_fact("spend", subplot_id="a", at="2026", this_hash="123")
 
-    fact = build_fact("spend", subplot_id="123", at="2026-07-09T00:00:00Z", tokens_cached=10, cost=1.5)
+    fact = build_fact(
+        "spend", subplot_id="123", at="2026-07-09T00:00:00Z", tokens_cached=10, cost=1.5
+    )
     assert fact["kind"] == "spend"
     assert fact["tokens_cached"] == 10
     assert fact["cost"] == 1.5
@@ -82,8 +84,12 @@ def test_torn_trailing_line_tolerance(tmp_path):
 
 def test_rollups_and_priors(tmp_path):
     ledger = RunLedger(tmp_path / "run-facts.jsonl")
-    append_fact(ledger, build_fact("spend", subplot_id="s1", at="t1", tokens_cached=10, tokens_fresh=40))
-    append_fact(ledger, build_fact("spend", subplot_id="s2", at="t2", tokens_cached=50, tokens_fresh=0))
+    append_fact(
+        ledger, build_fact("spend", subplot_id="s1", at="t1", tokens_cached=10, tokens_fresh=40)
+    )
+    append_fact(
+        ledger, build_fact("spend", subplot_id="s2", at="t2", tokens_cached=50, tokens_fresh=0)
+    )
     append_fact(ledger, build_fact("engine", subplot_id="s3", at="t3", cost=5.0))
 
     r = rollup(ledger, "spend")

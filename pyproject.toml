@@ -65,6 +65,11 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+# Plugin scripts are executable entry points, not one importable namespace package. Several
+# intentionally vendor a same-named bootstrap shim and insert their script directory on sys.path.
+# Skip following those runtime imports and check each discovered file exactly once.
+follow_imports = "skip"
+exclude = ["(^|/)fleet_commons_shim\\.py$"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "plugins/*/tests"]

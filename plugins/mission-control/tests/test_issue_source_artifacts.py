@@ -109,6 +109,20 @@ def test_branch_source_captures_resume_context(tmp_path) -> None:
     assert "abc123" in artifact.content
 
 
+def test_resume_hint_discovers_gemini_saga_state(tmp_path) -> None:
+    _write(
+        tmp_path,
+        ".gemini/saga/sagas/task-example/20260711-210000.md",
+        "# Saga: task-example\n\nResume this work.",
+    )
+
+    artifact = sdlc_manager.resolve_source_artifact("resume", tmp_path)
+
+    assert artifact.kind == "loop-state"
+    assert artifact.inferred_maturity == "resume-ready"
+    assert artifact.path == ".gemini/saga/sagas/task-example/20260711-210000.md"
+
+
 def test_missing_source_reports_searched_locations(tmp_path) -> None:
     with pytest.raises(RuntimeError, match="Searched: docs/brainstorms"):
         sdlc_manager.resolve_source_artifact("from the brainstorm", tmp_path)

@@ -301,7 +301,7 @@ user-facing labels (`deploy` -> `nonprod-deploy`, etc.) before storing.
 ### 5.1 Three storage tiers
 
 ```
-.claude/saga/          # git-ignored (.gitignore) — volatile local state
+.gemini/saga/          # git-ignored (.gitignore) — volatile local state
 ├── sagas/                             # CANONICAL — append-only immutable envelope log
 │   ├── issue-42/
 │   │   ├── 20260602-140510.md         # tick 1
@@ -318,12 +318,12 @@ user-facing labels (`deploy` -> `nonprod-deploy`, etc.) before storing.
 - **`checkpoints/` is legacy.** Pre-0.4.0 per-phase checkpoint files (`{kind}-{id}[-round-N]-phaseM[-status].md`).
   `scan` reads them as **flagged, low-priority fallback for one version** (§8), then they are dropped.
 
-**Additive caches outside the three tiers (git-common-dir, not `.claude/saga`).** Two performance caches
+**Additive caches outside the three tiers (git-common-dir, not `.gemini/saga`).** Two performance caches
 live under the repo's **git common dir** — `saga-outcomes/<id>/` (the OutcomeOrchestrator store) and
 `saga-spores/<session_id>.json` (the compaction spore, #281: the active saga box + frozen DAG frontier
 that a `PreCompact` hook freezes and a `SessionStart(source=compact)` hook re-injects after an
 auto-compaction so the continuing session re-grounds on structured facts, not the lossy prose summary).
-They are deliberately NOT under the worktree-relative `.claude/saga` (§5.2) so they survive across
+They are deliberately NOT under the worktree-relative `.gemini/saga` (§5.2) so they survive across
 worktrees, and both are **additive and non-canonical** — the anchor, never the authority; deleting either
 loses no canonical state (it is rebuilt from the spec/saga + GitHub). See DECISIONS
 `#precompact-spore-two-hook`.

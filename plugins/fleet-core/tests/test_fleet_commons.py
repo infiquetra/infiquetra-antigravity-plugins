@@ -80,11 +80,6 @@ def test_retry_backoff():
 
     # Test retry_with_backoff with a successful retry
     # We set base_delay/max_delay low so tests are fast
-    result = backoff.retry_with_backoff(
-        failing_fn,
-        base_delay=0.01,
-        max_delay=0.05,
-        max_attempts=5
-    )
+    result = backoff.retry_with_backoff(failing_fn, base_delay=0.01, max_delay=0.05, max_attempts=5)
     assert result == "success"
     assert call_count == 3

@@ -3,7 +3,7 @@
 **Date:** 2026-06-11
 **Run ID:** `235c6929`
 **Topic:** Enhancing the Infiquetra saga plugin by selectively porting vecu-claude-plugins capabilities and embedding the campps spec authoring methodology, adapted for Antigravity.
-**Prior art:** [2026-06-05-port-claude-plugins.md](file:///Users/jefcox/workspace/infiquetra/infiquetra-antigravity-plugins/docs/ideation/2026-06-05-port-claude-plugins.md) — broader porting ideation; this run is more focused.
+**Prior art:** [2026-06-05-port-claude-plugins.md](2026-06-05-port-claude-plugins.md) — broader porting ideation; this run is more focused.
 
 ## Topic Axes
 
