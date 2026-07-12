@@ -45,6 +45,18 @@ from typing import Any, cast
 SCRIPT_DIR = Path(__file__).resolve().parent
 SAGA_PY = SCRIPT_DIR / "saga.py"
 
+# Sibling-module imports (issue #346, U4): the hazard registry, the merge-watcher,
+# and the undo engine are imported directly (not shelled out to) so run() can call
+# them as a library — mirrors the sys.path.insert + import pattern already used by
+# engine_dispatch.py and friends in this directory. Each of those three modules
+# documents "Depends on: nothing" (U1-U3) specifically so this import graph stays
+# one-directional: they never import ship_ceremony.py back.
+sys.path.insert(0, str(SCRIPT_DIR))
+
+import ceremony_hazards  # noqa: E402
+import merge_watcher  # noqa: E402
+import ship_undo  # noqa: E402
+
 
 class ShipCeremonyError(Exception):
     """Base error for ship_ceremony.py — always caught at the CLI boundary and
@@ -61,6 +73,21 @@ class NoSagaError(ShipCeremonyError):
 
 class TransitionFailedError(ShipCeremonyError):
     """The underlying git/gh call for a transition failed; state was not advanced."""
+
+
+class OperatorConfirmationError(ShipCeremonyError):
+    """An ``always_operator``-tier transition was reached without the operator
+    confirming it by name via ``--operator-confirmed <transition>``, or the
+    confirmation didn't match the upcoming transition (R1/R2)."""
+
+
+class HazardRefusedError(ShipCeremonyError):
+    """A ceremony hazard was detected and not acknowledged (R4/R5/R6)."""
+
+
+class MergePreflightError(ShipCeremonyError):
+    """The merge-watcher preflight refused: missing expectation or named
+    divergence (R9/R10)."""
 
 
 # --------------------------------------------------------------------------- #
@@ -259,18 +286,49 @@ def _push_branch(repo_root: Path, *, runner: Callable[..., Any] | None) -> None:
     _run(["git", "push", "-u", "origin", branch], cwd=repo_root, runner=runner)
 
 
+def _remote_branch_exists(
+    repo_root: Path, branch: str, *, runner: Callable[..., Any] | None
+) -> bool:
+    """Best-effort check of whether ``branch`` already exists on ``origin`` BEFORE
+    this ceremony pushes it — feeds the rollback manifest's ``remote_created`` flag
+    so ``ship_undo.py``'s ``_undo_commit`` never deletes a remote branch that
+    predates the ceremony."""
+    result = _run(
+        ["git", "ls-remote", "--exit-code", "--heads", "origin", branch],
+        cwd=repo_root,
+        runner=runner,
+        check=False,
+    )
+    return getattr(result, "returncode", 1) == 0
+
+
+def _push_and_record_commit_fields(
+    repo_root: Path, *, runner: Callable[..., Any] | None
+) -> dict[str, Any]:
+    """Push the current branch and return the rollback-manifest fields the
+    ``commit`` transition contributes — ``branch``, ``head_sha``, and
+    ``remote_created``. Shared by ``_do_commit`` and the front-loaded ``start()``
+    path, which both complete the ``commit`` transition."""
+    branch = current_branch(repo_root, runner=runner)
+    existed_before = _remote_branch_exists(repo_root, branch, runner=runner)
+    _run(["git", "push", "-u", "origin", branch], cwd=repo_root, runner=runner)
+    head_sha = _run(["git", "rev-parse", "HEAD"], cwd=repo_root, runner=runner).stdout.strip()
+    return {"branch": branch, "head_sha": head_sha, "remote_created": not existed_before}
+
+
 def _do_commit(
     saga: Mapping[str, Any], *, repo_root: Path, runner: Callable[..., Any] | None
-) -> None:
+) -> dict[str, Any]:
     """Push the current branch. The scaffold commit itself already exists — from
     ``/work``'s Phase 1.4 mint (KTD4) or from the operator's own commits — this
-    transition's job is making sure it is on the remote."""
-    _push_branch(repo_root, runner=runner)
+    transition's job is making sure it is on the remote. Returns the rollback-
+    manifest fields (R6) for this transition."""
+    return _push_and_record_commit_fields(repo_root, runner=runner)
 
 
 def _do_open_pr(
     saga: Mapping[str, Any], *, repo_root: Path, runner: Callable[..., Any] | None
-) -> None:
+) -> dict[str, Any]:
     """Open a PR, or — if the front-loaded ``start`` mode already opened a draft PR
     (R7) — flip that existing draft ready instead of opening a second one."""
     existing = saga.get("pr_refs") or []
@@ -283,7 +341,16 @@ def _do_open_pr(
         _push_branch(repo_root, runner=runner)
         pr_number = _pr_number(existing[-1])
         _run(["gh", "pr", "ready", pr_number], cwd=repo_root, runner=runner)
-        return
+        # R8: re-baseline merge expectation (start() recorded one at draft time;
+        # this is the ready-flip path that may have new commits).
+        merge_watcher.record(
+            saga_id=str(saga.get("saga_id") or saga["id"]),
+            pr_number=pr_number,
+            repo_root=repo_root,
+            force=True,
+            runner=runner,
+        )
+        return {"pr_number": pr_number, "branch": current_branch(repo_root, runner=runner)}
     branch = current_branch(repo_root, runner=runner)
     body_lines: list[str] = []
     # Auto-close the tracked issue on merge via a ``Fixes #N`` line, so shipping never leaves a
@@ -316,51 +383,83 @@ def _do_open_pr(
         repo_root=repo_root,
         runner=runner,
     )
+    # R8: record merge expectation at PR-open time (non-front-loaded path).
+    merge_watcher.record(
+        saga_id=str(saga.get("saga_id") or saga["id"]),
+        pr_number=pr_number,
+        repo_root=repo_root,
+        runner=runner,
+    )
+    return {"pr_number": pr_number, "branch": current_branch(repo_root, runner=runner)}
 
 
 def _do_request_review(
     saga: Mapping[str, Any], *, repo_root: Path, runner: Callable[..., Any] | None
-) -> None:
+) -> dict[str, Any]:
     """Deliberate no-op (issue #477, dated 2026-07-04): this repository has exactly one
     human maintainer, who is also the sole author of every ceremony PR — there is no one
     else to request review from. The previous body shelled out to
     ``gh pr edit --add-reviewer @me``, which always failed (``@me`` is not a valid login
     for the ``requestReviewsByLogin`` mutation); resolving the real login instead would
     still be a self-review request. Revisit only if a second human maintainer joins."""
+    refs = saga.get("pr_refs") or []
+    pr_number = _pr_number(refs[-1]) if refs else ""
+    return {"pr_number": pr_number, "branch": saga.get("branch") or ""}
 
 
 def _do_merge(
     saga: Mapping[str, Any], *, repo_root: Path, runner: Callable[..., Any] | None
-) -> None:
+) -> dict[str, Any]:
     pr_number = _current_pr_number(saga, repo_root=repo_root, runner=runner)
+    pre_merge_main_sha = _run(
+        ["git", "ls-remote", "origin", "refs/heads/main"], cwd=repo_root, runner=runner
+    ).stdout.split()[0]
     _run(["gh", "pr", "merge", pr_number, "--squash"], cwd=repo_root, runner=runner)
+    merge_sha = _run(
+        ["git", "ls-remote", "origin", "refs/heads/main"], cwd=repo_root, runner=runner
+    ).stdout.split()[0]
+    return {
+        "pr_number": pr_number,
+        "branch": saga.get("branch"),
+        "pre_merge_main_sha": pre_merge_main_sha,
+        "merge_sha": merge_sha,
+    }
 
 
 def _do_checkout_main(
     saga: Mapping[str, Any], *, repo_root: Path, runner: Callable[..., Any] | None
-) -> None:
+) -> dict[str, Any]:
     _run(["git", "checkout", "main"], cwd=repo_root, runner=runner)
+    return {"branch": saga.get("branch") or ""}
 
 
 def _do_pull(
     saga: Mapping[str, Any], *, repo_root: Path, runner: Callable[..., Any] | None
-) -> None:
+) -> dict[str, Any]:
     _run(["git", "pull"], cwd=repo_root, runner=runner)
+    return {"branch": saga.get("branch") or ""}
 
 
 def _do_branch_delete(
     saga: Mapping[str, Any], *, repo_root: Path, runner: Callable[..., Any] | None
-) -> None:
+) -> dict[str, Any]:
     branch = saga.get("branch") or ""
     if not branch or branch == "main":
         raise TransitionFailedError(
             f"refusing to delete branch {branch!r}; saga's recorded branch looks wrong"
         )
+    head_sha = _run(["git", "rev-parse", branch], cwd=repo_root, runner=runner).stdout.strip()
+    # R23: detect already-deleted remote branch (gh pr merge --auto --delete-branch
+    # may have raced ahead). If the remote ref is absent, this is a no-op success.
+    remote_exists = _remote_branch_exists(repo_root, branch, runner=runner)
+    if not remote_exists:
+        return {"branch": branch, "head_sha": head_sha, "branch_already_deleted": True}
     _run(["git", "branch", "-d", branch], cwd=repo_root, runner=runner)
     _run(["git", "push", "origin", "--delete", branch], cwd=repo_root, runner=runner, check=False)
+    return {"branch": branch, "head_sha": head_sha}
 
 
-_RUNNERS: Mapping[str, Callable[..., None]] = {
+_RUNNERS: Mapping[str, Callable[..., dict[str, Any]]] = {
     "commit": _do_commit,
     "open_pr": _do_open_pr,
     "request_review": _do_request_review,
@@ -395,16 +494,86 @@ def run(
     repo_root: Path,
     issue_ref: str | None = None,
     saga_id: str | None = None,
+    operator_confirmed: str | None = None,
+    acknowledge_hazard: Sequence[str] | None = None,
+    undo: bool = False,
     runner: Callable[..., Any] | None = None,
 ) -> str:
     """Execute exactly the next unrun transition and record it. Returns a
-    human-readable status line; raises on ambiguity or transition failure."""
+    human-readable status line; raises on ambiguity or transition failure.
+
+    R1/R3: when the upcoming transition is ``always_operator``-tier, the caller
+    must pass ``operator_confirmed`` naming that exact transition — a bare call,
+    or one naming a different transition, refuses before the transition runner
+    or ``saga.py save`` is reached, so the ledger is provably unadvanced.
+
+    ``undo=True`` forks to ``ship_undo.undo()`` immediately after saga resolution
+    — BEFORE the mismatch check and the always_operator gate, so
+    ``--operator-confirmed undo`` can never trip the forward-transition mismatch
+    rule.
+
+    After the operator-confirmation gate, two more preflights run: a hazard scan
+    (``ceremony_hazards.detect()``, refusing on any unacknowledged finding) and,
+    for ``merge`` specifically, the merge-watcher's point-in-time ``validate()``
+    (refusing on a missing expectation or a named divergence). Both refuse before
+    dispatch and before save.
+    """
     saga = resolve_saga(repo_root=repo_root, issue_ref=issue_ref, saga_id=saga_id, runner=runner)
+    sid = str(saga.get("saga_id") or saga["id"])
+
+    if undo:
+        return ship_undo.undo(
+            saga, repo_root=repo_root, operator_confirmed=operator_confirmed, runner=runner
+        )
+
     upcoming = next_transition(saga.get("ceremony_transition", ""))
     if upcoming is None:
         return "already shipped — all ceremony transitions complete"
 
-    _RUNNERS[upcoming](saga, repo_root=repo_root, runner=runner)
+    # R1/R2: operator-confirmed gate — refuse before dispatch and before save.
+    tier = TRANSITION_TIERS[upcoming]
+    if tier == CeremonyTier.ALWAYS_OPERATOR and operator_confirmed != upcoming:
+        raise OperatorConfirmationError(
+            f"transition {upcoming!r} is tier={tier!r} and requires operator confirmation; "
+            f"re-run with --operator-confirmed {upcoming}"
+        )
+    if operator_confirmed is not None and operator_confirmed != upcoming:
+        raise OperatorConfirmationError(
+            f"--operator-confirmed {operator_confirmed!r} does not match the upcoming "
+            f"transition {upcoming!r}; ledger unadvanced"
+        )
+
+    # R4-R7: hazard detection preflight.
+    hazards = ceremony_hazards.detect(saga, upcoming, repo_root, runner=runner)
+    acked = set(acknowledge_hazard or [])
+    for hazard in hazards:
+        if not hazard.acknowledgeable or hazard.hazard_id not in acked:
+            raise HazardRefusedError(
+                f"hazard {hazard.hazard_id!r} on transition {upcoming!r}: {hazard.message}; "
+                f"remedy: {hazard.remedy}"
+            )
+
+    # R8-R12: merge-watcher validate preflight (merge only).
+    if upcoming == "merge":
+        try:
+            merge_watcher.validate(saga_id=sid, repo_root=repo_root, runner=runner)
+        except merge_watcher.MergeExpectationMissingError as exc:
+            raise MergePreflightError(str(exc)) from exc
+        except merge_watcher.MergeExpectationDivergedError as exc:
+            raise MergePreflightError(str(exc)) from exc
+
+    # Dispatch the transition runner.
+    fields = _RUNNERS[upcoming](saga, repo_root=repo_root, runner=runner)
+
+    # R13: append rollback-manifest entry.
+    manifest_fields = {k: v for k, v in fields.items() if k != "branch_already_deleted"}
+    ship_undo.append_entry(
+        repo_root=repo_root,
+        saga_id=sid,
+        transition=upcoming,
+        tier=tier,
+        **manifest_fields,
+    )
 
     _saga_cli(
         [
@@ -416,12 +585,13 @@ def run(
             "--ceremony-transition",
             upcoming,
             "--ceremony-tier",
-            TRANSITION_TIERS[upcoming],
+            tier,
         ],
         repo_root=repo_root,
         runner=runner,
     )
-    return f"ran transition {upcoming!r} (tier={TRANSITION_TIERS[upcoming]})"
+    confirmed_note = f" (operator-confirmed: {operator_confirmed})" if operator_confirmed else ""
+    return f"ran transition {upcoming!r} (tier={tier}){confirmed_note}"
 
 
 def start(
@@ -450,7 +620,7 @@ def start(
             "must not run against a saga that already has state — use 'run' to continue"
         )
     branch = current_branch(repo_root, runner=runner)
-    _run(["git", "push", "-u", "origin", branch], cwd=repo_root, runner=runner)
+    commit_fields = _push_and_record_commit_fields(repo_root, runner=runner)
 
     plan_path = saga.get("plan_path") or ""
     body = f"Plan: {plan_path}" if plan_path else ""
@@ -461,6 +631,23 @@ def start(
     )
     pr_view = _run(["gh", "pr", "view", branch, "--json", "number"], cwd=repo_root, runner=runner)
     pr_number = json.loads(pr_view.stdout)["number"]
+
+    # R8: record merge expectation at PR-open time (front-loaded path).
+    merge_watcher.record(
+        saga_id=str(saga.get("saga_id") or saga["id"]),
+        pr_number=pr_number,
+        repo_root=repo_root,
+        runner=runner,
+    )
+
+    # R13: append rollback-manifest entry for the commit transition.
+    ship_undo.append_entry(
+        repo_root=repo_root,
+        saga_id=str(saga.get("saga_id") or saga["id"]),
+        transition="commit",
+        tier=TRANSITION_TIERS["commit"],
+        **commit_fields,
+    )
 
     _saga_cli(
         [
@@ -549,6 +736,24 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="explicit saga id (e.g. task-<slug>); survives checkout_main, unlike by-branch resolution",
     )
+    p_run.add_argument(
+        "--operator-confirmed",
+        default=None,
+        metavar="TRANSITION",
+        help="confirm an always_operator-tier transition (merge, branch_delete, or undo)",
+    )
+    p_run.add_argument(
+        "--acknowledge-hazard",
+        nargs="*",
+        default=None,
+        choices=ceremony_hazards.HAZARD_REGISTRY,
+        help="acknowledge a detectable hazard by id (currently: stacked_pr)",
+    )
+    p_run.add_argument(
+        "--undo",
+        action="store_true",
+        help="undo the most recent recorded ceremony (reverse newest-to-oldest)",
+    )
 
     p_start = sub.add_parser("start", help="front-loaded mode: push branch, open draft PR")
     p_start.add_argument("--issue-ref", required=True, help="owner/repo#N")
@@ -570,7 +775,16 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "run":
-            print(run(repo_root=repo_root, issue_ref=args.issue_ref, saga_id=args.saga_id))
+            print(
+                run(
+                    repo_root=repo_root,
+                    issue_ref=args.issue_ref,
+                    saga_id=args.saga_id,
+                    operator_confirmed=args.operator_confirmed,
+                    acknowledge_hazard=args.acknowledge_hazard,
+                    undo=args.undo,
+                )
+            )
         elif args.command == "start":
             print(start(repo_root=repo_root, issue_ref=args.issue_ref))
         elif args.command == "install":
@@ -580,7 +794,12 @@ def main(argv: list[str] | None = None) -> int:
         else:  # pragma: no cover - argparse enforces valid choices
             parser.error(f"unknown command {args.command!r}")
             return 2
-    except ShipCeremonyError as exc:
+    except (
+        ShipCeremonyError,
+        ceremony_hazards.HazardError,
+        merge_watcher.MergeWatcherError,
+        ship_undo.ShipUndoError,
+    ) as exc:
         print(f"ship_ceremony: {exc}", file=sys.stderr)
         return 1
     return 0

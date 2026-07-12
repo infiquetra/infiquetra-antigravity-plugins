@@ -377,7 +377,6 @@ def _confirm_for(transition: str) -> str | None:
     return None
 
 
-@pytest.mark.skip(reason="U4 dependency: requires ship_ceremony.run() safety wiring (operator_confirmed, ship_undo.append_entry)")
 def test_manifest_written_per_transition(ceremony_bare_repo) -> None:
     """U3 scope note (module docstring): the one manifest oracle that requires
     driving a REAL ``ship_ceremony.run()`` through the U4 hook — an end-to-end
@@ -818,7 +817,6 @@ def test_cli_show_prints_empty_manifest(tmp_path: Path, capsys: pytest.CaptureFi
     assert capsys.readouterr().out.strip() == "[]"
 
 
-@pytest.mark.skip(reason="U4 dependency: requires ship_ceremony.run() safety wiring (operator_confirmed, ship_undo.append_entry)")
 def test_cli_undo_dispatches_end_to_end(bare_repo, capsys: pytest.CaptureFixture[str]) -> None:
     """Drives ``main(["undo", ...])`` all the way through ``_saga_cli`` (a real
     ``saga.py restore`` subprocess) and ``undo()`` — the one test exercising the CLI
