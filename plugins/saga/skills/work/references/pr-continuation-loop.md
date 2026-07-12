@@ -49,10 +49,33 @@ and re-runs the test + review gates from scratch (re-verify, don't trust the pri
 ## Merge is a confirmed git op `/work` owns
 
 When `destination ⊇ merge` and the approved-fresh row fires, `/work` performs the merge itself — but only
-as an **explicitly operator-confirmed** `gh pr merge`, never silent. There is no separate "git/human"
-skill; merge is a git op `/work` owns under confirmation (saga-spec §1.1 keeps deploy as deploy's hard
-boundary, but merge is a git operation, not a deployment). Use the repo's merge method; respect branch
-protections (if the operator cannot merge, hand back the PR and stop).
+as an **explicitly operator-confirmed** ceremony — four separate `ship_ceremony.py run` invocations,
+one transition each: `run --operator-confirmed merge`, a bare `run` for `checkout_main`, a bare `run`
+for `pull`, then `run --operator-confirmed branch_delete` (issues #345/#526) — never silent. There is
+no separate "git/human" skill; merge is a git op `/work` owns under confirmation (saga-spec §1.1 keeps
+deploy as deploy's hard boundary, but merge is a git operation, not a deployment). Use the repo's
+merge method; respect branch protections (if the operator cannot merge, hand back the PR and stop).
+
+## Merge-watcher and hazards — safety contracts around merge
+
+The ceremony records a **merge expectation** at PR-open (target head SHA, required-check names with
+passing state, review state) before any poll loop begins. At merge time, the expectation is
+re-validated against live PR state; divergence (head moved, check flipped/missing, review regressed,
+PR not open) blocks merge with a named failure. A `branch_delete` refuses unless the merge is
+confirmed landed (`mergedAt` non-null); deleting a base branch while child PRs are stacked on it
+triggers a stacked-PR hazard. Both are blockable until resolved or acknowledged with
+`--acknowledge-hazard <hazard-id>`. `merge_not_landed` is not acknowledgeable — it resolves only by
+the merge actually landing.
+
+If `gh pr merge --auto --delete-branch` deletes the branch before the ceremony's `branch_delete`
+step, the ceremony detects the already-deleted remote ref and records `branch_already_deleted: true`
+as a no-op success (R23).
+
+`git ship --undo` (or `ship_ceremony.py run --undo`) is gated like forward merge:
+`--operator-confirmed undo` for reversals of landed merges, bare `--undo` for reversible-only plans.
+Undo is forward-only (new revert commit on `main`, branch resurrected from recorded SHA), never
+history-rewriting. If `git revert` produces conflicts, the ceremony aborts the revert and surfaces
+a named `REVERT_CONFLICT` failure — the repo is never left in a conflicted state.
 
 ## Deploy / canary belong to deploy
 
