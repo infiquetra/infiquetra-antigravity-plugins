@@ -490,8 +490,6 @@ def test_legacy_sidecar_without_checks_map_stays_strict(tmp_path: Path) -> None:
     assert excinfo.value.detail["non_passing_checks"] == ["publish"]
 
 
-
-
 # --------------------------------------------------------------------------- #
 # R21 — antigravity CI fixture shape: real job names + conditionally-skipped
 # Publish Plugin (non-passing at both record and merge time = baseline, not flip)
@@ -503,24 +501,32 @@ def test_antigravity_ci_fixture_publish_plugin_steady_nonpassing(tmp_path: Path)
     job (if: startsWith(github.ref, 'refs/tags/')). On a PR (not a tag), it never
     runs, so it's non-passing at both record and merge time. This is baseline, not
     a check_flipped divergence (R21, mirrors the PR #562 dogfooding lesson)."""
-    runner = FakeRunner(pr_view=_raw_pr_view(checks={
-        "Tests (Python 3.12)": "SUCCESS",
-        "Validate Plugins": "SUCCESS",
-        "Lint": "SUCCESS",
-        "Type Check": "SUCCESS",
-        "Security Scan": "SUCCESS",
-        "Publish Plugin": "SKIPPED",  # conditionally-skipped on PRs
-    }))
+    runner = FakeRunner(
+        pr_view=_raw_pr_view(
+            checks={
+                "Tests (Python 3.12)": "SUCCESS",
+                "Validate Plugins": "SUCCESS",
+                "Lint": "SUCCESS",
+                "Type Check": "SUCCESS",
+                "Security Scan": "SUCCESS",
+                "Publish Plugin": "SKIPPED",  # conditionally-skipped on PRs
+            }
+        )
+    )
     MW.record(saga_id="issue-346", pr_number=101, repo_root=tmp_path, runner=runner)
 
-    live_runner = FakeRunner(pr_view=_raw_pr_view(checks={
-        "Tests (Python 3.12)": "SUCCESS",
-        "Validate Plugins": "SUCCESS",
-        "Lint": "SUCCESS",
-        "Type Check": "SUCCESS",
-        "Security Scan": "SUCCESS",
-        "Publish Plugin": "SKIPPED",  # still skipped — no flip
-    }))
+    live_runner = FakeRunner(
+        pr_view=_raw_pr_view(
+            checks={
+                "Tests (Python 3.12)": "SUCCESS",
+                "Validate Plugins": "SUCCESS",
+                "Lint": "SUCCESS",
+                "Type Check": "SUCCESS",
+                "Security Scan": "SUCCESS",
+                "Publish Plugin": "SKIPPED",  # still skipped — no flip
+            }
+        )
+    )
     expectation = MW.validate(saga_id="issue-346", repo_root=tmp_path, runner=live_runner)
     assert "Publish Plugin" in expectation["checks"]
     assert expectation["checks"]["Publish Plugin"] is False  # non-passing but steady
@@ -530,24 +536,32 @@ def test_antigravity_ci_fixture_real_check_flips(tmp_path: Path) -> None:
     """When a genuinely passing always-run check (e.g. 'Tests (Python 3.12)') flips
     to failure, validate() must catch it — this is the real-world merge-block
     scenario the watcher exists for."""
-    runner = FakeRunner(pr_view=_raw_pr_view(checks={
-        "Tests (Python 3.12)": "SUCCESS",
-        "Validate Plugins": "SUCCESS",
-        "Lint": "SUCCESS",
-        "Type Check": "SUCCESS",
-        "Security Scan": "SUCCESS",
-        "Publish Plugin": "SKIPPED",
-    }))
+    runner = FakeRunner(
+        pr_view=_raw_pr_view(
+            checks={
+                "Tests (Python 3.12)": "SUCCESS",
+                "Validate Plugins": "SUCCESS",
+                "Lint": "SUCCESS",
+                "Type Check": "SUCCESS",
+                "Security Scan": "SUCCESS",
+                "Publish Plugin": "SKIPPED",
+            }
+        )
+    )
     MW.record(saga_id="issue-346", pr_number=101, repo_root=tmp_path, runner=runner)
 
-    live_runner = FakeRunner(pr_view=_raw_pr_view(checks={
-        "Tests (Python 3.12)": "FAILURE",  # real flip
-        "Validate Plugins": "SUCCESS",
-        "Lint": "SUCCESS",
-        "Type Check": "SUCCESS",
-        "Security Scan": "SUCCESS",
-        "Publish Plugin": "SKIPPED",  # steady — not named
-    }))
+    live_runner = FakeRunner(
+        pr_view=_raw_pr_view(
+            checks={
+                "Tests (Python 3.12)": "FAILURE",  # real flip
+                "Validate Plugins": "SUCCESS",
+                "Lint": "SUCCESS",
+                "Type Check": "SUCCESS",
+                "Security Scan": "SUCCESS",
+                "Publish Plugin": "SKIPPED",  # steady — not named
+            }
+        )
+    )
     with pytest.raises(MW.MergeExpectationDivergedError) as excinfo:
         MW.validate(saga_id="issue-346", repo_root=tmp_path, runner=live_runner)
     assert excinfo.value.kind == "check_flipped"
