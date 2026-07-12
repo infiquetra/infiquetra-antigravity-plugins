@@ -240,3 +240,4 @@ def test_garbled_pr_ref_fails_loud_never_reaches_gh() -> None:
     saga = {"branch": "", "pr_refs": ["#12x"]}
     with pytest.raises(CH.HazardProbeError, match="not a plain PR number"):
         CH.detect(saga, "branch_delete", ROOT, exploding_runner)
+

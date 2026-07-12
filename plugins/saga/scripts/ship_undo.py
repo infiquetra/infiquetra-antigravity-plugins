@@ -55,7 +55,7 @@ import subprocess  # nosec B404
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 SAGA_PY = SCRIPT_DIR / "saga.py"
@@ -541,7 +541,7 @@ def _saga_cli(
         runner=runner,
     )
     try:
-        return json.loads(result.stdout)
+        return cast("dict[str, Any]", json.loads(result.stdout))
     except json.JSONDecodeError as exc:
         raise ShipUndoError(
             f"saga.py {' '.join(args)} returned unparseable JSON: {result.stdout!r}"
