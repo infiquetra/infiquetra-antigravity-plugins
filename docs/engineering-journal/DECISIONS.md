@@ -208,3 +208,21 @@ sets, or Antigravity stops carrying Mission Control as an active plugin.
 2. **Native State Management:** Antigravity natively manages state in its `brain/` directory (via `implementation_plan.md`, `task.md`, `walkthrough.md`). The legacy plugins manually wrote state checkpoints to `.claude/saga/`. Syncing these into Antigravity would have meant fighting the native architecture. We deleted scripts like `scaffold_checkpoint.py` instead.
 
 **Revisit when.** If we find that subagents lose context too quickly without checkpoints, we may need to implement a native Antigravity state checkpointing mechanism.
+
+---
+
+## 2026-07-12 — Ship Ceremony Safety Pack KTDs
+
+**Context.** Porting the ship-ceremony safety pack (issue #346: ceremony hazards, merge watcher, ship undo, operator-confirmed gate) from `infiquetra-claude-plugins` into the antigravity saga plugin. Plan at `docs/plans/2026-07-12-ship-ceremony-safety-pack-plan.md`.
+
+**KTD1 — Strip teardown wiring from ported transition runners.** The claude `ship_ceremony.py` weaves `ship_teardown.register()`/`_close_if_registered()` through the transition runners. Those modules (issue #347, 1245 lines) are out of scope. Ported runners strip all teardown calls; rollback-manifest fields stay. Rejected: port teardown too — doubles scope, explicitly excluded.
+
+**KTD2 — Import safety modules via `sys.path.insert(0, str(SCRIPT_DIR))`.** Matches the claude side's import pattern and the antigravity test-loading convention. Rejected: restructure as a package — existing scripts are standalone files, restructuring is out of scope.
+
+**KTD3 — `ceremony_hazards.py` has no `STATE_DIR`.** Pure probe layer, no sidecar storage. No path adaptation needed for this module.
+
+**KTD4 — `merge_watcher.py` and `ship_undo.py` use `.gemini/saga` state paths.** Change `STATE_DIR = Path(".claude/saga")` to `Path(".gemini/saga")` to match `saga.py:45`. Rejected: import `STATE_DIR` from `saga.py` — the claude modules document "Depends on: nothing" to keep the import graph one-directional; matching that avoids a circular import risk.
+
+**KTD5 — Port `run()` safety wiring, not the teardown transition.** The safety preflights (operator-confirmed gate, hazard detection, merge-watcher validate) are self-contained in `run()`. The `teardown` transition and helper functions are stripped. `TRANSITIONS` stays at 7 entries.
+
+**KTD6 — R23 (already-deleted branch) is a new adaptation, not a claude port.** The claude hazard detection prevents the scenario, but `gh pr merge --auto --delete-branch` can race ahead. The port adds a `git ls-remote` check before deletion; if the remote ref is absent, records `branch_already_deleted: true` and returns success.
