@@ -121,12 +121,62 @@ class FakeGh:
             body = args[args.index("--body") + 1] if "--body" in args else ""
             number = self._next_number
             self._next_number += 1
-            self._prs[branch] = {"number": number, "draft": draft, "body": body}
+            self._prs[branch] = {
+                "number": number,
+                "draft": draft,
+                "body": body,
+                "base": "main",
+                "state": "OPEN",
+                "mergedAt": None,
+                "checks": [],
+                "reviewDecision": None,
+            }
             return _ok(str(number))
         if args[:2] == ["pr", "view"]:
-            branch = args[2]
-            pr = self._prs[branch]
-            return _ok(json.dumps({"number": pr["number"]}))
+            ref = args[2]
+            fields = args[args.index("--json") + 1].split(",") if "--json" in args else ["number"]
+            pr = self._prs.get(ref)  # by branch
+            if pr is None:
+                # by number
+                pr = next((p for p in self._prs.values() if str(p["number"]) == ref), None)
+            if pr is None:
+                raise AssertionError(f"fake gh: unknown pr ref {ref!r}")
+            payload: dict[str, object] = {}
+            for field in fields:
+                if field == "number":
+                    payload["number"] = pr["number"]
+                elif field == "state":
+                    payload["state"] = pr.get("state", "OPEN")
+                elif field == "mergedAt":
+                    payload["mergedAt"] = pr.get("mergedAt")
+                elif field == "headRefOid":
+                    result = self._real_run(  # nosec B603
+                        ["git", "rev-parse", "HEAD"],
+                        cwd=self.repo,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    payload["headRefOid"] = result.stdout.strip()
+                elif field == "statusCheckRollup":
+                    payload["statusCheckRollup"] = pr.get("checks", [])
+                elif field == "reviewDecision":
+                    payload["reviewDecision"] = pr.get("reviewDecision")
+            return _ok(json.dumps(payload))
+        if args[:2] == ["pr", "list"]:
+            base = args[args.index("--base") + 1] if "--base" in args else None
+            results = []
+            for _branch, pr in self._prs.items():
+                if base is not None and pr.get("base", "main") != base:
+                    continue
+                if (
+                    "--state" in args
+                    and args[args.index("--state") + 1] == "open"
+                    and pr.get("state", "OPEN") != "OPEN"
+                ):
+                    continue
+                results.append({"number": pr["number"], "title": ""})
+            return _ok(json.dumps(results))
         if args[:2] == ["pr", "ready"]:
             for pr in self._prs.values():
                 if pr["number"] == int(args[2]):
@@ -148,6 +198,8 @@ class FakeGh:
                 timeout=30,
                 check=True,
             )
+            self._prs[branch]["state"] = "MERGED"
+            self._prs[branch]["mergedAt"] = "2026-07-11T00:00:00Z"
             return _ok("")
         raise AssertionError(f"unhandled fake gh call: {args!r}")
 
@@ -235,10 +287,22 @@ def _restore(repo: Path) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 
 
+def _confirm_for(transition: str) -> str | None:
+    """Operator confirmation for ``transition`` when its tier demands one (#526)."""
+    if SC.TRANSITION_TIERS[transition] == SC.CeremonyTier.ALWAYS_OPERATOR:
+        return transition
+    return None
+
+
 def test_full_ceremony_throwaway_branch(ceremony_repo) -> None:
     repo, fake_gh = ceremony_repo
     for expected in SC.TRANSITIONS:
-        status = SC.run(repo_root=repo, issue_ref="org/repo#345", runner=fake_gh)
+        status = SC.run(
+            repo_root=repo,
+            issue_ref="org/repo#345",
+            operator_confirmed=_confirm_for(expected),
+            runner=fake_gh,
+        )
         assert expected in status
 
     saga = _restore(repo)
@@ -260,15 +324,25 @@ def test_resume_from_state(ceremony_repo) -> None:
 
     # "Re-invoking" — a fresh call against the same saga state — must continue at
     # `merge`, not re-run request_review or re-open a second PR.
-    status = SC.run(repo_root=repo, issue_ref="org/repo#345", runner=fake_gh)
+    status = SC.run(
+        repo_root=repo,
+        issue_ref="org/repo#345",
+        operator_confirmed="merge",
+        runner=fake_gh,
+    )
     assert "merge" in status
     assert len(fake_gh._prs) == 1  # noqa: SLF001 - test introspection of the fake
 
 
 def test_already_complete_ceremony_is_a_noop(ceremony_repo) -> None:
     repo, fake_gh = ceremony_repo
-    for _ in SC.TRANSITIONS:
-        SC.run(repo_root=repo, issue_ref="org/repo#345", runner=fake_gh)
+    for expected in SC.TRANSITIONS:
+        SC.run(
+            repo_root=repo,
+            issue_ref="org/repo#345",
+            operator_confirmed=_confirm_for(expected),
+            runner=fake_gh,
+        )
     status = SC.run(repo_root=repo, issue_ref="org/repo#345", runner=fake_gh)
     assert "already shipped" in status
 
@@ -526,8 +600,15 @@ def test_merge_before_open_pr_is_a_named_failure(ceremony_repo) -> None:
         capture_output=True,
         text=True,
     )
-    with pytest.raises(SC.TransitionFailedError, match="no pr_refs recorded"):
-        SC.run(repo_root=repo, issue_ref="org/repo#345", runner=fake_gh)
+    with pytest.raises(
+        (SC.MergePreflightError, SC.TransitionFailedError), match="no pr_refs|no merge_expectation"
+    ):
+        SC.run(
+            repo_root=repo,
+            issue_ref="org/repo#345",
+            operator_confirmed="merge",
+            runner=fake_gh,
+        )
 
 
 def test_branch_delete_refuses_when_branch_is_main(ceremony_repo) -> None:
