@@ -342,9 +342,10 @@ def _do_open_pr(
         pr_number = _pr_number(existing[-1])
         _run(["gh", "pr", "ready", pr_number], cwd=repo_root, runner=runner)
         # R8: re-baseline merge expectation (start() recorded one at draft time;
-        # this is the ready-flip path that may have new commits).
+        # this is the ready-flip path that may have new commits). force=True is
+        # the designed re-baseline path — a new push may have changed the SHA.
         merge_watcher.record(
-            saga_id=str(saga.get("saga_id") or saga["id"]),
+            saga_id=str(saga.get("saga_id") or ""),
             pr_number=pr_number,
             repo_root=repo_root,
             force=True,
@@ -385,7 +386,7 @@ def _do_open_pr(
     )
     # R8: record merge expectation at PR-open time (non-front-loaded path).
     merge_watcher.record(
-        saga_id=str(saga.get("saga_id") or saga["id"]),
+        saga_id=str(saga.get("saga_id") or ""),
         pr_number=pr_number,
         repo_root=repo_root,
         runner=runner,
@@ -402,8 +403,10 @@ def _do_request_review(
     ``gh pr edit --add-reviewer @me``, which always failed (``@me`` is not a valid login
     for the ``requestReviewsByLogin`` mutation); resolving the real login instead would
     still be a self-review request. Revisit only if a second human maintainer joins."""
-    refs = saga.get("pr_refs") or []
-    pr_number = _pr_number(refs[-1]) if refs else ""
+    try:
+        pr_number = _current_pr_number(saga, repo_root=repo_root, runner=runner)
+    except TransitionFailedError:
+        pr_number = ""
     return {"pr_number": pr_number, "branch": saga.get("branch") or ""}
 
 
@@ -519,7 +522,12 @@ def run(
     dispatch and before save.
     """
     saga = resolve_saga(repo_root=repo_root, issue_ref=issue_ref, saga_id=saga_id, runner=runner)
-    sid = str(saga.get("saga_id") or saga["id"])
+    sid = str(saga.get("saga_id") or "")
+    if not sid:
+        raise ShipCeremonyError(
+            f"saga dict missing 'saga_id' field (id={saga.get('id')!r}); "
+            "cannot write sidecars without the derived saga id"
+        )
 
     if undo:
         return ship_undo.undo(
@@ -566,13 +574,12 @@ def run(
     fields = _RUNNERS[upcoming](saga, repo_root=repo_root, runner=runner)
 
     # R13: append rollback-manifest entry.
-    manifest_fields = {k: v for k, v in fields.items() if k != "branch_already_deleted"}
     ship_undo.append_entry(
         repo_root=repo_root,
         saga_id=sid,
         transition=upcoming,
         tier=tier,
-        **manifest_fields,
+        **fields,
     )
 
     _saga_cli(
@@ -612,6 +619,12 @@ def start(
     causing the next ``run`` to re-execute already-completed transitions.
     """
     saga = resolve_saga(repo_root=repo_root, issue_ref=issue_ref, runner=runner)
+    sid = str(saga.get("saga_id") or "")
+    if not sid:
+        raise ShipCeremonyError(
+            f"saga dict missing 'saga_id' field (id={saga.get('id')!r}); "
+            "cannot write sidecars without the derived saga id"
+        )
     if saga.get("ceremony_transition") or saga.get("pr_refs"):
         raise ShipCeremonyError(
             "ceremony already in progress for this saga "
@@ -634,7 +647,7 @@ def start(
 
     # R8: record merge expectation at PR-open time (front-loaded path).
     merge_watcher.record(
-        saga_id=str(saga.get("saga_id") or saga["id"]),
+        saga_id=sid,
         pr_number=pr_number,
         repo_root=repo_root,
         runner=runner,
@@ -643,7 +656,7 @@ def start(
     # R13: append rollback-manifest entry for the commit transition.
     ship_undo.append_entry(
         repo_root=repo_root,
-        saga_id=str(saga.get("saga_id") or saga["id"]),
+        saga_id=sid,
         transition="commit",
         tier=TRANSITION_TIERS["commit"],
         **commit_fields,

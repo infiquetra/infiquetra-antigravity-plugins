@@ -249,6 +249,7 @@ def append_entry(
     merge_sha: str | None = None,
     pre_merge_main_sha: str | None = None,
     remote_created: bool = False,
+    branch_already_deleted: bool = False,
 ) -> dict[str, Any]:
     """Append one entry for a just-completed ceremony transition (R6). Read-append-
     rewrite, mirroring ``tier_session.py``'s sidecar pattern — small files, no
@@ -264,6 +265,7 @@ def append_entry(
         "merge_sha": merge_sha,
         "pre_merge_main_sha": pre_merge_main_sha,
         "remote_created": remote_created,
+        "branch_already_deleted": branch_already_deleted,
         "undone": False,
     }
     entries.append(entry)
