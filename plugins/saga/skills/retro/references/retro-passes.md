@@ -84,7 +84,7 @@ skeleton file** — paths only.
 SCRATCH=$(mktemp -d -t retro-sessions-XXXXXX)
 # thread-scoped: identify sessions from the saga / branch.
 # windowed: discover, recency-ranked, capped, current session excluded:
-python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> --exclude <current-session-id>
+python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> --projects-root <doctor-resolved-session-root> --exclude <current-session-id>
 python3 plugins/saga/scripts/extract_session_skeleton.py --output "$SCRATCH/<id>.skeleton.txt" < <session-file>
 ```
 

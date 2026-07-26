@@ -6,7 +6,7 @@ cache + completion + locks). It is a **level-triggered reconcile loop** (R29), n
 imperative process: every ``advance`` tick reconstructs live state from the durable store, advances
 the ready frontier, **dispatches** non-gated leaves to their executors, and pages on exceptions —
 holding no authoritative in-memory DAG, so it is crash-tolerant and host-agnostic (a local ``/loop``
-session or a scheduled routine drives the repeats).
+session or another explicit external caller drives each repeat).
 
 Two invariants this module enforces structurally:
 
@@ -88,7 +88,7 @@ class DispatchRequest:
 def _default_dispatcher(req: DispatchRequest) -> str:
     """Record-only dispatch: mint a stable leaf saga id, run NOTHING (R3).
 
-    Real execution backends (team-execution, cc-workflows-ultracode, ``/goal``, fork, subagent,
+    Real execution backends (team-execution, multi-agent-consensus, ``/goal``, fork, subagent,
     manual) are dispatcher implementations that arrive in U4/U9. The skeleton just allocates the
     handoff address; the leaf is executed by its own native saga, never here.
     """
@@ -1251,9 +1251,9 @@ def main(argv: list[str] | None = None) -> int:
         help="this host can run the forked-context backends (fork/subagent/goal)",
     )
     p_advance.add_argument(
-        "--workflow-available",
+        "--consensus-available",
         action="store_true",
-        help="this host can run cc-workflows-ultracode (the Workflow tool is present)",
+        help="this host can run multi-agent-consensus (the native consensus runtime is present)",
     )
     p_advance.add_argument(
         "--persist",
@@ -1376,7 +1376,8 @@ def main(argv: list[str] | None = None) -> int:
             import outcome_decompose
 
             avail = outcome_dispatcher.resolve_available(
-                host_capable=args.host_capable, workflow_available=args.workflow_available
+                host_capable=args.host_capable,
+                consensus_available=args.consensus_available,
             )
             # The dispatcher mints any backend the degrade decision resolves to (it never halts here —
             # _reconcile_once owns the HALT/degrade decision via degrade_decision with `avail`).
@@ -1384,7 +1385,14 @@ def main(argv: list[str] | None = None) -> int:
                 root,
                 args.outcome_id,
                 loop=args.loop,
-                dispatcher=outcome_dispatcher.make_dispatcher(available=outcome_spec.NODE_BACKENDS),
+                dispatcher=outcome_dispatcher.make_dispatcher(
+                    available=outcome_spec.ACTIVE_NODE_BACKENDS,
+                    capability_states=(
+                        {"agy.agent.execution": "passed"}
+                        if args.consensus_available
+                        else {}
+                    ),
+                ),
                 harvester=production_harvester(root),
                 merge_processor=production_merge_processor(),
                 worktree_processor=production_worktree_processor(root),

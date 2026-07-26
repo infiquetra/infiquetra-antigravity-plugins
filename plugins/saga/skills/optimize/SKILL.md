@@ -76,6 +76,7 @@ Resolve any cross-command route through the lifecycle routing reference at
    default. For **independent experiment fan-out** it **OFFERS**
    `multi-agent-consensus` per the operator-choice contract, recorded
    **narratively** (this engine writes no saga). It never auto-spawns a backend, never auto-commits, never auto-merges, never deploys.
+   <!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
    Source `team-execution` and `cc-workflows-ultracode` both map to this target
    backend and are not offered separately.
 

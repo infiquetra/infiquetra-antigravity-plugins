@@ -83,3 +83,20 @@ def test_retry_backoff():
     result = backoff.retry_with_backoff(failing_fn, base_delay=0.01, max_delay=0.05, max_attempts=5)
     assert result == "success"
     assert call_count == 3
+
+
+def test_delegation_state_writes_only_antigravity_root(tmp_path: Path) -> None:
+    state = fleet_commons_shim.load("delegation_state")
+
+    state.arm("agy", "session-1", "test", root=tmp_path, now=1.0)
+
+    marker = tmp_path / ".gemini" / "saga" / "delegation" / "active.json"
+    assert marker.is_file()
+    assert not (tmp_path / ".claude" / "delegation" / "active.json").exists()
+
+
+def test_delegation_audit_foreign_roots_are_read_only_inputs() -> None:
+    audit = fleet_commons_shim.load("delegation_audit")
+
+    assert audit.ENGINE_CONFIGS["agy"].bundle_root == ".claude/agy/runs"
+    assert audit.ENGINE_CONFIGS["codex"].bundle_root == ".claude/codex/runs"

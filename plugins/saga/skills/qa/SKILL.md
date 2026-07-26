@@ -170,6 +170,7 @@ broad, and gather **evidence** for every result:
 parallel verification, **OFFER** a backend per `../../references/operator-choice.md` (`inline` /
 `multi-agent-consensus`) — never auto-spawn. Parallel verification uses **generic
 `Explore` / `Task` agents** (this plugin has no `agents/` dir — do not reference named `ce-*` agents).
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
 Source lineage: `team-execution` and `cc-workflows-ultracode` both map to
 `multi-agent-consensus` and are not offered separately.
 

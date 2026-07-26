@@ -215,6 +215,7 @@ directory (**NOT** `docs/reviews/` = readiness, **NOT** `docs/code-reviews/` = c
 Only offer `multi-agent-consensus` when its required capabilities are proven.
 The offer is never auto-run.
 
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
 Source lineage: `team-execution` and `cc-workflows-ultracode` are not active
 Antigravity backends; both map to `multi-agent-consensus`.
 

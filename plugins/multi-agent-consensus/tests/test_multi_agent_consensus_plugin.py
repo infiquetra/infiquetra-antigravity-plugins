@@ -82,6 +82,18 @@ def test_validator_references_are_packaged_and_linked() -> None:
         assert filename in readme
 
 
+def test_validator_state_uses_antigravity_root() -> None:
+    state_doc = _read(
+        PLUGIN_ROOT
+        / "skills"
+        / "multi-agent-consensus"
+        / "references"
+        / "validator-evidence-state.md"
+    )
+    assert ".gemini/multi-agent-consensus/validators/" in state_doc
+    assert ".claude/" not in state_doc
+
+
 def test_appsec_audit_skill_documents_url_trust_boundaries() -> None:
     skill_path = PLUGIN_ROOT / "skills" / "appsec-audit" / "SKILL.md"
     skill_doc = _read(skill_path).lower()

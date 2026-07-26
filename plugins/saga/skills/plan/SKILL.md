@@ -254,6 +254,7 @@ adversarial verification, gated review evidence, or material size/risk signals
 (at least eight files, at least four phases, security, infrastructure,
 cross-repository, or deployment-sensitive work). Claude `team-execution` source
 behavior maps to this Antigravity backend; it is not offered separately.
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
 The historical source enum `cc-workflows-ultracode` is also inactive.
 
 Ask one blocking question through the current session and stop until the operator

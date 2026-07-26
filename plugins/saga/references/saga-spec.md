@@ -338,7 +338,7 @@ is `max(files, key=envelope_sort_key)`; `restore` reads exactly that file.
 > which would silently corrupt an mtime-ordered scan. Filename order survives any byte-faithful copy.
 >
 > **This is NOT about git worktrees.** Git worktrees do not copy git-ignored files at all, so saga state
-> created in a worktree lives only in that worktree's ignored `.claude/` and is discarded on cleanup — that
+> created in a worktree lives only in that worktree's ignored `.gemini/saga/` and is discarded on cleanup — that
 > is expected, volatile dev state. The filename-order win is the rsync/backup case, not the worktree case.
 
 ### 5.3 Scan ordering + collision
@@ -523,7 +523,7 @@ this table is the wiring contract for their own queued items.
 Ticks accumulate; there is **no GC today**. A future `max_ticks` retention policy is the planned seam — it
 prunes oldest ticks while keeping the newest authoritative, so it is purely additive and needs **no schema
 change**. Until then, growth is bounded only by save frequency and is acceptable for the volatile,
-machine-local `.claude/` location.
+machine-local `.gemini/saga/` location.
 
 ---
 

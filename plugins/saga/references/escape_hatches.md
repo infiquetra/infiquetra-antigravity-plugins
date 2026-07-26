@@ -2,7 +2,9 @@
 
 Saga is an orchestration layer running over LLM interactions. Sometimes, the state machine stalls due to misinterpretation, legacy path migration breaks, or invalid markdown formatting in the brain artifacts. 
 
-Because Saga relies entirely on the state in the native `brain/` directory artifacts (and no longer uses explicit `.claude` JSON states), you can easily "hack" the state machine to force it forward, backward, or unstuck without deep code-level debugging.
+Saga restores from repository `docs/` artifacts plus machine-local
+`.gemini/saga/` state. Native brain artifacts may help diagnose a stalled
+interaction, but manually editing them is not a durable Saga transition.
 
 ## Scenario 1: Infinite Planner Loop
 **Symptoms:** `/plan` keeps rewriting the same `implementation_plan.md` over and over without handing off to execution.
@@ -23,13 +25,16 @@ Because Saga relies entirely on the state in the native `brain/` directory artif
 4. Execute `/qa`.
 
 ## Scenario 3: Legacy Path Breakage (Cross-Plugin Confusion)
-**Symptoms:** A downstream plugin parses the plan but fails to locate the files, looping endlessly while trying to read non-existent `.claude/` directory paths.
-**Cause:** The plan was written using stale weights assuming legacy Claude tooling, but executed on an Antigravity setup with `.gemini/antigravity` paths.
+**Symptoms:** A downstream plugin parses the plan but fails to locate files
+because it retained a legacy Claude state path.
+**Cause:** The plan was written for a foreign host instead of Antigravity's
+logical `.gemini` roles.
 **The Escape Hatch:**
 1. Halt the agent execution.
 2. Open the active `implementation_plan.md` and `task.md`.
-3. Find and replace all instances of `.claude/` with `.gemini/antigravity/`.
-4. Run the orchestration command again. The visual parser will correctly resolve the updated links.
+3. Replace the stale path with the doctor-resolved logical role; do not guess a
+   machine-specific absolute path.
+4. Run the host doctor, then retry only after the corrected artifact passes.
 
 ## Safe Reset (The Final Hatch)
 If all else fails, you can cleanly sever the orchestrator from its state loop without losing your work:

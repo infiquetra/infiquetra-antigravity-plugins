@@ -111,6 +111,7 @@ presentation format; the gate itself is:
 **Never auto-launch** a destructive self-edit or an execution backend.
 `multi-agent-consensus` for a big refactor is **offered** per
 `../../references/operator-choice.md`, never started without the operator's pick.
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
 Source lineage: `team-execution` and `cc-workflows-ultracode` both map to
 `multi-agent-consensus` and are not active target backends.
 

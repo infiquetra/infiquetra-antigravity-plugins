@@ -203,6 +203,7 @@ independent subsystems**, OFFER a backend per `../../references/operator-choice.
 explicit hypothesis and a structured evidence-return format, **no edits**. Never auto-spawn; skip when
 hypotheses depend on each other. Parallel sub-agents use **generic** `Explore` / `Task` agents (this
 plugin has no `agents/` dir).
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
 Source lineage: `team-execution` and `cc-workflows-ultracode` both map to
 `multi-agent-consensus` and are not offered separately.
 

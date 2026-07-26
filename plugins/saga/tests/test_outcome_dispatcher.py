@@ -50,12 +50,10 @@ def _req(backend: str, *, outcome_id: str = "ship-x", subplot_id: str = "build")
 # --------------------------------------------------------------------------- dispatch (R5/R6)
 
 
-def test_dispatch_team_execution_mints_leaf_with_return_channel() -> None:
+def test_dispatch_legacy_team_execution_is_quarantined() -> None:
     out = D.dispatch(_req("team-execution"))
-    assert out["status"] == "dispatched"
-    assert out["backend"] == "team-execution"
-    assert out["leaf_saga_id"] == "leaf-ship-x-build"
-    assert out["return_channel"] == "/resume leaf-ship-x-build"  # R9 re-entry token out
+    assert out["status"] == "halt"
+    assert "source lineage" in out["receipt"]["reason"]
 
 
 def test_dispatch_inline_is_available() -> None:
@@ -66,7 +64,7 @@ def test_dispatch_inline_is_available() -> None:
     # The host-dependent backends are unavailable under the conservative DEFAULT_AVAILABLE floor
     # (inline / team-execution / manual). `manual` is now always-available (U9), so it dispatches.
     "backend",
-    ["fork", "subagent", "cc-workflows-ultracode", "goal"],
+    ["fork", "subagent", "multi-agent-consensus", "goal"],
 )
 def test_dispatch_unavailable_backend_halts_not_substitutes(backend: str) -> None:
     # R5/R23: a chosen-but-unavailable backend HALTS with a visible receipt — never a silent inline.
@@ -75,7 +73,7 @@ def test_dispatch_unavailable_backend_halts_not_substitutes(backend: str) -> Non
     receipt = out["receipt"]
     assert receipt["backend"] == backend
     assert receipt["kind"] == "halt"
-    assert "HALT" in receipt["reason"] and "substitute" in receipt["reason"]
+    assert "halt" in receipt["reason"].lower()
     assert receipt["available"] == list(D.DEFAULT_AVAILABLE)
 
 
@@ -94,7 +92,7 @@ def test_custom_available_set() -> None:
 
 def test_make_dispatcher_returns_leaf_id_on_dispatch() -> None:
     disp = D.make_dispatcher()
-    assert disp(_req("team-execution")) == "leaf-ship-x-build"
+    assert disp(_req("inline")) == "leaf-ship-x-build"
 
 
 def test_make_dispatcher_raises_halt_with_receipt() -> None:
@@ -129,11 +127,12 @@ def _execution_spec_dict() -> dict[str, Any]:
     }
 
 
-def test_team_execution_artifact_wires_team_emitter() -> None:
+def test_team_execution_artifact_is_quarantined() -> None:
     spec = ES.ExecutionSpec.from_dict(_execution_spec_dict())
-    art = D.team_execution_artifact(spec)
-    assert "Team Structure" in art  # produced through recompile_for_tier's team_emitter leg (R5)
-    assert "U1" in art and "U2" in art  # units preserved (by unit id)
+    with pytest.raises(D.DispatcherError, match="source lineage"):
+        D.team_execution_artifact(spec)
+    with pytest.raises(ES.SpecError, match="native Antigravity skill"):
+        ES.recompile_for_tier(spec, "multi-agent-consensus")
 
 
 # --------------------------------------------------------------------------- integration with advance
@@ -151,12 +150,12 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def test_advance_dispatches_team_execution_node(repo: Path) -> None:
+def test_advance_dispatches_inline_node(repo: Path) -> None:
     OUTCOME.start(
         repo,
         "ship-x",
         "Ship X",
-        nodes=[{"subplot_id": "build", "title": "Build", "backend": "team-execution"}],
+        nodes=[{"subplot_id": "build", "title": "Build", "backend": "inline"}],
     )
     result = OUTCOME.advance(repo, "ship-x", dispatcher=D.make_dispatcher())
     assert result.dispatched == ["build"]
@@ -201,7 +200,7 @@ def test_halt_does_not_starve_other_runnable_leaves(repo: Path) -> None:
         "ship-x",
         "Ship X",
         nodes=[
-            {"subplot_id": "a", "title": "A", "backend": "team-execution"},
+            {"subplot_id": "a", "title": "A", "backend": "inline"},
             {"subplot_id": "b", "title": "B", "backend": "fork"},
         ],
     )
@@ -237,7 +236,7 @@ def test_advance_classifies_429_as_retriable_pending_not_halt(repo: Path) -> Non
         repo,
         "ship-x",
         "Ship X",
-        nodes=[{"subplot_id": "build", "title": "Build", "backend": "team-execution"}],
+        nodes=[{"subplot_id": "build", "title": "Build", "backend": "inline"}],
     )
     result = OUTCOME.advance(repo, "ship-x", dispatcher=_rate_limited_dispatcher())
     assert result.retriable == ["build"]
@@ -256,7 +255,7 @@ def test_retriable_leaf_is_re_picked_on_the_next_advance_call(repo: Path) -> Non
         repo,
         "ship-x",
         "Ship X",
-        nodes=[{"subplot_id": "build", "title": "Build", "backend": "team-execution"}],
+        nodes=[{"subplot_id": "build", "title": "Build", "backend": "inline"}],
     )
     r1 = OUTCOME.advance(repo, "ship-x", dispatcher=_rate_limited_dispatcher())
     assert r1.retriable == ["build"] and r1.dispatched == []
@@ -349,7 +348,8 @@ def test_cli_advance_uses_the_real_backend_seam(
 def test_cli_dispatch_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
     assert D.main(["ship-x", "build", "team-execution"]) == 0
     out = json.loads(capsys.readouterr().out)
-    assert out["status"] == "dispatched" and out["return_channel"] == "/resume leaf-ship-x-build"
+    assert out["status"] == "halt"
+    assert "source lineage" in out["receipt"]["reason"]
     assert D.main(["ship-x", "build", "fork"]) == 0
     halt = json.loads(capsys.readouterr().out)
     assert halt["status"] == "halt"
@@ -385,6 +385,54 @@ def test_dispatch_enforceable_sandbox_dispatches() -> None:
 def test_dispatch_no_sandbox_is_backward_compatible() -> None:
     # A req without a sandbox attribute dispatches exactly as before (getattr default None).
     assert D.dispatch(_req("inline"))["status"] == "dispatched"
+
+
+@pytest.mark.parametrize("state", ["unknown", "unavailable", "failed"])
+def test_consensus_requires_passed_agent_execution(state: str) -> None:
+    out = D.dispatch(
+        _req("multi-agent-consensus"),
+        available=("inline", "multi-agent-consensus"),
+        capability_states={"agy.agent.execution": state},
+    )
+    assert out["status"] == "halt"
+    assert "agy.agent.execution" in out["receipt"]["reason"]
+
+
+def test_consensus_dispatches_with_passed_agent_execution() -> None:
+    out = D.dispatch(
+        _req("multi-agent-consensus"),
+        available=("inline", "multi-agent-consensus"),
+        capability_states={"agy.agent.execution": "passed"},
+    )
+    assert out["status"] == "dispatched"
+
+
+@pytest.mark.parametrize("state", ["unknown", "failed"])
+def test_consensus_required_isolation_halts_without_proof(state: str) -> None:
+    sandbox = OS.Sandbox.from_dict("read-only-verify", "w")
+    out = D.dispatch(
+        _req_sandbox("multi-agent-consensus", sandbox),
+        available=("inline", "multi-agent-consensus"),
+        capability_states={
+            "agy.agent.execution": "passed",
+            "agy.sandbox.isolation": state,
+        },
+    )
+    assert out["status"] == "halt"
+    assert "cannot enforce sandbox" in out["receipt"]["reason"]
+
+
+def test_consensus_required_isolation_dispatches_with_proof() -> None:
+    sandbox = OS.Sandbox.from_dict("read-only-verify", "w")
+    out = D.dispatch(
+        _req_sandbox("multi-agent-consensus", sandbox),
+        available=("inline", "multi-agent-consensus"),
+        capability_states={
+            "agy.agent.execution": "passed",
+            "agy.sandbox.isolation": "passed",
+        },
+    )
+    assert out["status"] == "dispatched"
 
 
 def test_make_dispatcher_raises_backend_halt_on_unenforceable_sandbox() -> None:

@@ -209,7 +209,7 @@ extract content into the dispatch prompt. (Full recipe + the CE guardrails: `ref
    this session's own `*.jsonl` basename under `~/.gemini/projects/<repo>/` (drop the `.jsonl`):
 
    ```bash
-   python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> --exclude <current-session-id>
+   python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> --projects-root <doctor-resolved-session-root> --exclude <current-session-id>
    ```
 
    The orchestrator reads only the path list + one-line `_meta` (no session content).

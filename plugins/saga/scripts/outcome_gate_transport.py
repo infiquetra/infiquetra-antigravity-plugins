@@ -174,7 +174,8 @@ def emit_gate_notice(
 
     This is **not** the v1 hot path (that is session-driven: the session calls the connected
     transport's ``reply()`` — see the module docstring), and it is a no-op for Discord. It exists for
-    a future Python driver that already holds a Redis client, e.g. a cron-driven ``outcome advance``.
+    an explicit external Python driver that already holds a Redis client and invokes
+    ``outcome advance``.
 
     ``producer`` is injected (tests pass a fake). The real redis binding is
     ``producer=lambda p: redis_producer.publish_outbound(client, session_name, _as_outbound(p))``.

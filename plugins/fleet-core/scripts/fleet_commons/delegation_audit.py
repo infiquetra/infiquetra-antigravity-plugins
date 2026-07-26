@@ -65,9 +65,11 @@ class EngineConfig:
 
 
 ENGINE_CONFIGS: dict[str, EngineConfig] = {
+    # antigravity-host-contract: {"class":"foreign-runtime-input","rule":"AGHC001","reason":"read-only agy bridge corroboration input","revisit":"remove after the bridge exposes a logical receipt root","access":"read-only"}
     "agy": EngineConfig(name="agy", bundle_root=".claude/agy/runs", launch_key="agy_launched"),
     "codex": EngineConfig(
         name="codex",
+        # antigravity-host-contract: {"class":"foreign-runtime-input","rule":"AGHC001","reason":"read-only codex bridge corroboration input","revisit":"remove after the bridge exposes a logical receipt root","access":"read-only"}
         bundle_root=".claude/codex/runs",
         launch_key="codex_launched",
         receipt_file="bridge-receipt.json",

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """OutcomeOrchestrator dispatcher seam — route a leaf to its backend (U4).
 
-This is the **single dispatcher seam** every subplot routes through (R5). It is the outcome-layer
-counterpart to ``execution_spec.recompile_for_tier`` (the by-mode emitter fork, now extended with the
-``team_emitter`` third leg): given a leaf and its chosen backend, it either **dispatches** — minting a
+This is the **single dispatcher seam** every subplot routes through (R5). Given
+a leaf and its chosen active Antigravity backend, it either **dispatches** — minting a
 leaf saga id and a ``/resume`` return channel (the R9 bidirectional envelope's re-entry token out) —
 or, when the backend cannot actually run, emits a **visible HALT-not-degrade receipt** (R5/R23) rather
 than silently substituting a lesser backend.
 
-U4 made **team-execution the first real backend** (R6); **U9 completes the menu** (R6): ``resolve_available``
-exposes the full host-conditional set (the always-available floor inline / team-execution / manual + the
-host-dependent fork / subagent / cc-workflows-ultracode / goal), and ``degrade_decision`` is the
+``resolve_available`` exposes the full host-conditional set (the always-available
+floor inline / manual plus host-dependent fork / subagent /
+multi-agent-consensus / goal), and ``degrade_decision`` is the
 **presence-conditional degrade policy** (R23/AE1) — an unavailable backend HALTs when the operator is
 attending / the leaf is guarantee-bearing / it already side-effected, else degrades **one rung** down the
 ``DEGRADE_LADDER`` (recording a visible :class:`DegradeReceipt`) when the leaf is autonomous and the
@@ -22,8 +21,8 @@ leaf saga id (the production loop gives it the full menu so it never HALTs — `
 owns the HALT/degrade decision via ``degrade_decision``); it still raises ``BackendHaltError`` for a
 restricted/unit caller, which the reconcile loop records as a HALT.
 
-House pattern (mirrors the other ``outcome_*`` modules): pure functions over explicit values, the
-``team_emitter`` wiring loaded lazily by path, no I/O at import.
+House pattern (mirrors the other ``outcome_*`` modules): pure functions over
+explicit values and no I/O at import.
 """
 
 from __future__ import annotations
@@ -32,27 +31,25 @@ import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import execution_spec  # noqa: E402  (after the sys.path shim, by design)
 import outcome_spec  # noqa: E402  (after the sys.path shim, by design)
 
-# The always-available floor (R6): the agent can always run inline, emit a team-execution artifact, or
-# hand a leaf to the operator (manual). The host-dependent backends (fork / subagent /
-# cc-workflows-ultracode / goal) are only available when the host advertises them (KTD9) — the
-# coordinator is a Python script that cannot itself probe the Claude Code host, so they stay OFF by
-# default and an unavailable choice HALTs or DEGRADES (R23), never a silent substitution (R5).
-ALWAYS_AVAILABLE: tuple[str, ...] = ("inline", "team-execution", "manual")
-HOST_DEPENDENT: frozenset[str] = frozenset({"fork", "subagent", "cc-workflows-ultracode", "goal"})
+# The agent can always run inline or hand a leaf to the operator. Native subagent
+# backends require explicit capability proof.
+ALWAYS_AVAILABLE: tuple[str, ...] = ("inline", "manual")
+HOST_DEPENDENT: frozenset[str] = frozenset({"fork", "subagent", "multi-agent-consensus", "goal"})
 DEFAULT_AVAILABLE: tuple[str, ...] = ALWAYS_AVAILABLE
+LEGACY_SOURCE_BACKENDS: frozenset[str] = frozenset(
+    # antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"legacy enum is parsed only to return a quarantine receipt","revisit":"delete after legacy specs are migrated"}
+    {"team-execution", "cc-workflows-ultracode"}
+)
 
-# The capability ladder degrade walks DOWN (R23): most-capable dynamic workflows -> review-gated
-# team-execution -> the always-runnable inline floor. A backend NOT on this ladder
-# (fork/subagent/goal/manual) has no defined lower rung, so an unavailable one HALTs rather than
-# silently substituting (R5). Mirrors lifecycle_state.ORCHESTRATION_TIERS.
-DEGRADE_LADDER: tuple[str, ...] = ("cc-workflows-ultracode", "team-execution", "inline")
+# Only the active consensus backend has a lower active rung.
+DEGRADE_LADDER: tuple[str, ...] = ("multi-agent-consensus", "inline")
 
 
 class DispatcherError(ValueError):
@@ -140,7 +137,12 @@ class BackendRateLimitError(Exception):
         self.receipt = receipt
 
 
-def dispatch(req: Any, *, available: Sequence[str] = DEFAULT_AVAILABLE) -> dict[str, Any]:
+def dispatch(
+    req: Any,
+    *,
+    available: Sequence[str] = DEFAULT_AVAILABLE,
+    capability_states: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Route a leaf to its backend. Returns a ``dispatched`` or a ``halt`` result dict.
 
     ``req`` is duck-typed (``outcome_id`` / ``subplot_id`` / ``title`` / ``backend`` / ``repo_root``)
@@ -152,6 +154,31 @@ def dispatch(req: Any, *, available: Sequence[str] = DEFAULT_AVAILABLE) -> dict[
         raise DispatcherError(
             f"backend {backend!r} is not in the executor menu {outcome_spec.NODE_BACKENDS}"
         )
+    if backend in LEGACY_SOURCE_BACKENDS:
+        receipt = HaltReceipt(
+            outcome_id=str(req.outcome_id),
+            subplot_id=str(req.subplot_id),
+            backend=backend,
+            reason=(
+                f"backend {backend!r} is Claude source lineage and is not an active "
+                "Antigravity route; choose 'multi-agent-consensus' or 'inline'"
+            ),
+            available=tuple(available),
+        )
+        return {"status": "halt", "receipt": receipt.to_dict()}
+    states = capability_states or {}
+    if backend == "multi-agent-consensus" and states.get("agy.agent.execution") != "passed":
+        receipt = HaltReceipt(
+            outcome_id=str(req.outcome_id),
+            subplot_id=str(req.subplot_id),
+            backend=backend,
+            reason=(
+                "required capability agy.agent.execution is not passed; "
+                "unknown, unavailable, and failed states halt native consensus"
+            ),
+            available=tuple(available),
+        )
+        return {"status": "halt", "receipt": receipt.to_dict()}
     if backend not in tuple(available):
         receipt = HaltReceipt(
             outcome_id=str(req.outcome_id),
@@ -170,6 +197,12 @@ def dispatch(req: Any, *, available: Sequence[str] = DEFAULT_AVAILABLE) -> dict[
     # running the leaf without the requested sandbox. Duck-typed ``sandbox`` (a Node carries it as
     # of #287 U1; older reqs simply lack it) keeps this backward compatible.
     offending = execution_spec.unenforceable_sandbox_axis(backend, getattr(req, "sandbox", None))
+    if (
+        offending is not None
+        and backend == "multi-agent-consensus"
+        and states.get("agy.sandbox.isolation") == "passed"
+    ):
+        offending = None
     if offending is not None:
         axis_name, axis_value = offending
         receipt = HaltReceipt(
@@ -195,11 +228,19 @@ def dispatch(req: Any, *, available: Sequence[str] = DEFAULT_AVAILABLE) -> dict[
     }
 
 
-def make_dispatcher(*, available: Sequence[str] = DEFAULT_AVAILABLE) -> Callable[[Any], str]:
+def make_dispatcher(
+    *,
+    available: Sequence[str] = DEFAULT_AVAILABLE,
+    capability_states: dict[str, str] | None = None,
+) -> Callable[[Any], str]:
     """A ``Dispatcher`` for ``outcome.advance``: leaf saga id on dispatch, HALT raises (never silent)."""
 
     def _dispatch(req: Any) -> str:
-        result = dispatch(req, available=available)
+        result = dispatch(
+            req,
+            available=available,
+            capability_states=capability_states,
+        )
         if result["status"] == "halt":
             raise BackendHaltError(HaltReceipt(**_receipt_kwargs(result["receipt"])))
         # #348 KTD4: a ``rate_limited`` dispatch result surfaces as a TRANSIENT 429, distinct from a
@@ -239,16 +280,12 @@ def _rate_limit_kwargs(receipt: dict[str, Any]) -> dict[str, Any]:
 
 
 def team_execution_artifact(execution_spec_obj: Any) -> str:
-    """Emit the team-execution ``## Team Structure`` markdown for a leaf's execution spec (R5).
+    """Reject the legacy Claude source emitter from active dispatch."""
 
-    Delegates to ``execution_spec.recompile_for_tier(spec, "team-execution")`` — the by-mode
-    dispatcher seam whose third leg is ``team_emitter`` — so the team-execution backend's runnable
-    artifact is produced through the single seam, not reinvented here. Uses the module-level
-    ``execution_spec`` import (loaded under the sys.path shim) so this and ``team_emitter`` reach the
-    SAME class objects — a fresh per-call ``exec_module`` would mint a second ``SpecError`` that an
-    upstream ``except`` misses (the #287 U3 dynamic-reload identity trap).
-    """
-    return str(execution_spec.recompile_for_tier(execution_spec_obj, "team-execution"))
+    del execution_spec_obj
+    raise DispatcherError(
+        "team-execution is Claude source lineage; use multi-agent-consensus"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -257,21 +294,21 @@ def team_execution_artifact(execution_spec_obj: Any) -> str:
 
 
 def resolve_available(
-    *, host_capable: bool = False, workflow_available: bool = False
+    *, host_capable: bool = False, consensus_available: bool = False
 ) -> tuple[str, ...]:
     """The runnable backend set for this host (R6), ordered by the spec's ``NODE_BACKENDS`` vocabulary.
 
-    ``ALWAYS_AVAILABLE`` (inline / team-execution / manual) is unconditional. ``host_capable`` enables
-    the forked-context backends (``fork`` / ``subagent`` / ``goal``); ``workflow_available`` additionally
-    enables ``cc-workflows-ultracode``. The conservative default (both False) is the always-available
+    ``ALWAYS_AVAILABLE`` (inline / manual) is unconditional. ``host_capable`` enables
+    the forked-context backends (``fork`` / ``subagent`` / ``goal``); ``consensus_available`` additionally
+    enables ``multi-agent-consensus``. The conservative default (both False) is the always-available
     floor — the coordinator never claims a host-dependent backend it cannot verify.
     """
     avail = set(ALWAYS_AVAILABLE)
     if host_capable:
         avail |= {"fork", "subagent", "goal"}
-    if host_capable and workflow_available:
-        avail.add("cc-workflows-ultracode")
-    return tuple(b for b in outcome_spec.NODE_BACKENDS if b in avail)
+    if host_capable and consensus_available:
+        avail.add("multi-agent-consensus")
+    return tuple(b for b in outcome_spec.ACTIVE_NODE_BACKENDS if b in avail)
 
 
 def is_guarantee_bearing(node: Any) -> bool:
@@ -393,10 +430,8 @@ def recommend_outcome_backend(
     1. **Fork cost lever** — when the caller offers ``fork`` as a candidate, recommend it ONLY if
        :func:`fork_is_cheap` holds for ``fork_signals``; otherwise fall through so a cache-missing fork is
        never claimed as the cheap option.
-    2. **Frontier-budget awareness** — a wide ready frontier (``frontier_width`` above the threshold)
-       makes a dynamic workflow *per leaf* expensive, so a ``cc-workflows-ultracode`` recommendation is
-       downgraded to ``team-execution`` with a ``budget_note`` (escalation stays one keystroke via
-       ``alternatives``). A narrow frontier is unaffected.
+    2. **Frontier-budget awareness** — a wide ready frontier records a cost
+       warning but does not substitute a legacy or weaker backend.
     """
     import lifecycle_state
 
@@ -404,7 +439,7 @@ def recommend_outcome_backend(
         return {
             "recommended": "fork",
             "rationale": "fork shares the parent's warm cache (model+system+tools match within TTL) -> cheap (R7)",
-            "alternatives": ["inline", "team-execution"],
+            "alternatives": ["inline", "multi-agent-consensus"],
             "frontier_width": frontier_width,
         }
 
@@ -412,18 +447,13 @@ def recommend_outcome_backend(
     rec["frontier_width"] = frontier_width
     if (
         frontier_width > _FRONTIER_BUDGET_THRESHOLD
-        and rec["recommended"] == "cc-workflows-ultracode"
+        and rec["recommended"] == "multi-agent-consensus"
     ):
         rec["budget_note"] = (
-            f"frontier width {frontier_width} > {_FRONTIER_BUDGET_THRESHOLD}: a dynamic workflow per "
-            f"leaf is expensive -> downgraded to team-execution (R7 frontier budget)"
+            f"frontier width {frontier_width} > {_FRONTIER_BUDGET_THRESHOLD}: "
+            "multi-agent-consensus remains selected because inline is not an "
+            "equivalent independent-execution guarantee"
         )
-        alternatives = cast("list[str]", rec.get("alternatives", []))
-        alts = [a for a in alternatives if a != "team-execution"]
-        if "cc-workflows-ultracode" not in alts:
-            alts.append("cc-workflows-ultracode")
-        rec["recommended"] = "team-execution"
-        rec["alternatives"] = [a for a in alts if a != "team-execution"]
     return rec
 
 

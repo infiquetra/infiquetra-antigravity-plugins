@@ -18,6 +18,7 @@ The recorded value is exactly one of:
   validator protocol.
 
 Claude `team-execution` and the historical source enum
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly quarantined","revisit":"remove when source lineage support is retired"} -->
 `cc-workflows-ultracode` are source-lineage mechanisms, not Antigravity
 backends. Both map to `multi-agent-consensus`; a Claude Workflow script must
 never be emitted or invoked from active Antigravity routing.

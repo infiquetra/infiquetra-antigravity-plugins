@@ -2,7 +2,8 @@
 """Delegation liveness channel — the filesystem marker hooks arm/disarm/read (#384, U2).
 
 ``PreToolUse`` cannot see the calling agent's profile or intent (journaled twice,
-``DECISIONS.md:1124,:1145``), so a filesystem marker under ``.claude/delegation/active.json``
+``DECISIONS.md:1124,:1145``), so a filesystem marker under
+``.gemini/saga/delegation/active.json``
 is the only cross-call channel between the dispatch layer (which knows a delegation is about
 to run) and the hooks (which only see the current tool call / transcript). This module is that
 channel: ``arm``/``disarm`` are the dispatcher's writers, ``active`` is the hooks' reader.
@@ -36,7 +37,7 @@ from typing import Any
 # reaps it from the file.
 DEFAULT_TTL_SECONDS = 4 * 60 * 60  # 4 hours
 
-DEFAULT_MARKER_RELATIVE_PATH = Path(".claude") / "delegation" / "active.json"
+DEFAULT_MARKER_RELATIVE_PATH = Path(".gemini") / "saga" / "delegation" / "active.json"
 
 
 @dataclass(frozen=True)

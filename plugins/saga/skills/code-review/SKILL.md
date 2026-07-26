@@ -171,6 +171,7 @@ plugin-root decision contract). The Antigravity backends are `inline` and
 `multi-agent-consensus` for broad independent review, explicit adversarial
 confidence, gated evidence, or material size/risk. Claude `team-execution`
 behavior maps to `multi-agent-consensus`; it is not a separate target backend.
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
 The historical source enum `cc-workflows-ultracode` is also inactive.
 
 Only offer `multi-agent-consensus` when a capability receipt proves

@@ -77,17 +77,21 @@ NODE_STATES = (
 TERMINAL_STATES = frozenset({"done", "failed", "rejected", "stalled"})
 SUCCESS_STATES = frozenset({"done"})
 
-# The full executor menu (R6). ``cc-workflows-ultracode`` and ``goal``/``fork`` are
-# host-dependent (degrade may drop them, KTD9); ``team-execution`` and ``inline`` always run.
-NODE_BACKENDS = (
+# Active Antigravity executor menu. Native subagent backends are capability
+# dependent; inline and manual remain the conservative floor.
+ACTIVE_NODE_BACKENDS = (
     "inline",
     "fork",
     "subagent",
-    "team-execution",
-    "cc-workflows-ultracode",
+    "multi-agent-consensus",
     "goal",
     "manual",
 )
+# antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"legacy enum is parse-only for explicit rejection","revisit":"delete after legacy specs are migrated"}
+LEGACY_NODE_BACKENDS = ("team-execution", "cc-workflows-ultracode")
+# Parse legacy persisted specs so the dispatcher can return an explicit
+# quarantine receipt instead of failing before it can explain the migration.
+NODE_BACKENDS = ACTIVE_NODE_BACKENDS + LEGACY_NODE_BACKENDS
 
 # Degrade policy per node (KTD9), enforced in the degrade path (U9), NOT in
 # ``recompile_for_tier`` (the verified correction: that function is a by-mode dispatcher).

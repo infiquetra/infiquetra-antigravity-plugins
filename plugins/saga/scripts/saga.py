@@ -76,7 +76,7 @@ LIFECYCLE_PHASES = ("ideation", "brainstorm", "plan", "review", "work", "qa", "r
 PHASE_STATUSES = ("pending", "in_progress", "complete")
 STATUSES = ("active", "blocked", "paused", "handed-off", "done", "abandoned")
 DESTINATIONS = ("plan-only", "pr", "merge", "nonprod-deploy")
-ORCHESTRATION_MODES = ("inline", "team-execution", "cc-workflows-ultracode")
+ORCHESTRATION_MODES = ("inline", "multi-agent-consensus")
 # ship_ceremony.py's reversibility-tier vocabulary (issue #345). saga.py only validates the
 # closed set here; the transition ORDER and index-derivation are ship_ceremony.py's own
 # domain (CeremonyTier), never saga.py's — keeps the generic engine decoupled from one
@@ -89,8 +89,7 @@ CEREMONY_TIERS = ("reversible", "additive", "always_operator")
 # this map is additive and never changes their meaning.  A key miss falls back to
 # the raw enum string — never errors.
 ORCHESTRATION_MODE_LABELS: dict[str, str] = {
-    "cc-workflows-ultracode": "dynamic workflows",
-    "team-execution": "team execution",
+    "multi-agent-consensus": "multi-agent consensus",
     "inline": "inline",
 }
 
@@ -187,7 +186,7 @@ class Saga:
     orchestration_recommended: str = ""
     orchestration_operator_choice: str = ""
     # Capability-portable degradation record (R11 / U12). On an off-host resume the
-    # orchestration tier recompiles DOWN (Workflow tool unavailable); the one-line
+    # orchestration tier recompiles DOWN (native consensus runtime unavailable); the one-line
     # downgrade note is recorded here so the degradation is durable, not silent. Empty
     # on a host that ran the authored tier; defaults to "" so older sagas still parse.
     orchestration_downgrade: str = ""
@@ -655,7 +654,7 @@ class SagaSaveError(ValueError):
 
 
 def _orchestration_rank(mode: str) -> int | None:
-    """Tier rank of an orchestration mode (inline < team-execution < cc-workflows-ultracode).
+    """Tier rank of an orchestration mode (inline < multi-agent-consensus).
 
     Returns the index in ``ORCHESTRATION_MODES`` (a higher index is a richer/costlier tier),
     or ``None`` for an unrecognized value (the guard then can't reason about direction and is
@@ -1307,7 +1306,7 @@ def _build_save_saga(args: argparse.Namespace) -> Saga:
     # --orchestration-mode defaults to None (NOT "inline") so a progress tick that passes
     # NO orchestration signal leaves BOTH mode and operator_choice at their dataclass
     # defaults -> _merge carries the prior tick's real values forward. A progress tick must
-    # not silently re-stamp an "inline" choice over a cc-workflows-ultracode saga, which
+    # not silently re-stamp an "inline" choice over a multi-agent-consensus saga, which
     # would manufacture a false mode != operator_choice divergence (rejected by the save-time
     # provenance guard). When --orchestration-mode IS given, the chosen backend IS the
     # operator's pick unless an explicit --orchestration-operator-choice overrides it (the

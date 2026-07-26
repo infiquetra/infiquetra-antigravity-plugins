@@ -82,3 +82,46 @@ Commit:
 
 Next step: execute U5-U6 against the machine-generated active finding
 inventory, then require the selected surface to reach zero unresolved findings.
+
+## Phase 3 — U5-U6 native interaction and runtime contracts
+
+U5 ports the surviving Claude interaction semantics into Antigravity-native
+instructions: ask one blocking question in the current session, stop until the
+answer arrives, and use structured interaction only when the capability receipt
+proves it. Active orchestration now has two target modes, `inline` and
+`multi-agent-consensus`; the source `team-execution` and
+`cc-workflows-ultracode` mechanisms both map to native Antigravity consensus
+rather than being renamed or executed as Claude workflows.
+
+U6 enforces those semantics in runtime code:
+
+- Saga dispatch requires proven `agy.agent.execution` before selecting
+  `multi-agent-consensus`.
+- A restrictive consensus request additionally requires proven
+  `agy.sandbox.isolation`; unknown, unavailable, or failed evidence halts.
+- Legacy Claude backend names remain parseable only so the dispatcher can emit
+  an explicit migration error. They cannot reach active execution.
+- Antigravity-owned state defaults to `.gemini`; retained `.claude` paths are
+  narrowly annotated read-only foreign inputs.
+- Session discovery requires a doctor-resolved projects root instead of a fixed
+  Antigravity brain path.
+- Scheduling and isolation text distinguishes requests from observed proof.
+
+The versioned selector now reports 13 classified findings and zero unresolved
+host-contract violations.
+
+Checks:
+
+- Focused U5 instruction tests — 57 passed, one skipped.
+- Focused U6 runtime and adjacent-plugin tests — 204 passed, one skipped.
+- Host-contract repository scan — zero unresolved findings.
+- Ruff on the changed Python and test surfaces — passed.
+- Mypy on the changed runtime modules — passed.
+- `git diff --check` — passed.
+
+Commits:
+
+- `2f64a28` — U5 native interaction and orchestration instructions.
+
+Next step: integrate the capability catalog, receipt evaluator, privacy checks,
+and zero-unresolved host-contract scan into the canonical plugin doctor (U7).

@@ -19,7 +19,8 @@ committed `docs/*` (Tier 1's substrate), not to Tier 2.
 ## The discovery pipeline (MVP — recency only)
 
 ```bash
-python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> --exclude <current-session-id> [--projects-root <path>]
+python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> \
+  --projects-root <doctor-resolved-session-root> --exclude <current-session-id>
 ```
 
 `discover_sessions.py` finds this repo's session files, **recency-ranks** them, **caps at 5**, and

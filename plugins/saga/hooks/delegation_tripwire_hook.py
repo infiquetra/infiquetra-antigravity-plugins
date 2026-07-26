@@ -11,7 +11,7 @@ work itself while a delegation is supposedly in flight (KTD3's file-tool vocabul
 the transcript classifier's own).
 
 Genuine-invocation evidence (KTD5): any run directory under the armed engine's
-``bundle_root`` (``.claude/agy/runs/`` or ``.claude/codex/runs/``) containing a
+configured read-only foreign ``bundle_root`` containing a
 ``prompt.txt`` whose mtime is >= the marker's ``armed_at`` timestamp counts as proof a real
 engine launch is underway. No such evidence -> block.
 

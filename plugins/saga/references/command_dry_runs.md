@@ -1,6 +1,10 @@
 # Orchestration Command Dry-Runs
 
-This document provides visual "dry-runs" for the major Saga orchestration commands. Because Saga operates without explicit `.claude/` checkpoints, executing commands mutates the native `brain/` state directly. Use these diagrams to understand exactly what will be consumed, updated, or created *before* you execute a command to eliminate execution anxiety.
+This document provides visual dry-runs for the major Saga orchestration
+commands. Durable lifecycle artifacts are written under repository `docs/`;
+machine-local coordination state stays under `.gemini/saga/`. Native
+Antigravity brain artifacts are transient interaction inputs, not the durable
+Saga record.
 
 ## `/ideate`
 **Purpose:** Generate, critique, and surface surviving grounded Infiquetra ideas.
