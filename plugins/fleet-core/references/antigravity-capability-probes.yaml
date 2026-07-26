@@ -1,0 +1,219 @@
+{
+  "catalog_schema": "antigravity.capability-catalog.v1",
+  "receipt_schema": "antigravity.capabilities.v1",
+  "catalog_revision": 1,
+  "capabilities": [
+    {
+      "id": "agy.cli.version",
+      "revision": 1,
+      "description": "Observe the installed agy CLI version separately from the host version.",
+      "probe_method": "agy-version",
+      "probe_revision": 1,
+      "expected_evidence": ["agy-cli-version"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "normalized-version-observed",
+        "failed": "malformed-version-output",
+        "unknown": "version-output-unrecognized",
+        "unavailable": "agy-executable-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "agy.cli.flags",
+      "revision": 1,
+      "description": "Observe supported command flags without treating them as behavior proof.",
+      "probe_method": "agy-help-flags",
+      "probe_revision": 1,
+      "expected_evidence": ["supported-flags"],
+      "required_for": [],
+      "outcome_rules": {
+        "passed": "normalized-flags-observed",
+        "failed": "malformed-help-output",
+        "unknown": "flag-output-unrecognized",
+        "unavailable": "agy-executable-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "antigravity.host.version",
+      "revision": 1,
+      "description": "Observe the Antigravity application version separately from agy.",
+      "probe_method": "antigravity-host-version",
+      "probe_revision": 1,
+      "expected_evidence": ["antigravity-host-version"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "normalized-version-observed",
+        "failed": "malformed-version-metadata",
+        "unknown": "version-metadata-unrecognized",
+        "unavailable": "host-metadata-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "antigravity.plugin.links",
+      "revision": 1,
+      "description": "Observe installed plugin link state using logical roots.",
+      "probe_method": "plugin-links",
+      "probe_revision": 1,
+      "expected_evidence": ["plugin-link-state"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "required-links-resolve",
+        "failed": "required-link-broken",
+        "unknown": "link-target-unclassified",
+        "unavailable": "plugin-root-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "antigravity.plugin.load",
+      "revision": 1,
+      "description": "Observe plugin loading only through a no-write registered probe.",
+      "probe_method": "plugin-load",
+      "probe_revision": 1,
+      "expected_evidence": ["plugin-load-state"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "required-plugins-loaded",
+        "failed": "required-plugin-not-loaded",
+        "unknown": "plugin-output-unrecognized",
+        "unavailable": "no-write-observation-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "antigravity.plugin.validation",
+      "revision": 1,
+      "description": "Observe plugin validation only through a no-write registered probe.",
+      "probe_method": "plugin-validation",
+      "probe_revision": 1,
+      "expected_evidence": ["plugin-validation-state"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "required-plugins-valid",
+        "failed": "required-plugin-invalid",
+        "unknown": "validation-output-unrecognized",
+        "unavailable": "no-write-observation-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "agy.model.selection",
+      "revision": 1,
+      "description": "Prove that requested and observed model selection agree.",
+      "probe_method": "controlled-model-selection",
+      "probe_revision": 1,
+      "expected_evidence": ["model-selection-proof"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "requested-observed-match",
+        "failed": "requested-observed-mismatch",
+        "unknown": "observed-model-missing",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "agy.effort.selection",
+      "revision": 1,
+      "description": "Prove that requested and observed effort selection agree.",
+      "probe_method": "controlled-effort-selection",
+      "probe_revision": 1,
+      "expected_evidence": ["effort-selection-proof"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "requested-observed-match",
+        "failed": "requested-observed-mismatch",
+        "unknown": "observed-effort-missing",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "agy.agent.execution",
+      "revision": 1,
+      "description": "Prove independent agent execution rather than flag availability.",
+      "probe_method": "controlled-agent-execution",
+      "probe_revision": 1,
+      "expected_evidence": ["agent-execution-proof"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "independent-execution-proven",
+        "failed": "independent-execution-refuted",
+        "unknown": "independent-execution-unobserved",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": {
+        "capability": "agy.sequential.isolation",
+        "for_consumers": ["saga.ideate", "saga.work"],
+        "when_states": ["unknown", "unavailable"]
+      }
+    },
+    {
+      "id": "agy.conversation.resume",
+      "revision": 1,
+      "description": "Prove conversation resume preserves the expected execution context.",
+      "probe_method": "controlled-resume",
+      "probe_revision": 1,
+      "expected_evidence": ["resume-proof"],
+      "required_for": ["live-canary", "saga.resume"],
+      "outcome_rules": {
+        "passed": "resume-context-preserved",
+        "failed": "resume-context-diverged",
+        "unknown": "resume-context-unobserved",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "agy.plan.mode",
+      "revision": 1,
+      "description": "Prove plan mode enforces its expected write boundary.",
+      "probe_method": "controlled-plan-mode",
+      "probe_revision": 1,
+      "expected_evidence": ["plan-mode-proof"],
+      "required_for": ["live-canary", "saga.plan"],
+      "outcome_rules": {
+        "passed": "plan-write-boundary-proven",
+        "failed": "plan-write-boundary-broken",
+        "unknown": "plan-write-boundary-unobserved",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "agy.sandbox.isolation",
+      "revision": 1,
+      "description": "Prove the sandbox boundary actually enforced for the selected run.",
+      "probe_method": "controlled-sandbox",
+      "probe_revision": 1,
+      "expected_evidence": ["sandbox-proof"],
+      "required_for": ["live-canary"],
+      "outcome_rules": {
+        "passed": "sandbox-boundary-proven",
+        "failed": "sandbox-boundary-broken",
+        "unknown": "sandbox-boundary-unobserved",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": null
+    },
+    {
+      "id": "agy.sequential.isolation",
+      "revision": 1,
+      "description": "Prove isolated sequential execution as an optional agent fallback.",
+      "probe_method": "controlled-sequential-isolation",
+      "probe_revision": 1,
+      "expected_evidence": ["sequential-isolation-proof"],
+      "required_for": [],
+      "outcome_rules": {
+        "passed": "sequential-isolation-proven",
+        "failed": "sequential-isolation-broken",
+        "unknown": "sequential-isolation-unobserved",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": null
+    }
+  ]
+}

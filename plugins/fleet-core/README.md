@@ -9,6 +9,20 @@ contributes nothing to an Antigravity session directly; it exists so other insta
 resolve shared code at a single canonical location instead of hand-copying it (the
 `validate_card_body` drift incident, #222, is the failure mode this prevents).
 
+## Antigravity capability catalog
+
+`references/antigravity-capability-probes.yaml` is the canonical, schema-versioned
+host capability catalog. Despite the `.yaml` suffix, it intentionally uses only
+comment-free JSON syntax and is parsed with the Python standard library. Do not
+add YAML comments, anchors, tags, shell commands, executable paths, or other
+general YAML features.
+
+Catalog rows select a fixed registered probe method and revision. The Python
+registry owns argument vectors, timeouts, parsers, and sanitization. Consumer
+requiredness is declared by profile; a required failed, unknown, or unavailable
+capability blocks that consumer. Only an optional capability with a previously
+declared and proven fallback can evaluate as degraded.
+
 ## Layout
 
 ```

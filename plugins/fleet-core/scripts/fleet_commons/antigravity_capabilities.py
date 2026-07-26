@@ -1,0 +1,445 @@
+"""Antigravity capability catalog, promotable receipt, and consumer evaluation.
+
+The catalog is stored as the JSON-compatible subset of YAML so installed
+``fleet-core`` remains standard-library only. Catalog rows may select a
+registered probe method and revision, but cannot provide executable commands.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any, cast
+
+CATALOG_SCHEMA = "antigravity.capability-catalog.v1"
+RECEIPT_SCHEMA = "antigravity.capabilities.v1"
+EVALUATION_SCHEMA = "antigravity.capability-evaluation.v1"
+
+RAW_STATES = frozenset({"passed", "failed", "unknown", "unavailable"})
+EVALUATION_STATES = frozenset({"passed", "blocked", "degraded"})
+FALLBACK_STATES = frozenset({"unknown", "unavailable"})
+
+PROBE_METHOD_REVISIONS: dict[str, int] = {
+    "agy-version": 1,
+    "agy-help-flags": 1,
+    "antigravity-host-version": 1,
+    "plugin-links": 1,
+    "plugin-load": 1,
+    "plugin-validation": 1,
+    "controlled-model-selection": 1,
+    "controlled-effort-selection": 1,
+    "controlled-agent-execution": 1,
+    "controlled-resume": 1,
+    "controlled-plan-mode": 1,
+    "controlled-sandbox": 1,
+    "controlled-sequential-isolation": 1,
+}
+
+RUNTIME_ROOT_ROLES = frozenset(
+    {
+        "repository",
+        "plugin-install",
+        "saga-state",
+        "conversation-artifacts",
+        "brain-artifacts",
+    }
+)
+
+FACT_IDS = frozenset(
+    {
+        "model-selection",
+        "effort-selection",
+        "agent-execution",
+        "conversation-resume",
+        "plan-mode",
+        "sandbox-isolation",
+        "sequential-isolation",
+    }
+)
+
+_ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
+_VERSION_RE = re.compile(r"^[0-9]+(?:[.][0-9A-Za-z+-]+)*$")
+_FLAG_RE = re.compile(r"^--[a-z0-9]+(?:-[a-z0-9]+)*$")
+_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+_SAFE_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$")
+
+_CATALOG_KEYS = frozenset(
+    {"catalog_schema", "receipt_schema", "catalog_revision", "capabilities"}
+)
+_CAPABILITY_KEYS = frozenset(
+    {
+        "id",
+        "revision",
+        "description",
+        "probe_method",
+        "probe_revision",
+        "expected_evidence",
+        "required_for",
+        "outcome_rules",
+        "fallback",
+    }
+)
+_FALLBACK_KEYS = frozenset({"capability", "for_consumers", "when_states"})
+_RECEIPT_KEYS = frozenset(
+    {
+        "schema",
+        "catalog_digest",
+        "agy_cli_version",
+        "antigravity_host_version",
+        "supported_flags",
+        "runtime_roots",
+        "requested_facts",
+        "observed_facts",
+        "results",
+    }
+)
+_RESULT_KEYS = frozenset({"id", "probe_revision", "state", "evidence"})
+
+
+class CapabilityContractError(ValueError):
+    """Raised when invalid evidence is passed to consumer evaluation."""
+
+
+def _is_sequence(value: object) -> bool:
+    return isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray))
+
+
+def _extra_keys(value: Mapping[str, Any], allowed: frozenset[str], path: str) -> list[str]:
+    return [f"{path}: unknown field {key!r}" for key in sorted(set(value) - allowed)]
+
+
+def _validate_id(value: object, path: str, errors: list[str]) -> str | None:
+    if not isinstance(value, str) or not _ID_RE.fullmatch(value):
+        errors.append(f"{path}: expected a lowercase dotted identifier")
+        return None
+    return value
+
+
+def _validate_id_list(value: object, path: str, errors: list[str]) -> list[str]:
+    if not _is_sequence(value):
+        errors.append(f"{path}: expected a list of identifiers")
+        return []
+    result: list[str] = []
+    for index, item in enumerate(cast(Sequence[object], value)):
+        valid = _validate_id(item, f"{path}[{index}]", errors)
+        if valid is not None:
+            result.append(valid)
+    if len(result) != len(set(result)):
+        errors.append(f"{path}: duplicate identifiers are not allowed")
+    return result
+
+
+def canonical_catalog_digest(catalog: Mapping[str, Any]) -> str:
+    """Return the stable SHA-256 digest for a parsed catalog."""
+
+    encoded = json.dumps(catalog, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def load_catalog(path: Path | str) -> dict[str, Any]:
+    """Load and validate a JSON-compatible YAML catalog."""
+
+    source = Path(path)
+    try:
+        parsed = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CapabilityContractError(f"could not load capability catalog: {exc}") from exc
+    errors = validate_catalog(parsed)
+    if errors:
+        raise CapabilityContractError("invalid capability catalog: " + "; ".join(errors))
+    return cast(dict[str, Any], parsed)
+
+
+def validate_catalog(catalog: object) -> list[str]:
+    """Validate the closed capability-catalog schema. Empty means valid."""
+
+    if not isinstance(catalog, dict):
+        return [f"catalog: expected an object, got {type(catalog).__name__}"]
+
+    errors = _extra_keys(catalog, _CATALOG_KEYS, "catalog")
+    if catalog.get("catalog_schema") != CATALOG_SCHEMA:
+        errors.append(f"catalog.catalog_schema: expected {CATALOG_SCHEMA!r}")
+    if catalog.get("receipt_schema") != RECEIPT_SCHEMA:
+        errors.append(f"catalog.receipt_schema: expected {RECEIPT_SCHEMA!r}")
+    revision = catalog.get("catalog_revision")
+    if not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
+        errors.append("catalog.catalog_revision: expected a positive integer")
+
+    capabilities = catalog.get("capabilities")
+    if not _is_sequence(capabilities) or not capabilities:
+        errors.append("catalog.capabilities: expected a non-empty list")
+        return errors
+
+    seen_ids: set[str] = set()
+    rows: dict[str, Mapping[str, Any]] = {}
+    for index, row in enumerate(capabilities):
+        path = f"catalog.capabilities[{index}]"
+        if not isinstance(row, dict):
+            errors.append(f"{path}: expected an object")
+            continue
+        errors.extend(_extra_keys(row, _CAPABILITY_KEYS, path))
+        capability_id = _validate_id(row.get("id"), f"{path}.id", errors)
+        if capability_id is not None:
+            if capability_id in seen_ids:
+                errors.append(f"{path}.id: duplicate capability {capability_id!r}")
+            seen_ids.add(capability_id)
+            rows[capability_id] = row
+
+        row_revision = row.get("revision")
+        if not isinstance(row_revision, int) or isinstance(row_revision, bool) or row_revision < 1:
+            errors.append(f"{path}.revision: expected a positive integer")
+        description = row.get("description")
+        if not isinstance(description, str) or not description.strip():
+            errors.append(f"{path}.description: expected non-empty text")
+
+        method = row.get("probe_method")
+        if method not in PROBE_METHOD_REVISIONS:
+            errors.append(f"{path}.probe_method: unknown registered method {method!r}")
+        expected_revision = PROBE_METHOD_REVISIONS.get(method) if isinstance(method, str) else None
+        if row.get("probe_revision") != expected_revision:
+            errors.append(
+                f"{path}.probe_revision: expected registered revision {expected_revision!r}"
+            )
+
+        evidence = _validate_id_list(
+            row.get("expected_evidence"), f"{path}.expected_evidence", errors
+        )
+        if not evidence:
+            errors.append(f"{path}.expected_evidence: expected at least one evidence identifier")
+        required_for = _validate_id_list(
+            row.get("required_for"), f"{path}.required_for", errors
+        )
+
+        outcome_rules = row.get("outcome_rules")
+        if not isinstance(outcome_rules, dict):
+            errors.append(f"{path}.outcome_rules: expected an object")
+        else:
+            expected_rule_keys = set(RAW_STATES)
+            if set(outcome_rules) != expected_rule_keys:
+                errors.append(
+                    f"{path}.outcome_rules: expected exactly {sorted(expected_rule_keys)}"
+                )
+            for state, rule in outcome_rules.items():
+                if state in RAW_STATES and (
+                    not isinstance(rule, str) or not _ID_RE.fullmatch(rule)
+                ):
+                    errors.append(
+                        f"{path}.outcome_rules.{state}: expected a stable rule identifier"
+                    )
+
+        fallback = row.get("fallback")
+        if fallback is not None:
+            if not isinstance(fallback, dict):
+                errors.append(f"{path}.fallback: expected an object or null")
+            else:
+                errors.extend(_extra_keys(fallback, _FALLBACK_KEYS, f"{path}.fallback"))
+                _validate_id(
+                    fallback.get("capability"), f"{path}.fallback.capability", errors
+                )
+                consumers = _validate_id_list(
+                    fallback.get("for_consumers"),
+                    f"{path}.fallback.for_consumers",
+                    errors,
+                )
+                overlap = sorted(set(consumers) & set(required_for))
+                if overlap:
+                    errors.append(
+                        f"{path}.fallback.for_consumers: required consumers cannot degrade: "
+                        f"{overlap}"
+                    )
+                when_states = fallback.get("when_states")
+                if not _is_sequence(when_states) or not when_states:
+                    errors.append(f"{path}.fallback.when_states: expected a non-empty list")
+                else:
+                    invalid_states = sorted(set(when_states) - FALLBACK_STATES)
+                    if invalid_states:
+                        errors.append(
+                            f"{path}.fallback.when_states: unsupported states {invalid_states}"
+                        )
+
+    for capability_id, row in rows.items():
+        fallback = row.get("fallback")
+        if not isinstance(fallback, dict):
+            continue
+        fallback_id = fallback.get("capability")
+        if fallback_id == capability_id:
+            errors.append(f"capability {capability_id!r}: fallback cannot reference itself")
+        elif fallback_id not in rows:
+            errors.append(
+                f"capability {capability_id!r}: unknown fallback capability {fallback_id!r}"
+            )
+    return errors
+
+
+def _validate_version(value: object, path: str, errors: list[str]) -> None:
+    if value is not None and (not isinstance(value, str) or not _VERSION_RE.fullmatch(value)):
+        errors.append(f"{path}: expected a normalized version string or null")
+
+
+def _validate_facts(value: object, path: str, errors: list[str]) -> None:
+    if not isinstance(value, dict):
+        errors.append(f"{path}: expected an object")
+        return
+    for key, fact in value.items():
+        if key not in FACT_IDS:
+            errors.append(f"{path}: unknown fact {key!r}")
+        if (
+            fact is not None
+            and not isinstance(fact, bool)
+            and (not isinstance(fact, str) or not _SAFE_TOKEN_RE.fullmatch(fact))
+        ):
+            errors.append(f"{path}.{key}: expected bool, safe token, or null")
+
+
+def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) -> list[str]:
+    """Validate a strict promotable capability receipt. Empty means valid."""
+
+    if not isinstance(receipt, dict):
+        return [f"receipt: expected an object, got {type(receipt).__name__}"]
+    errors = _extra_keys(receipt, _RECEIPT_KEYS, "receipt")
+    if receipt.get("schema") != RECEIPT_SCHEMA:
+        errors.append(f"receipt.schema: expected {RECEIPT_SCHEMA!r}")
+
+    digest = receipt.get("catalog_digest")
+    if not isinstance(digest, str) or not _DIGEST_RE.fullmatch(digest):
+        errors.append("receipt.catalog_digest: expected a lowercase SHA-256 digest")
+    if catalog is not None:
+        catalog_errors = validate_catalog(catalog)
+        if catalog_errors:
+            errors.append("receipt.catalog: supplied catalog is invalid")
+        elif digest != canonical_catalog_digest(catalog):
+            errors.append("receipt.catalog_digest: does not match the supplied catalog")
+
+    _validate_version(receipt.get("agy_cli_version"), "receipt.agy_cli_version", errors)
+    _validate_version(
+        receipt.get("antigravity_host_version"),
+        "receipt.antigravity_host_version",
+        errors,
+    )
+
+    flags = receipt.get("supported_flags")
+    if not _is_sequence(flags):
+        errors.append("receipt.supported_flags: expected a list")
+    else:
+        flag_values = cast(Sequence[object], flags)
+        if len(flag_values) != len(set(flag_values)):
+            errors.append("receipt.supported_flags: duplicate flags are not allowed")
+        for index, flag in enumerate(flag_values):
+            if not isinstance(flag, str) or not _FLAG_RE.fullmatch(flag):
+                errors.append(f"receipt.supported_flags[{index}]: invalid normalized flag")
+
+    runtime_roots = receipt.get("runtime_roots")
+    if not _is_sequence(runtime_roots):
+        errors.append("receipt.runtime_roots: expected a list of logical roles")
+    else:
+        root_values = cast(Sequence[object], runtime_roots)
+        if len(root_values) != len(set(root_values)):
+            errors.append("receipt.runtime_roots: duplicate roles are not allowed")
+        for index, role in enumerate(root_values):
+            if role not in RUNTIME_ROOT_ROLES:
+                errors.append(f"receipt.runtime_roots[{index}]: unknown logical role {role!r}")
+
+    _validate_facts(receipt.get("requested_facts"), "receipt.requested_facts", errors)
+    _validate_facts(receipt.get("observed_facts"), "receipt.observed_facts", errors)
+
+    catalog_rows: dict[str, Mapping[str, Any]] = {}
+    if catalog is not None and not validate_catalog(catalog):
+        catalog_rows = {
+            row["id"]: row
+            for row in catalog["capabilities"]
+            if isinstance(row, dict) and isinstance(row.get("id"), str)
+        }
+
+    results = receipt.get("results")
+    if not _is_sequence(results):
+        errors.append("receipt.results: expected a list")
+        return errors
+    seen: set[str] = set()
+    for index, result in enumerate(cast(Sequence[object], results)):
+        path = f"receipt.results[{index}]"
+        if not isinstance(result, dict):
+            errors.append(f"{path}: expected an object")
+            continue
+        errors.extend(_extra_keys(result, _RESULT_KEYS, path))
+        result_id = _validate_id(result.get("id"), f"{path}.id", errors)
+        if result_id is not None:
+            if result_id in seen:
+                errors.append(f"{path}.id: duplicate result {result_id!r}")
+            seen.add(result_id)
+            if catalog_rows and result_id not in catalog_rows:
+                errors.append(f"{path}.id: capability is not present in the supplied catalog")
+
+        probe_revision = result.get("probe_revision")
+        if not isinstance(probe_revision, int) or isinstance(probe_revision, bool):
+            errors.append(f"{path}.probe_revision: expected an integer")
+        elif result_id in catalog_rows:
+            expected = catalog_rows[result_id]["probe_revision"]
+            if probe_revision != expected:
+                errors.append(f"{path}.probe_revision: expected {expected!r}")
+
+        if result.get("state") not in RAW_STATES:
+            errors.append(f"{path}.state: expected one of {sorted(RAW_STATES)}")
+        evidence = _validate_id_list(result.get("evidence"), f"{path}.evidence", errors)
+        if result_id in catalog_rows:
+            allowed_evidence = set(catalog_rows[result_id]["expected_evidence"])
+            unexpected = sorted(set(evidence) - allowed_evidence)
+            if unexpected:
+                errors.append(f"{path}.evidence: unexpected identifiers {unexpected}")
+    return errors
+
+
+def evaluate_for_consumer(
+    receipt: Mapping[str, Any],
+    catalog: Mapping[str, Any],
+    consumer: str,
+) -> dict[str, Any]:
+    """Evaluate one consumer without translating the shared state vocabulary."""
+
+    catalog_errors = validate_catalog(catalog)
+    receipt_errors = validate_receipt(receipt, catalog)
+    if catalog_errors or receipt_errors:
+        raise CapabilityContractError(
+            "invalid capability evidence: " + "; ".join(catalog_errors + receipt_errors)
+        )
+    if not _ID_RE.fullmatch(consumer):
+        raise CapabilityContractError("consumer must be a lowercase dotted identifier")
+
+    result_by_id = {result["id"]: result for result in receipt["results"]}
+    blocking: list[str] = []
+    degraded: list[str] = []
+    fallbacks: dict[str, str] = {}
+
+    for row in catalog["capabilities"]:
+        capability_id = row["id"]
+        result = result_by_id.get(capability_id)
+        state = result["state"] if result is not None else "unknown"
+        required = consumer in row["required_for"]
+        if required and state != "passed":
+            blocking.append(capability_id)
+            continue
+        if required or state == "passed":
+            continue
+
+        fallback = row["fallback"]
+        if not isinstance(fallback, dict):
+            continue
+        if consumer not in fallback["for_consumers"] or state not in fallback["when_states"]:
+            continue
+        fallback_id = fallback["capability"]
+        fallback_result = result_by_id.get(fallback_id)
+        if fallback_result is not None and fallback_result["state"] == "passed":
+            degraded.append(capability_id)
+            fallbacks[capability_id] = fallback_id
+
+    evaluation_state = "blocked" if blocking else "degraded" if degraded else "passed"
+    return {
+        "schema": EVALUATION_SCHEMA,
+        "consumer": consumer,
+        "state": evaluation_state,
+        "blocking_capabilities": sorted(blocking),
+        "degraded_capabilities": sorted(degraded),
+        "fallbacks": dict(sorted(fallbacks.items())),
+    }
