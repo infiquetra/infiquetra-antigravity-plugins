@@ -1,0 +1,28 @@
+{
+  "schema": "antigravity.host-contract-surfaces.v1",
+  "active_globs": [
+    "plugins/saga/commands/**/*.md",
+    "plugins/saga/skills/**/*.md",
+    "plugins/saga/agents/**/*.md",
+    "plugins/saga/references/**/*.md",
+    "plugins/saga/hooks/**/*.py",
+    "plugins/saga/scripts/**/*.py"
+  ],
+  "exact_paths": [
+    "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+    "plugins/fleet-core/scripts/fleet_commons/delegation_state.py",
+    "plugins/mission-control/scripts/sdlc_manager.py",
+    "plugins/multi-agent-consensus/skills/multi-agent-consensus/references/validator-evidence-state.md",
+    ".agents/skills/port-claude-plugins/SKILL.md"
+  ],
+  "comparison_roots": [
+    "docs",
+    "tests"
+  ],
+  "digest_inputs": [
+    "schema",
+    "active_globs",
+    "exact_paths",
+    "comparison_roots"
+  ]
+}
