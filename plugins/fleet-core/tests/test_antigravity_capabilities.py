@@ -16,6 +16,7 @@ sys.path.insert(0, str(FLEET_CORE / "scripts"))
 import fleet_commons_shim  # noqa: E402
 
 CAPS = fleet_commons_shim.load("antigravity_capabilities")
+PROBES = fleet_commons_shim.load("antigravity_probes")
 FIXTURES = Path(__file__).parent / "fixtures" / "antigravity-capabilities"
 
 
@@ -162,3 +163,127 @@ def test_dotted_safe_values_are_accepted() -> None:
     receipt = _receipt(catalog)
     receipt["agy_cli_version"] = "3.1.0-rc1"
     assert CAPS.validate_receipt(receipt, catalog) == []
+
+
+class FakeRunner:
+    def __init__(
+        self,
+        *,
+        safe_for_stateful_observation: bool = True,
+        oversized: bool = False,
+        fail: bool = False,
+    ) -> None:
+        self.safe_for_stateful_observation = safe_for_stateful_observation
+        self.oversized = oversized
+        self.fail = fail
+        self.calls: list[tuple[tuple[str, ...], float]] = []
+
+    def run(self, argv, *, timeout_s: float):
+        self.calls.append((tuple(argv), timeout_s))
+        if self.fail:
+            raise FileNotFoundError("agy")
+        if self.oversized:
+            return PROBES.CommandResult(0, "x" * (PROBES.MAX_OUTPUT_BYTES + 1))
+        if tuple(argv) == ("agy", "--version"):
+            return PROBES.CommandResult(0, "agy 42.7.1\n")
+        if tuple(argv) == ("agy", "--help"):
+            return PROBES.CommandResult(0, "usage: agy [--model] [--effort] [--agent]\n")
+        return PROBES.CommandResult(0, '{"ok": true}')
+
+
+def test_probe_registry_matches_catalog_contract_and_has_fixed_vectors() -> None:
+    assert PROBES.registry_revisions() == CAPS.PROBE_METHOD_REVISIONS
+    for definition in PROBES.PROBE_REGISTRY.values():
+        assert definition.revision == 1
+        if definition.argv is not None:
+            assert isinstance(definition.argv, tuple)
+            assert definition.argv[0] == "agy"
+            assert 0 < definition.timeout_s <= 5
+
+
+def test_default_probe_profile_executes_no_subprocess() -> None:
+    catalog = CAPS.load_catalog(
+        FLEET_CORE / "references" / "antigravity-capability-probes.yaml"
+    )
+    runner = FakeRunner()
+    receipt = PROBES.probe_catalog(catalog, runner=runner)
+    assert runner.calls == []
+    assert receipt["agy_cli_version"] is None
+    assert CAPS.validate_receipt(receipt, catalog) == []
+
+
+def test_observe_host_uses_only_registered_bounded_vectors(tmp_path: Path) -> None:
+    catalog = CAPS.load_catalog(
+        FLEET_CORE / "references" / "antigravity-capability-probes.yaml"
+    )
+    plugin_target = tmp_path / "plugin-source"
+    plugin_target.mkdir()
+    plugin_root = tmp_path / "plugins"
+    plugin_root.mkdir()
+    (plugin_root / "saga").symlink_to(plugin_target, target_is_directory=True)
+    controlled = json.loads((FIXTURES / "probe-success.json").read_text())
+    runner = FakeRunner()
+
+    receipt = PROBES.probe_catalog(
+        catalog,
+        observe_host=True,
+        runner=runner,
+        host_version_reader=lambda: "11.4.0",
+        plugin_root=plugin_root,
+        controlled_evidence=controlled,
+    )
+
+    assert receipt["agy_cli_version"] == "42.7.1"
+    assert receipt["antigravity_host_version"] == "11.4.0"
+    assert receipt["supported_flags"] == ["--agent", "--effort", "--model"]
+    assert receipt["runtime_roots"] == ["plugin-install"]
+    assert all(isinstance(argv, tuple) for argv, _timeout in runner.calls)
+    assert all(timeout <= 5 for _argv, timeout in runner.calls)
+    assert CAPS.validate_receipt(receipt, catalog) == []
+
+
+def test_stateful_observations_fail_closed_without_runner_safety_proof() -> None:
+    runner = FakeRunner(safe_for_stateful_observation=False)
+    load = PROBES.execute_probe(
+        "plugin-load", observe_host=True, runner=runner
+    )
+    validation = PROBES.execute_probe(
+        "plugin-validation", observe_host=True, runner=runner
+    )
+    assert load.state == validation.state == "unavailable"
+    assert runner.calls == []
+
+
+@pytest.mark.parametrize(
+    ("runner", "expected"),
+    [
+        (FakeRunner(fail=True), "unavailable"),
+        (FakeRunner(oversized=True), "unknown"),
+    ],
+)
+def test_runner_failures_are_bounded_without_raw_output(runner, expected: str) -> None:
+    outcome = PROBES.execute_probe("agy-version", observe_host=True, runner=runner)
+    assert outcome.state == expected
+    assert outcome.evidence == ()
+    assert outcome.value is None
+
+
+def test_controlled_evidence_does_not_start_a_runner() -> None:
+    runner = FakeRunner()
+    controlled = json.loads((FIXTURES / "probe-known-broken.json").read_text())
+    outcome = PROBES.execute_probe(
+        "controlled-agent-execution",
+        observe_host=True,
+        runner=runner,
+        controlled_evidence=controlled,
+    )
+    assert outcome.state == "failed"
+    assert outcome.evidence == ("agent-execution-proof",)
+    assert runner.calls == []
+
+
+def test_unknown_probe_method_is_rejected_before_runner_call() -> None:
+    runner = FakeRunner()
+    with pytest.raises(ValueError, match="unknown registered probe"):
+        PROBES.execute_probe("shell-command", observe_host=True, runner=runner)
+    assert runner.calls == []
