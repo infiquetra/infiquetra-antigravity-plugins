@@ -149,6 +149,19 @@ def test_receipt_rejects_unknown_fields_states_and_duplicate_results() -> None:
     assert any("duplicate result" in error for error in errors)
 
 
+def test_passed_result_requires_all_declared_evidence_without_echo() -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    receipt["results"][0]["evidence"] = []
+    errors = CAPS.validate_receipt(receipt, catalog)
+    assert any("must contain all declared evidence" in error for error in errors)
+
+    receipt["results"][0]["evidence"] = ["token-shaped-secret"]
+    errors = CAPS.validate_receipt(receipt, catalog)
+    assert errors
+    assert "token-shaped-secret" not in json.dumps(errors)
+
+
 def test_catalog_digest_drift_is_rejected() -> None:
     catalog = _catalog()
     receipt = _receipt(catalog)
@@ -293,7 +306,7 @@ def test_unknown_probe_method_is_rejected_before_runner_call() -> None:
 def test_local_diagnostic_is_atomic_bounded_and_rich(tmp_path: Path) -> None:
     root = tmp_path / ".gemini" / "saga" / "capability-doctor"
     path = DIAGNOSTICS.write_local_diagnostic(
-        root,
+        tmp_path,
         "latest",
         {
             "runtime_roots": {"plugin-install": "/Users/alice/.gemini/plugins"},
@@ -319,6 +332,15 @@ def test_local_diagnostic_rejects_traversal_and_oversize(tmp_path: Path) -> None
     assert list(tmp_path.rglob("*.json")) == []
 
 
+def test_local_diagnostic_rejects_symlink_escape(tmp_path: Path) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}-outside"
+    outside.mkdir()
+    (tmp_path / ".gemini").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="escapes"):
+        DIAGNOSTICS.write_local_diagnostic(tmp_path, "latest", {"stdout": "raw"})
+    assert list(outside.rglob("*.json")) == []
+
+
 def test_local_diagnostic_write_failure_leaves_no_partial(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -328,7 +350,7 @@ def test_local_diagnostic_write_failure_leaves_no_partial(
     monkeypatch.setattr(DIAGNOSTICS.tempfile, "NamedTemporaryFile", deny)
     with pytest.raises(DIAGNOSTICS.DiagnosticError, match="atomically"):
         DIAGNOSTICS.write_local_diagnostic(tmp_path, "denied", {"stdout": "raw"})
-    assert list(tmp_path.iterdir()) == []
+    assert list(tmp_path.rglob("*.json")) == []
 
 
 def test_sanitizer_drops_raw_and_absolute_local_evidence() -> None:
@@ -357,6 +379,17 @@ def test_sanitizer_drops_raw_and_absolute_local_evidence() -> None:
     assert "/Users/" not in json.dumps(promoted)
     assert CAPS.validate_receipt(promoted, catalog) == []
     assert CAPS.validate_receipt(diagnostic, catalog)
+
+
+def test_sanitizer_does_not_echo_invalid_runtime_role() -> None:
+    catalog = _catalog()
+    diagnostic = {
+        "schema": DIAGNOSTICS.LOCAL_DIAGNOSTIC_SCHEMA,
+        "runtime_roots": {"secret-hostname.local": "/Users/alice"},
+    }
+    with pytest.raises(DIAGNOSTICS.DiagnosticError) as captured:
+        DIAGNOSTICS.sanitize_for_promotion(diagnostic, catalog)
+    assert "secret-hostname.local" not in str(captured.value)
 
 
 @pytest.mark.parametrize(

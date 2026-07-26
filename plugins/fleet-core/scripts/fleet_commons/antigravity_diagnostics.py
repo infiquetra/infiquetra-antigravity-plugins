@@ -44,7 +44,7 @@ def _safe_name(name: str) -> str:
 
 
 def write_local_diagnostic(
-    root: Path | str,
+    repo_root: Path | str,
     name: str,
     payload: Mapping[str, Any],
     *,
@@ -55,7 +55,10 @@ def write_local_diagnostic(
     safe_name = _safe_name(name)
     if max_bytes < 1 or max_bytes > MAX_DIAGNOSTIC_BYTES:
         raise DiagnosticError("diagnostic byte limit is outside the allowed bound")
-    target_root = Path(root)
+    repository = Path(repo_root).resolve()
+    target_root = (repository / DEFAULT_DIAGNOSTIC_ROOT).resolve()
+    if not target_root.is_relative_to(repository):
+        raise DiagnosticError("diagnostic state root escapes the repository")
     document = dict(payload)
     document["schema"] = LOCAL_DIAGNOSTIC_SCHEMA
     try:
@@ -104,7 +107,7 @@ def sanitize_for_promotion(
         raise DiagnosticError("diagnostic runtime_roots must map logical roles to local paths")
     invalid_roles = sorted(set(roots) - capabilities.RUNTIME_ROOT_ROLES)
     if invalid_roles:
-        raise DiagnosticError(f"diagnostic runtime_roots contains unknown roles: {invalid_roles}")
+        raise DiagnosticError("diagnostic runtime_roots contains an unknown role")
 
     receipt = {
         "schema": capabilities.RECEIPT_SCHEMA,

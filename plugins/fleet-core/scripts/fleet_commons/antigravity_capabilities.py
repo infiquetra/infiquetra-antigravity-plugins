@@ -401,7 +401,11 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
             allowed_evidence = set(catalog_rows[result_id]["expected_evidence"])
             unexpected = sorted(set(evidence) - allowed_evidence)
             if unexpected:
-                errors.append(f"{path}.evidence: unexpected identifiers {unexpected}")
+                errors.append(f"{path}.evidence: contains identifiers not declared by catalog")
+            if result.get("state") == "passed" and set(evidence) != allowed_evidence:
+                errors.append(
+                    f"{path}.evidence: passed result must contain all declared evidence"
+                )
     return errors
 
 
