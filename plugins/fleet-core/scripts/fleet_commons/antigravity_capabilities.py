@@ -71,9 +71,7 @@ _MODEL_RE = re.compile(
 _EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 _HOSTNAME_SUFFIXES = (".local", ".lan", ".home", ".internal")
 
-_CATALOG_KEYS = frozenset(
-    {"catalog_schema", "receipt_schema", "catalog_revision", "capabilities"}
-)
+_CATALOG_KEYS = frozenset({"catalog_schema", "receipt_schema", "catalog_revision", "capabilities"})
 _CAPABILITY_KEYS = frozenset(
     {
         "id",
@@ -214,9 +212,7 @@ def validate_catalog(catalog: object) -> list[str]:
         )
         if not evidence:
             errors.append(f"{path}.expected_evidence: expected at least one evidence identifier")
-        required_for = _validate_id_list(
-            row.get("required_for"), f"{path}.required_for", errors
-        )
+        required_for = _validate_id_list(row.get("required_for"), f"{path}.required_for", errors)
 
         outcome_rules = row.get("outcome_rules")
         if not isinstance(outcome_rules, dict):
@@ -241,9 +237,7 @@ def validate_catalog(catalog: object) -> list[str]:
                 errors.append(f"{path}.fallback: expected an object or null")
             else:
                 errors.extend(_extra_keys(fallback, _FALLBACK_KEYS, f"{path}.fallback"))
-                _validate_id(
-                    fallback.get("capability"), f"{path}.fallback.capability", errors
-                )
+                _validate_id(fallback.get("capability"), f"{path}.fallback.capability", errors)
                 consumers = _validate_id_list(
                     fallback.get("for_consumers"),
                     f"{path}.fallback.for_consumers",
@@ -403,9 +397,7 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
             if unexpected:
                 errors.append(f"{path}.evidence: contains identifiers not declared by catalog")
             if result.get("state") == "passed" and set(evidence) != allowed_evidence:
-                errors.append(
-                    f"{path}.evidence: passed result must contain all declared evidence"
-                )
+                errors.append(f"{path}.evidence: passed result must contain all declared evidence")
     return errors
 
 

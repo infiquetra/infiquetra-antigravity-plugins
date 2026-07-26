@@ -18,12 +18,8 @@ _SELECTOR_KEYS = frozenset(
     {"schema", "active_globs", "exact_paths", "comparison_roots", "digest_inputs"}
 )
 _SELECTOR_DIGEST_INPUTS = ["schema", "active_globs", "exact_paths", "comparison_roots"]
-_ANNOTATION_KEYS = frozenset(
-    {"class", "rule", "reason", "revisit", "capability", "access"}
-)
-_ANNOTATION_CLASSES = frozenset(
-    {"historical", "foreign-runtime-input", "capability-gated"}
-)
+_ANNOTATION_KEYS = frozenset({"class", "rule", "reason", "revisit", "capability", "access"})
+_ANNOTATION_CLASSES = frozenset({"historical", "foreign-runtime-input", "capability-gated"})
 _FINDING_KEYS = frozenset(
     {
         "path",
@@ -40,9 +36,7 @@ _FINDING_KEYS = frozenset(
 _RECEIPT_KEYS = frozenset({"schema", "selector_digest", "findings", "unresolved_count"})
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
-_MD_ANNOTATION_RE = re.compile(
-    r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$"
-)
+_MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$")
 _PY_ANNOTATION_RE = re.compile(r"^\s*#\s*antigravity-host-contract:\s*(\{.*\})\s*$")
 
 
@@ -119,10 +113,7 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
 
     if not isinstance(selector, dict):
         return ["selector: expected an object"]
-    errors = [
-        f"selector: unknown field {key!r}"
-        for key in sorted(set(selector) - _SELECTOR_KEYS)
-    ]
+    errors = [f"selector: unknown field {key!r}" for key in sorted(set(selector) - _SELECTOR_KEYS)]
     if selector.get("schema") != SELECTOR_SCHEMA:
         errors.append(f"selector.schema: expected {SELECTOR_SCHEMA!r}")
     for field, allow_glob in (
@@ -175,9 +166,7 @@ def selector_digest(selector: Mapping[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def selected_active_paths(
-    repo_root: Path | str, selector: Mapping[str, Any]
-) -> list[Path]:
+def selected_active_paths(repo_root: Path | str, selector: Mapping[str, Any]) -> list[Path]:
     root = Path(repo_root).resolve()
     paths: set[Path] = set()
     for pattern in selector["active_globs"]:
@@ -212,12 +201,7 @@ def _validate_annotation(
         return "annotation-stale-rule"
     for field in ("reason", "revisit"):
         value = payload.get(field)
-        if (
-            not isinstance(value, str)
-            or not value.strip()
-            or len(value) > 240
-            or "*" in value
-        ):
+        if not isinstance(value, str) or not value.strip() or len(value) > 240 or "*" in value:
             return f"annotation-invalid-{field}"
     classification = payload["class"]
     if classification == "foreign-runtime-input":
@@ -329,13 +313,9 @@ def scan_text(
             unresolved = False
             reason = f"annotated-{classification}"
             if classification == "capability-gated":
-                unresolved = (
-                    not isinstance(capability, str) or states.get(capability) != "passed"
-                )
+                unresolved = not isinstance(capability, str) or states.get(capability) != "passed"
                 reason = (
-                    "capability-proven"
-                    if not unresolved
-                    else "capability-missing-or-nonpassing"
+                    "capability-proven" if not unresolved else "capability-missing-or-nonpassing"
                 )
             findings.append(
                 _finding(
@@ -429,8 +409,7 @@ def validate_lint_receipt(receipt: object) -> list[str]:
     if not isinstance(receipt, dict):
         return ["lint receipt: expected an object"]
     errors = [
-        f"lint receipt: unknown field {key!r}"
-        for key in sorted(set(receipt) - _RECEIPT_KEYS)
+        f"lint receipt: unknown field {key!r}" for key in sorted(set(receipt) - _RECEIPT_KEYS)
     ]
     if receipt.get("schema") != LINT_RECEIPT_SCHEMA:
         errors.append(f"lint receipt.schema: expected {LINT_RECEIPT_SCHEMA!r}")
@@ -472,9 +451,7 @@ def validate_lint_receipt(receipt: object) -> list[str]:
         ):
             errors.append(f"{path}.capability: invalid capability identifier")
         for field in ("reason", "remediation"):
-            if not isinstance(finding.get(field), str) or not _CODE_RE.fullmatch(
-                finding[field]
-            ):
+            if not isinstance(finding.get(field), str) or not _CODE_RE.fullmatch(finding[field]):
                 errors.append(f"{path}.{field}: expected a bounded code")
         excerpt_digest = finding.get("excerpt_sha256")
         if not isinstance(excerpt_digest, str) or not _DIGEST_RE.fullmatch(excerpt_digest):

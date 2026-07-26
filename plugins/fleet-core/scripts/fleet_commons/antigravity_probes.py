@@ -90,9 +90,7 @@ def _definition(
 
 
 PROBE_REGISTRY: dict[str, ProbeDefinition] = {
-    "agy-version": _definition(
-        "agy-version", "passive", "agy-cli-version", ("agy", "--version")
-    ),
+    "agy-version": _definition("agy-version", "passive", "agy-cli-version", ("agy", "--version")),
     "agy-help-flags": _definition(
         "agy-help-flags", "passive", "supported-flags", ("agy", "--help")
     ),
@@ -121,15 +119,9 @@ PROBE_REGISTRY: dict[str, ProbeDefinition] = {
     "controlled-agent-execution": _definition(
         "controlled-agent-execution", "controlled", "agent-execution-proof"
     ),
-    "controlled-resume": _definition(
-        "controlled-resume", "controlled", "resume-proof"
-    ),
-    "controlled-plan-mode": _definition(
-        "controlled-plan-mode", "controlled", "plan-mode-proof"
-    ),
-    "controlled-sandbox": _definition(
-        "controlled-sandbox", "controlled", "sandbox-proof"
-    ),
+    "controlled-resume": _definition("controlled-resume", "controlled", "resume-proof"),
+    "controlled-plan-mode": _definition("controlled-plan-mode", "controlled", "plan-mode-proof"),
+    "controlled-sandbox": _definition("controlled-sandbox", "controlled", "sandbox-proof"),
     "controlled-sequential-isolation": _definition(
         "controlled-sequential-isolation", "controlled", "sequential-isolation-proof"
     ),

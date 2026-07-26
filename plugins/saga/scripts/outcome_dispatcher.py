@@ -283,9 +283,7 @@ def team_execution_artifact(execution_spec_obj: Any) -> str:
     """Reject the legacy Claude source emitter from active dispatch."""
 
     del execution_spec_obj
-    raise DispatcherError(
-        "team-execution is Claude source lineage; use multi-agent-consensus"
-    )
+    raise DispatcherError("team-execution is Claude source lineage; use multi-agent-consensus")
 
 
 # ---------------------------------------------------------------------------

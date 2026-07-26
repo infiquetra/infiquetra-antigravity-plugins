@@ -5,7 +5,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -22,7 +22,10 @@ FIXTURES = Path(__file__).parent / "fixtures" / "antigravity-capabilities"
 
 
 def _catalog() -> dict[str, Any]:
-    return CAPS.load_catalog(FIXTURES / "catalog-valid.yaml")
+    return cast(
+        dict[str, Any],
+        CAPS.load_catalog(FIXTURES / "catalog-valid.yaml"),
+    )
 
 
 def _receipt(
@@ -64,9 +67,7 @@ def test_catalog_loads_with_standard_library_json() -> None:
 
 
 def test_repository_catalog_is_valid() -> None:
-    catalog = CAPS.load_catalog(
-        FLEET_CORE / "references" / "antigravity-capability-probes.yaml"
-    )
+    catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
     assert len(catalog["capabilities"]) >= 10
     assert CAPS.validate_catalog(catalog) == []
 
@@ -167,9 +168,7 @@ def test_catalog_digest_drift_is_rejected() -> None:
     receipt = _receipt(catalog)
     changed = copy.deepcopy(catalog)
     changed["capabilities"][0]["description"] += " Changed."
-    assert any(
-        "does not match" in error for error in CAPS.validate_receipt(receipt, changed)
-    )
+    assert any("does not match" in error for error in CAPS.validate_receipt(receipt, changed))
 
 
 def test_dotted_safe_values_are_accepted() -> None:
@@ -216,9 +215,7 @@ def test_probe_registry_matches_catalog_contract_and_has_fixed_vectors() -> None
 
 
 def test_default_probe_profile_executes_no_subprocess() -> None:
-    catalog = CAPS.load_catalog(
-        FLEET_CORE / "references" / "antigravity-capability-probes.yaml"
-    )
+    catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
     runner = FakeRunner()
     receipt = PROBES.probe_catalog(catalog, runner=runner)
     assert runner.calls == []
@@ -227,9 +224,7 @@ def test_default_probe_profile_executes_no_subprocess() -> None:
 
 
 def test_observe_host_uses_only_registered_bounded_vectors(tmp_path: Path) -> None:
-    catalog = CAPS.load_catalog(
-        FLEET_CORE / "references" / "antigravity-capability-probes.yaml"
-    )
+    catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
     plugin_target = tmp_path / "plugin-source"
     plugin_target.mkdir()
     plugin_root = tmp_path / "plugins"
@@ -258,12 +253,8 @@ def test_observe_host_uses_only_registered_bounded_vectors(tmp_path: Path) -> No
 
 def test_stateful_observations_fail_closed_without_runner_safety_proof() -> None:
     runner = FakeRunner(safe_for_stateful_observation=False)
-    load = PROBES.execute_probe(
-        "plugin-load", observe_host=True, runner=runner
-    )
-    validation = PROBES.execute_probe(
-        "plugin-validation", observe_host=True, runner=runner
-    )
+    load = PROBES.execute_probe("plugin-load", observe_host=True, runner=runner)
+    validation = PROBES.execute_probe("plugin-validation", observe_host=True, runner=runner)
     assert load.state == validation.state == "unavailable"
     assert runner.calls == []
 

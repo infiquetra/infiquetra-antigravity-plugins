@@ -1388,9 +1388,7 @@ def main(argv: list[str] | None = None) -> int:
                 dispatcher=outcome_dispatcher.make_dispatcher(
                     available=outcome_spec.ACTIVE_NODE_BACKENDS,
                     capability_states=(
-                        {"agy.agent.execution": "passed"}
-                        if args.consensus_available
-                        else {}
+                        {"agy.agent.execution": "passed"} if args.consensus_available else {}
                     ),
                 ),
                 harvester=production_harvester(root),

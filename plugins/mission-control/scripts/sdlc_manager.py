@@ -5558,7 +5558,8 @@ def main() -> None:
     config_sp = config_p.add_subparsers(dest="action", required=True)
     config_sp.add_parser("show", help="Show loaded configuration")
     config_sp.add_parser(
-        "show-defaults", help="Show per-user defaults from ~/.gemini/mission-control/sdlc-defaults.json"
+        "show-defaults",
+        help="Show per-user defaults from ~/.gemini/mission-control/sdlc-defaults.json",
     )
     config_init_p = config_sp.add_parser(
         "init-defaults",

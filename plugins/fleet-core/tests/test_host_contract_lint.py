@@ -26,9 +26,7 @@ def _selector():
 
 
 def _known_capabilities() -> set[str]:
-    catalog = CAPS.load_catalog(
-        FLEET_CORE / "references" / "antigravity-capability-probes.yaml"
-    )
+    catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
     return {row["id"] for row in catalog["capabilities"]}
 
 
@@ -74,7 +72,7 @@ def test_historical_annotations_classify_only_the_adjacent_match() -> None:
 def test_markdown_quote_is_active_without_lineage_annotation() -> None:
     findings = LINT.scan_text(
         "plugins/saga/references/example.md",
-        "> Run `Workflow(\"source\")` now.",
+        '> Run `Workflow("source")` now.',
         known_capabilities=_known_capabilities(),
     )
     assert len(findings) == 1
@@ -129,7 +127,7 @@ def test_capability_gate_requires_passing_evidence(state: str, unresolved: bool)
 def test_exemption_abuse_fails_closed(annotation: str) -> None:
     findings = LINT.scan_text(
         "plugins/saga/skills/example/SKILL.md",
-        f"{annotation}\nRun `Workflow(\"source\")`.",
+        f'{annotation}\nRun `Workflow("source")`.',
         known_capabilities=_known_capabilities(),
     )
     assert findings[0]["classification"] == "active"
@@ -140,7 +138,7 @@ def test_nonadjacent_annotation_is_an_unresolved_finding() -> None:
     text = (
         '<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003",'
         '"reason":"legacy","revisit":"later"} -->\n\n'
-        "Run `Workflow(\"source\")`."
+        'Run `Workflow("source")`.'
     )
     findings = LINT.scan_text(
         "plugins/saga/skills/example/SKILL.md",
@@ -194,7 +192,7 @@ def test_lint_receipt_is_strict_excerpt_free_and_digest_bound() -> None:
     selector = _selector()
     findings = LINT.scan_text(
         "plugins/saga/skills/example/SKILL.md",
-        "Run `Workflow(\"source\")`.",
+        'Run `Workflow("source")`.',
         known_capabilities=_known_capabilities(),
     )
     receipt = LINT.build_lint_receipt(selector, findings)
