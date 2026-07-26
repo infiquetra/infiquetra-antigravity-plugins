@@ -44,12 +44,12 @@ a real "where are we pointed" question, it **routes that onward to `/strategy`**
 
 ## Interaction method
 
-Use `AskUserQuestion` for **routing** decisions only — which section to revisit (call `ToolSearch` with
-`select:AskUserQuestion` first if its schema is not loaded). Use **free-form** responses for the
+Ask one blocking question through the current session for **routing** decisions only — which section to revisit. Use **free-form** responses for the
 substantive sections (problem, approach, persona, metrics, tracks): they are inherently narrative and
-menu options would nudge the answer. Ask one question at a time; never silently skip a question.
+menu options would nudge the answer. Ask one question at a time, stop until the
+operator answers, and never silently skip it.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices
 in your reply text instead, following the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -69,7 +69,7 @@ Read the root `STRATEGY.md` using the native file-read tool, then route:
 - **File does not exist** -> first run. Go to Phase 1. Announce: "Strategy doc not found — let's write
   it."
 - **File exists AND the argument names a specific section** -> targeted update. Go to Phase 2.
-- **File exists, no argument** -> ask which section(s) to revisit (`AskUserQuestion`), then Phase 2.
+- **File exists, no argument** -> ask which section(s) to revisit (a structured blocking interaction), then Phase 2.
 
 Announce the path in one line: "Found existing strategy — let's review and update."
 
@@ -102,7 +102,7 @@ present the full draft in chat, offer one round of edits, then write the root `S
 
 Read the existing root `STRATEGY.md` thoroughly and summarize current state in 3-5 lines. If the
 argument named a section, jump to it in `references/interview.md`; otherwise ask which section to
-revisit via `AskUserQuestion` (channel -> inline). For each revisited section, re-interview with **full
+revisit via a structured blocking interaction (channel -> inline). For each revisited section, re-interview with **full
 pushback as if this were a first run** — do not rubber-stamp existing weak content. **Preserve all
 other sections exactly**, bump `last_updated` in the frontmatter to today's ISO date, then write back to
 the root `STRATEGY.md`.

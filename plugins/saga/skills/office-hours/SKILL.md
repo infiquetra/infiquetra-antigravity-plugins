@@ -59,11 +59,10 @@ job of the commands it routes to.
 
 ## Interaction method
 
-Use the platform's blocking question tool: `AskUserQuestion` in Claude Code (call `ToolSearch` with
-`select:AskUserQuestion` first if its schema is not loaded). When you present options, **pre-select the
+Use the platform's blocking question tool: a structured blocking interaction in Claude Code. When you present options, **pre-select the
 recommended one** — take a position, then let the operator override. Fall back to numbered options in
 chat only when no blocking tool exists or the call errors. In a channel session, inline the choices in
-the reply text rather than calling `AskUserQuestion` — follow the redis-channel convention documented
+the reply text rather than calling a structured blocking interaction — follow the redis-channel convention documented
 in `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here). Ask one
 question at a time and never silently skip a gate question.
 
@@ -121,7 +120,7 @@ adds nothing. Never block the diagnostic on a grounding miss.
 ## Phase 1: Diagnostic (mode-specific)
 
 Load `saga/skills/office-hours/references/frame-diagnostic.md` now. Run the
-mode-specific diagnostic from it. Ask questions **one at a time** via `AskUserQuestion`, push on each
+mode-specific diagnostic from it. Ask questions **one at a time** via a structured blocking interaction, push on each
 answer until it is specific and grounded (or the escape hatch fires), and STOP after each question to
 wait for the response.
 
@@ -208,7 +207,7 @@ frame-note template is in the reference. **Never write to `docs/ideation/`** —
 ## Phase 3: Route + HARD GATE
 
 Every session ends by naming the next command and offering **plural clean exits**. Recommend one
-(pre-selected in the `AskUserQuestion`), but make the alternatives real choices:
+(pre-selected in the a structured blocking interaction), but make the alternatives real choices:
 
 - **`/ideate`** — the frame is settled but the *solution space* is open; you want many candidate ideas.
 - **`/brainstorm`** — this turned out to be "really a requirements question" about one chosen thing;

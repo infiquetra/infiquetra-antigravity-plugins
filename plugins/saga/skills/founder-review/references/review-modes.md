@@ -166,7 +166,7 @@ Describe the ideal end state 12 months out. Does this plan move toward or away f
 
 ### 0F. Mode selection (always runs)
 
-Present the 4 modes via `AskUserQuestion` (channel session -> inline the options). Include a
+Present the 4 modes via a structured blocking interaction (channel session -> inline the options). Include a
 RECOMMENDATION based on the context-defaults. State explicitly: **"options differ in kind, not
 coverage — no completeness score."** Once selected, **commit fully; do not silently drift.** Confirm
 which implementation approach (from 0C-bis, plan targets) applies under the chosen mode.
@@ -198,7 +198,7 @@ For EXPANSION (opt-in, enthusiastic) and SELECTIVE EXPANSION (cherry-pick, neutr
 
 1. Describe the vision first (10x check, platonic ideal for EXPANSION).
 2. Distill it into concrete scope proposals — individual features/components/improvements.
-3. Present each proposal as its own `AskUserQuestion`, framed FLAT->EXPANSIVE, with effort (present
+3. Present each proposal as its own structured blocking interaction, framed FLAT->EXPANSIVE, with effort (present
    the number, let the operator judge) and risk. Options for each:
    - **A) Add** to this plan's scope
    - **B) Defer** to the engineering journal / QUEUED (with context — never a vague intention, never a
@@ -207,7 +207,7 @@ For EXPANSION (opt-in, enthusiastic) and SELECTIVE EXPANSION (cherry-pick, neutr
 4. **Cap:** if there are more than 8 candidates, present the **top 5-6** and note the remainder as
    lower-priority options the user can request.
 
-**Channel session (`redis-channel` active) — digest path.** `AskUserQuestion` is unavailable, so do
+**Channel session (`redis-channel` active) — digest path.** a structured blocking interaction is unavailable, so do
 **not** inline 5 serial choice blocks. Present a **digest** instead — e.g. "5 expansion
 opportunities; want them one-at-a-time, or shall I recommend the top 2?" — and collapse 0C-bis to a
 single recommended-approach confirm. Follow the canonical channel-inline convention in

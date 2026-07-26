@@ -58,13 +58,13 @@ it leaves `lifecycle_phase=work` because `/qa` does not yet advance the phase (s
 
 ## Interaction method
 
-Use `AskUserQuestion` for choices from a known set (resume-vs-mint, branch decision, execution backend,
-doc-review override, PR-open / merge confirmation, continuation routing). Call `ToolSearch` with
-`select:AskUserQuestion` first if its schema is not loaded. Ask one question per turn; prefer a concise
-single-select when natural options exist. For open-ended discussion, ask inline in chat. Never silently
-skip a confirmation that mutates GitHub.
+Ask one blocking question through the current session for choices from a known set (resume-vs-mint, branch decision, execution backend,
+doc-review override, PR-open / merge confirmation, continuation routing). Ask
+one question per turn, stop until the operator answers, and prefer a concise
+single-select when natural options exist. For open-ended discussion, ask inline
+in chat. Never silently skip a confirmation that mutates GitHub.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices
 in your reply text instead. Follow the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -195,7 +195,7 @@ python3 plugins/saga/scripts/saga.py save \
   --phase-status in_progress \
   --plan-path docs/plans/YYYY-MM-DD-<topic>-plan.md \
   --destination <plan-only|pr|merge|nonprod-deploy> \
-  --orchestration-mode <inline|team-execution|cc-workflows-ultracode> \
+  --orchestration-mode <inline|multi-agent-consensus> \
   --orchestration-recommended <recommend_execution_backend() output> \
   --rounds-seen "1"
 ```
@@ -212,55 +212,26 @@ keys). `save` mints unconditionally (correct here — `/work` is the minter), an
 appends a tick to the existing directory rather than forking. Never `git add` the tick (saga state is
 git-ignored, machine-local). Never set `next_round` — it is derived from `rounds_seen` (saga-spec §6.1).
 
-### 1.5 cc-workflows-ultracode: re-emit and run, or HALT
+### 1.5 `multi-agent-consensus`: invoke the Antigravity skill or halt
 
-When `orchestration_mode == cc-workflows-ultracode`, the recorded backend choice **and** the saved spec
-are the opt-in — ultracode mode is not required to launch a Workflow. `/work` does **not** hand-roll
-sequential subagents as a substitute (that was the campps issue-38 failure: parallel + refute-N silently
-dropped). It either runs the real Workflow tool or halts visibly.
+When `orchestration_mode == multi-agent-consensus`, read the durable plan at
+`orchestration_ref`, load
+`plugins/multi-agent-consensus/skills/multi-agent-consensus/SKILL.md`, and follow
+that skill's native `invoke_subagent` and `send_message` protocol. Do not emit a
+script or route through the legacy Claude execution-spec emitter.
 
-**Re-emit for freshness (KD3).** Read the saga's `orchestration_ref` to locate the canonical spec JSON
-the plan authored. Re-emit a fresh `.workflow.js` from it — any intermediate re-plan that changed the
-spec is reflected:
+Before dispatch, require a valid capability receipt with
+`agy.agent.execution=passed` plus every requested isolation capability. An
+`unknown`, `unavailable`, or `failed` required capability halts the run. The same
+applies when the plan path is missing or the plugin is not installed and valid.
 
-```bash
-python3 plugins/saga/scripts/execution_spec.py emit <orchestration_ref_spec.json> \
-  -o docs/plans/<topic>.workflow.js
-```
+Surface the reason and one recovery line. The operator may choose `inline` or
+resume in an environment with a passing receipt. Never replace an independent
+agent requirement with serial subagents: that changes the selected guarantee.
 
-Then launch it:
-
-```
-Workflow({ scriptPath: "docs/plans/<topic>.workflow.js" })
-```
-
-The Workflow tool owns execution from this point. `/work` records the returned workflow id as
-`orchestration_ref` via a saga tick:
-
-```bash
-python3 plugins/saga/scripts/saga.py save \
-  --kind <issue|task> --id <...> \
-  --orchestration-ref <workflow-id>
-```
-
-**HALT conditions.** If **either** of the following holds, `/work` MUST halt — never substitute with
-hand-rolled serial subagents or any other inline fallback:
-
-1. The **Workflow tool is genuinely absent** from this session (not found in the available tools).
-2. The **spec or orchestration_ref is missing** from the saga (the plan did not author a spec, or the
-   saga tick never recorded the ref).
-
-On a HALT, surface the reason and one recovery line, e.g.:
-
-- Workflow tool absent: "HALT — Workflow tool not available in this session. Recovery: resume in an
-  Antigravity session where the Workflow tool is present, or ask the operator to switch the backend to
-  `team-execution` or `inline`."
-- Spec/ref missing: "HALT — saga `orchestration_ref` is empty or the spec file does not exist at
-  `<path>`. Recovery: re-run `/plan` to author the spec and record the ref, then resume `/work`."
-
-This is **explicitly not** the off-host recompile-down path (`recheck_orchestration_capability` in
-`lifecycle_state.py`), which is reserved for `/loop` and `/resume`. A guarantee-bearing ultracode
-choice halts rather than silently losing the parallel fan-out and refute-N verification (KD2/KTD6).
+After the skill finishes, record its durable receipt path in `orchestration_ref`
+when one exists. Antigravity does not promise a workflow identifier, so `/work`
+must not require or fabricate one.
 
 **Provenance guard.** `/work` NEVER writes `operator_choice` to record its own substitution. The
 `saga.py` save guard rejects a tick that newly asserts `orchestration_mode != orchestration_operator_choice`
@@ -272,12 +243,12 @@ the operator picks a backend, `/work` records exactly that pick via `--orchestra
 `orchestration_operator_choice` derives equal to it — no divergence), and a genuine capability degrade is
 recorded as `orchestration_downgrade` WITH the divergence (operator-choice §6).
 
-**Post-run manifest persistence (U4/KTD7).** A Workflow script has no filesystem access, so it cannot
-write its own provenance manifest — the *driving session* (this `/work` run) is the producer of record
-for `cc-workflows-ultracode` units. Once the Workflow returns, before moving on to Phase 2 wrap-up:
+**Post-run manifest persistence (U4/KTD7).** The driving session is the producer
+of record for `multi-agent-consensus` unit completeness. Once the skill returns,
+before moving on to Phase 2 wrap-up:
 
 1. Collect the run's per-unit returned results into a JSON object mapping `unit_id -> result` (the same
-   shape each unit returned to the Workflow — a dict of the unit's `returns` keys, a fan-out list, or
+   shape each unit returned to the skill — a dict of the unit's `returns` keys, a fan-out list, or
    `null`/absent for a prose-only leaf).
 2. Persist one manifest per spec-declared unit:
 
@@ -290,20 +261,20 @@ for `cc-workflows-ultracode` units. Once the Workflow returns, before moving on 
    enumerated fan-out) tripped `missing-output` (R10) — every manifest is still written (the trip is
    reported, not silently dropped), so treat this like any other Phase 3 completeness finding: investigate
    the named unit before treating the round as PR-ready.
-4. Team-execution runs follow the same CLI, called by the worker at exit per `references/*` in
-   `team-execution` (U5) — `/work` does not additionally persist those on the worker's behalf.
+4. Do not duplicate evidence already persisted by the
+   `multi-agent-consensus` validator protocol.
 
 ---
 
 ## Phase 2 — Execute phase by phase
 
-**When `orchestration_mode == cc-workflows-ultracode`:** Phase 1.5 already launched the Workflow tool.
-The Workflow runtime owns execution; `/work` does not re-enter Phase 2 execution steps for those units.
-Resume here only for post-workflow wrap-up (Phase 3 gate, Phase 4 record, Phase 5 PR-ready) once the
-Workflow run returns.
+**When `orchestration_mode == multi-agent-consensus`:** Phase 1.5 already
+dispatched the Antigravity skill. `/work` does not execute those units a second
+time. Resume here only for Phase 3 evidence checks, Phase 4 recording, and Phase
+5 PR readiness after the skill returns.
 
 Execute **one meaningful phase at a time** per `references/execution-strategy.md` (for `inline` and
-`team-execution` modes, and for post-workflow Phase 2 wrap-up):
+`inline` mode, and for post-consensus Phase 2 wrap-up):
 
 - **Execution strategy** — inline / serial subagents / parallel subagents, chosen from task count and
   dependency structure, gated by the **Parallel Safety Check** (file-to-unit overlap → worktree
@@ -375,7 +346,8 @@ renders the Tests cell as not-reached, silently dropping the verdict.
 
 List fields are full-snapshot (saga-spec §6) — pass the complete current set each tick, not a delta.
 
-When a team-execution run stored Layer-2 artifacts (`artifact_pointer.py store`), record their typed
+When a `multi-agent-consensus` run stored Layer-2 artifacts
+(`artifact_pointer.py store`), record their typed
 pointers on the tick via `--artifact-pointers "<pointer-json>|<pointer-json>"` (pipe-separated, omit =
 carry forward) so a resuming thread can `deref` the exact bytes instead of re-inlining them.
 

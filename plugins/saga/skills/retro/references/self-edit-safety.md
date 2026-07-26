@@ -17,7 +17,7 @@ The single auto-apply case: **appending one new, self-contained entry** to `LEAR
 `DECISIONS.md`, `QUEUED.md`, or `ARCHIVE.md`. The file only grows; nothing existing is touched. This is the
 compounding sink — promotion has to be cheap or it does not happen.
 
-### Tier 2 — PROPOSE-DIFF-AND-WAIT (show the diff + `AskUserQuestion` apply / skip / modify; NEVER auto-apply)
+### Tier 2 — PROPOSE-DIFF-AND-WAIT (show the diff + a structured blocking interaction apply / skip / modify; NEVER auto-apply)
 
 Everything that deletes, modifies, or moves existing content, plus everything outside the journal:
 
@@ -43,7 +43,7 @@ For each Tier-2 change, present:
    refine-lifecycle / refine-directives / memory-pruning).
 3. **The diff** — a real unified diff (`- ` removed lines, `+ ` added lines) so the operator sees exactly
    what changes.
-4. **The question** — `AskUserQuestion`: **apply** / **skip** / **modify** (modify lets the operator
+4. **The question** — a structured blocking interaction: **apply** / **skip** / **modify** (modify lets the operator
    redirect the edit). In a channel session, inline the choices instead (brainstorm convention).
 
 Never apply a Tier-2 change without an explicit **apply**. "Modify" loops back to a revised diff.
@@ -80,7 +80,8 @@ cross-project edit that looks like a repo edit is the failure mode this tier exi
 
 - a **destructive self-edit** — no Tier-2 change applies without the operator's explicit **apply**;
 - an **execution backend** — a big multi-file refactor surfaced by a pass is **OFFERED** per
-  `../../../references/operator-choice.md` (inline / team-execution / cc-workflows-ultracode) and started
+  `../../../references/operator-choice.md` (inline /
+  multi-agent-consensus) and started
   only on the operator's pick.
 
 The engine proposes; the operator disposes. The only thing it does on its own is grow the journal.

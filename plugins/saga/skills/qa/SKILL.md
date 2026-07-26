@@ -66,11 +66,12 @@ lands that advance (Phase 6).
 
 ## Interaction method
 
-Use `AskUserQuestion` for choices from a known set (tier, execution backend for large/parallel
-verification, FAIL routing target). Call `ToolSearch` with `select:AskUserQuestion` first if its schema
-is not loaded. Ask one question per turn; never silently skip a question.
+Ask one blocking question through the current session for choices from a known
+set (tier, execution backend for large/parallel verification, FAIL routing
+target). Ask one question per turn, stop until the operator answers, and never
+silently skip it.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices
 in your reply text instead, following the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -167,8 +168,10 @@ broad, and gather **evidence** for every result:
 
 **Operator-choice for large/parallel verification.** When several risk classes warrant independent,
 parallel verification, **OFFER** a backend per `../../references/operator-choice.md` (`inline` /
-`team-execution` / `cc-workflows-ultracode`) — never auto-spawn. Parallel verification uses **generic
+`multi-agent-consensus`) — never auto-spawn. Parallel verification uses **generic
 `Explore` / `Task` agents** (this plugin has no `agents/` dir — do not reference named `ce-*` agents).
+Source lineage: `team-execution` and `cc-workflows-ultracode` both map to
+`multi-agent-consensus` and are not offered separately.
 
 ---
 

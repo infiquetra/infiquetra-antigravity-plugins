@@ -102,6 +102,6 @@ is the **one** branch where minting a **new** saga is correct (there is no resto
 
 This MVP ranks by recency only. The future ranking derives 2-4 keywords from the ask's topic
 (cap **10** keywords), filters sessions by `match_count`, and breaks ties by per-keyword counts — plus a
-branch filter for Claude Code sessions (with the keyword-fallback caveat that `gitBranch` is captured at
+branch filter for Antigravity session with structured interaction provens (with the keyword-fallback caveat that `gitBranch` is captured at
 the first user message, so a mid-session `git checkout` is invisible to branch-match). Until then,
 recency + the 5-session cap bound the dig.

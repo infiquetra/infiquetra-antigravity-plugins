@@ -47,9 +47,11 @@ fork it (`infiquetra-sdlc/docs/process/engineering-journal.md`).
 
 ## Interaction method
 
-Use `AskUserQuestion` for the per-cluster apply / skip / modify gate and the threshold/scope choices.
-Call `ToolSearch` with `select:AskUserQuestion` first if its schema is not loaded. In a channel session
-(`redis-channel` active) `AskUserQuestion` cannot be called — inline the choices in the reply text per
+Ask one blocking question through the current session for the per-cluster apply
+/ skip / modify gate and the threshold/scope choices, then stop until the
+operator answers.
+In a channel session
+(`redis-channel` active) the capability receipt does not prove structured interaction — inline the choices in the reply text per
 the canonical convention in `../brainstorm/SKILL.md`. Use repo-relative paths in everything you write;
 repo-qualify any cross-repo reference (e.g. `infiquetra-home-lab/docs/...`).
 
@@ -113,7 +115,7 @@ Mechanism land** (the incident-specific Context / Evidence / Fix stay in the sou
   overlaps this cluster; otherwise create a new entry (newest-first).
 - For a match, **add** the new origins' `**Sources.**` backlinks and `promote-keys` — never a second
   entry for the same lesson (contract §5 upsert, AE3).
-- Render the proposed change as a **diff** and gate it: `AskUserQuestion` apply / skip / modify (channel
+- Render the proposed change as a **diff** and gate it: a structured blocking interaction apply / skip / modify (channel
   session: inline the choice). This is **propose-diff-and-wait** — wait for explicit approval.
 
 `scripts/promote_scan.py` provides the upsert/ledger helpers (key computation, ledger membership, the

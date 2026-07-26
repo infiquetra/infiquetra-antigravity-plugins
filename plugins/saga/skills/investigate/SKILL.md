@@ -77,14 +77,14 @@ These are **two separate counters** — do **not** merge them into one "3-strike
 
 ## Interaction method
 
-Use `AskUserQuestion` for choices from a known set (fix-vs-diagnosis-vs-rethink, an execution backend for
-large/parallel read-only investigation, the trivial-bug fast-path apply/skip). Call `ToolSearch` with
-`select:AskUserQuestion` first if its schema is not loaded; a pending schema load is not a reason to fall
-back. Ask one question per turn; never silently skip a question. Do not ask questions **by default** —
+Ask one blocking question through the current session for choices from a known
+set (fix-vs-diagnosis-vs-rethink, an execution backend for large/parallel
+read-only investigation, the trivial-bug fast-path apply/skip). Ask one question
+per turn, stop until the operator answers, and never silently skip it. Do not ask questions **by default** —
 investigate first (read code, run tests, trace). Ask only when a genuine ambiguity **blocks**
 investigation and cannot be resolved by reading code or running tests.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices in
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices in
 your reply text instead, following the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -199,14 +199,16 @@ symptom, keep investigating.
 
 **Parallel read-only sub-agents (offer).** When hypotheses are **evidence-bottlenecked across clearly
 independent subsystems**, OFFER a backend per `../../references/operator-choice.md` (`inline` /
-`team-execution` / `cc-workflows-ultracode`) to dispatch read-only probes in parallel — each with one
+`multi-agent-consensus`) to dispatch read-only probes in parallel — each with one
 explicit hypothesis and a structured evidence-return format, **no edits**. Never auto-spawn; skip when
 hypotheses depend on each other. Parallel sub-agents use **generic** `Explore` / `Task` agents (this
 plugin has no `agents/` dir).
+Source lineage: `team-execution` and `cc-workflows-ultracode` both map to
+`multi-agent-consensus` and are not offered separately.
 
 **Present findings + the gate.** Present the root cause (causal-chain summary with `file:line`), the
 proposed fix and which files would change, the recommended regression test, and whether existing tests
-should have caught it. Then run the **fix-vs-diagnosis-vs-rethink gate** via `AskUserQuestion`:
+should have caught it. Then run the **fix-vs-diagnosis-vs-rethink gate** via a structured blocking interaction:
 
 1. **Fix it now** — proceed to Phase 3 (only applies the fix if it is trivial/single-concern; else
    diagnose + route to `/work`).

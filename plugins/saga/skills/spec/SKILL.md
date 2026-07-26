@@ -66,13 +66,14 @@ routing table here).
 
 ## Interaction method
 
-Use `AskUserQuestion` for **routing** decisions only — where to route next, which open question to
-resolve first (call `ToolSearch` with `select:AskUserQuestion` first if its schema is not loaded). Use
+Ask one blocking question through the current session for **routing** decisions only — where to route next, which open question to
+resolve first. Use
 **free-form** for the substantive interrogation (the five-Why, scope, technical categories): those
-answers are inherently narrative and menu options would nudge them. Ask in tight rounds; never silently
-skip a question.
+answers are inherently narrative and menu options would nudge them. Ask in
+tight rounds; stop until the operator answers each question and never silently
+skip it.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices
 in your reply text instead, following the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
