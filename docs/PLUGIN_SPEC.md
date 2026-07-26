@@ -74,3 +74,15 @@ required failure.
 The JSON result contains separate `catalog`, `capability`,
 `receipt_privacy`, and `host_contract` sections. The marketplace validator
 remains a byte-for-byte output and exit-status compatibility wrapper.
+
+Saga's production-facing adapter is
+`plugins/saga/scripts/host_capability_gate.py`. It requires a declared
+`--consumer` and a promotable `--receipt`, resolves the canonical catalog
+through fleet-core, and emits fleet-core's evaluation unchanged. Exit 0 means
+the named consumer is `passed` or validly `degraded`; exit 1 means blocked or
+invalid evidence. The adapter does not write Saga state or mark a lifecycle
+phase complete.
+
+Rich local diagnostics live only under the ignored
+`.gemini/saga/capability-doctor/` root. A local diagnostic is not a promoted
+receipt and is rejected at every consumer gate.

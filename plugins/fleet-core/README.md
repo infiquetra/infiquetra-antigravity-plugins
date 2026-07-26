@@ -23,6 +23,19 @@ requiredness is declared by profile; a required failed, unknown, or unavailable
 capability blocks that consumer. Only an optional capability with a previously
 declared and proven fallback can evaluate as degraded.
 
+Promotable evidence uses the strict `antigravity.capabilities.v1` schema. Raw
+output, absolute runtime roots, transcripts, prompts, environment data, and
+credentials belong only in ignored local diagnostics under
+`.gemini/saga/capability-doctor/`. Use
+`antigravity_diagnostics.sanitize_for_promotion` to cross that boundary; do not
+copy diagnostic fields into a receipt.
+
+Consumers load `antigravity_capabilities` through the shim, validate the
+receipt against the canonical catalog, and call `evaluate_for_consumer`
+directly. They may format the returned object or choose an exit status, but they
+must not rename its states, collapse its blocking/degraded lists, or infer
+lifecycle completion from it.
+
 ## Layout
 
 ```

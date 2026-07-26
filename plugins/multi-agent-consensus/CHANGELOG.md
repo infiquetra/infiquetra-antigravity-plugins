@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here.
 
 ---
 
+## [2.3.0] — 2026-07-26
+
+### Changed
+
+- Define multi-agent consensus as the native Antigravity target for surviving
+  Claude team and workflow source semantics.
+- Require the shared `agy.agent.execution` capability before dispatch and the
+  shared sandbox-isolation capability when restrictive isolation is requested.
+- Store validator evidence under `.gemini` and describe requested controls
+  separately from observed enforcement.
+
 ## [1.5.0] — 2026-03-29
 
 ### Fixed

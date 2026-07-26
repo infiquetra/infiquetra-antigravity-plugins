@@ -1,0 +1,32 @@
+{
+  "schema": "antigravity.capabilities.v1",
+  "catalog_digest": "98d5a898dd27f08eb17a550c89b4f675ff9a4d2d919c1696d05c659fe587138a",
+  "agy_cli_version": null,
+  "antigravity_host_version": null,
+  "supported_flags": [],
+  "runtime_roots": [],
+  "requested_facts": {
+    "agent-execution": true,
+    "sequential-isolation": true
+  },
+  "observed_facts": {
+    "agent-execution": null,
+    "sequential-isolation": true
+  },
+  "results": [
+    {
+      "id": "agy.agent.execution",
+      "probe_revision": 1,
+      "state": "unavailable",
+      "evidence": []
+    },
+    {
+      "id": "agy.sequential.isolation",
+      "probe_revision": 1,
+      "state": "passed",
+      "evidence": [
+        "sequential-isolation-proof"
+      ]
+    }
+  ]
+}

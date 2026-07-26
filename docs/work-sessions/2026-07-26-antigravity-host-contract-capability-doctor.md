@@ -122,6 +122,7 @@ Checks:
 Commits:
 
 - `2f64a28` — U5 native interaction and orchestration instructions.
+- `e6225ef` — U6 executable host boundaries and native runtime routing.
 
 Next step: integrate the capability catalog, receipt evaluator, privacy checks,
 and zero-unresolved host-contract scan into the canonical plugin doctor (U7).
@@ -158,5 +159,46 @@ Checks:
 - Marketplace JSON output equals canonical JSON output — passed.
 - `git diff --check` — passed.
 
+Commit:
+
+- `5860e80` — U7 canonical doctor integration.
+
 Next step: add Saga's direct shared-receipt consumer and finish release metadata
 and conformance documentation (U8).
+
+## Phase 5 — U8 direct Saga consumer and release surface
+
+Saga now ships `host_capability_gate.py`, a narrow adapter that resolves
+fleet-core through the existing vendored shim, validates the canonical catalog
+and promotable receipt, and returns `evaluate_for_consumer` unchanged. It
+formats the shared result and maps `passed` or valid `degraded` to exit 0 and
+`blocked` or invalid evidence to exit 1; it does not write Saga state or infer
+lifecycle completion.
+
+Integration fixtures prove:
+
+- `saga.work` reports the declared isolated-sequential fallback as degraded
+  when independent agent execution is unavailable;
+- `saga.resume` blocks when required resume evidence is unknown;
+- schema drift and local diagnostic input are rejected without raw-value echo;
+- fleet-core resolution failure is explicit and does not fall back to a copied
+  schema.
+
+Release metadata now describes and versions every materially changed plugin:
+fleet-core `0.9.0`, Saga `1.4.0`, mission-control `2.7.0`, and
+multi-agent-consensus `2.3.0`. The operator docs distinguish ignored local
+diagnostics from promoted receipts and document the direct Saga consumer. The
+engineering journal records the discovered vacuous-pass risk for undeclared
+consumer names and the closed-subject rule used by both doctor and adapter.
+
+Checks:
+
+- Affected Saga, fleet-core, mission-control, multi-agent-consensus, doctor,
+  and harness suites — 149 passed, one skipped.
+- U8 Ruff and mypy — passed.
+- Canonical and marketplace doctor JSON output — equivalent.
+- Capability diagnostic root ignore check — passed.
+- `git diff --check` — passed.
+
+Next step: run the full validation ladder, independent adversarial and privacy
+reviews, and the Saga code-review gate before PR release.

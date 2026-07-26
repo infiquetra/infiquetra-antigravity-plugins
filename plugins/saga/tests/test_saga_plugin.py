@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -2632,13 +2634,9 @@ def test_recommend_execution_backend_docs_no_code_surface() -> None:
         == "multi-agent-consensus"
     )
 
+    assert rec(cross_repo=True, has_code_surface=False)["recommended"] == "multi-agent-consensus"
     assert (
-        rec(cross_repo=True, has_code_surface=False)["recommended"]
-        == "multi-agent-consensus"
-    )
-    assert (
-        rec(needs_consensus=True, has_code_surface=False)["recommended"]
-        == "multi-agent-consensus"
+        rec(needs_consensus=True, has_code_surface=False)["recommended"] == "multi-agent-consensus"
     )
 
     overlap = rec(
@@ -2949,3 +2947,93 @@ def test_scan_exposes_picker_fields(tmp_path, monkeypatch: pytest.MonkeyPatch) -
     assert candidate["branch"] == "feat/loop-probe"
     assert candidate["orchestration_mode"] == "multi-agent-consensus"
     assert candidate["orchestration_ref"] == "wf_probe123"
+
+
+def _run_host_gate(
+    consumer: str,
+    receipt: Path,
+    *,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            str(PLUGIN_ROOT / "scripts" / "host_capability_gate.py"),
+            "--consumer",
+            consumer,
+            "--receipt",
+            str(receipt),
+            "--json",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def test_host_capability_gate_preserves_shared_degraded_evaluation() -> None:
+    receipt = PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-work-degraded.json"
+
+    completed = _run_host_gate("saga.work", receipt)
+    payload = json.loads(completed.stdout)
+
+    assert completed.returncode == 0
+    assert payload == {
+        "schema": "antigravity.capability-evaluation.v1",
+        "consumer": "saga.work",
+        "state": "degraded",
+        "blocking_capabilities": [],
+        "degraded_capabilities": ["agy.agent.execution"],
+        "fallbacks": {
+            "agy.agent.execution": "agy.sequential.isolation",
+        },
+    }
+
+
+def test_host_capability_gate_blocks_required_unknown_without_state_write(
+    tmp_path: Path,
+) -> None:
+    receipt = PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-resume-blocked.json"
+    before = list(tmp_path.iterdir())
+
+    completed = _run_host_gate("saga.resume", receipt)
+    payload = json.loads(completed.stdout)
+
+    assert completed.returncode == 1
+    assert payload["state"] == "blocked"
+    assert payload["blocking_capabilities"] == ["agy.conversation.resume"]
+    assert list(tmp_path.iterdir()) == before
+
+
+def test_host_capability_gate_rejects_schema_drift_and_local_diagnostic(
+    tmp_path: Path,
+) -> None:
+    source = json.loads(
+        (PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-work-degraded.json").read_text()
+    )
+    source["schema"] = "antigravity.capabilities.v2"
+    drifted = tmp_path / "drifted.json"
+    drifted.write_text(json.dumps(source))
+    local = PLUGIN_ROOT / "tests/fixtures/host-capabilities/local-diagnostic-invalid.json"
+
+    schema_result = _run_host_gate("saga.work", drifted)
+    local_result = _run_host_gate("saga.work", local)
+
+    assert schema_result.returncode == local_result.returncode == 1
+    assert schema_result.stdout == local_result.stdout == ""
+    assert "strict schema and privacy validation" in schema_result.stderr
+    assert "private diagnostic output" not in local_result.stderr
+    assert "/Users/example" not in local_result.stderr
+
+
+def test_host_capability_gate_fails_loud_when_fleet_core_cannot_resolve() -> None:
+    receipt = PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-work-degraded.json"
+    env = dict(os.environ)
+    env["FLEET_COMMONS_ROOT"] = "/definitely/not/a/fleet-core-root"
+
+    completed = _run_host_gate("saga.work", receipt, env=env)
+
+    assert completed.returncode == 1
+    assert completed.stdout == ""
+    assert "install or repair fleet-core" in completed.stderr

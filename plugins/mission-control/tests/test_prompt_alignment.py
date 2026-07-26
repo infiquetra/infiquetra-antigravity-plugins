@@ -17,7 +17,7 @@ def test_sdlc_manager_metadata_match() -> None:
     plugin_json = json.loads(_read(PLUGIN_ROOT / "plugin.json"))
 
     assert plugin_json["name"] == "mission-control"
-    assert plugin_json["version"] == "2.6.3"  # label taxonomy preflight validation (#506)
+    assert plugin_json["version"] == "2.7.0"
     assert "CAMPPS" in plugin_json["description"]
     assert "Mount Olympus" not in plugin_json["description"]
     assert "campps" in plugin_json["keywords"]
