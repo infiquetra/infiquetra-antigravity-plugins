@@ -1,0 +1,12 @@
+{
+  "schema": "antigravity.capabilities.v1",
+  "catalog_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "agy_cli_version": "1.1.7",
+  "antigravity_host_version": "2.3.1",
+  "supported_flags": [],
+  "runtime_roots": [],
+  "requested_facts": {},
+  "observed_facts": {},
+  "results": [],
+  "transcript": "private prompt history"
+}

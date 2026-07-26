@@ -17,6 +17,7 @@ import fleet_commons_shim  # noqa: E402
 
 CAPS = fleet_commons_shim.load("antigravity_capabilities")
 PROBES = fleet_commons_shim.load("antigravity_probes")
+DIAGNOSTICS = fleet_commons_shim.load("antigravity_diagnostics")
 FIXTURES = Path(__file__).parent / "fixtures" / "antigravity-capabilities"
 
 
@@ -287,3 +288,97 @@ def test_unknown_probe_method_is_rejected_before_runner_call() -> None:
     with pytest.raises(ValueError, match="unknown registered probe"):
         PROBES.execute_probe("shell-command", observe_host=True, runner=runner)
     assert runner.calls == []
+
+
+def test_local_diagnostic_is_atomic_bounded_and_rich(tmp_path: Path) -> None:
+    root = tmp_path / ".gemini" / "saga" / "capability-doctor"
+    path = DIAGNOSTICS.write_local_diagnostic(
+        root,
+        "latest",
+        {
+            "runtime_roots": {"plugin-install": "/Users/alice/.gemini/plugins"},
+            "stdout": "bounded raw output",
+        },
+    )
+    payload = json.loads(path.read_text())
+    assert payload["schema"] == DIAGNOSTICS.LOCAL_DIAGNOSTIC_SCHEMA
+    assert payload["runtime_roots"]["plugin-install"].startswith("/Users/")
+    assert list(root.glob("*.tmp")) == []
+
+
+def test_local_diagnostic_rejects_traversal_and_oversize(tmp_path: Path) -> None:
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="filename stem"):
+        DIAGNOSTICS.write_local_diagnostic(tmp_path, "../escape", {})
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="exceeds"):
+        DIAGNOSTICS.write_local_diagnostic(
+            tmp_path,
+            "large",
+            {"stdout": "x" * 1024},
+            max_bytes=64,
+        )
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_local_diagnostic_write_failure_leaves_no_partial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def deny(*_args, **_kwargs):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(DIAGNOSTICS.tempfile, "NamedTemporaryFile", deny)
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="atomically"):
+        DIAGNOSTICS.write_local_diagnostic(tmp_path, "denied", {"stdout": "raw"})
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_sanitizer_drops_raw_and_absolute_local_evidence() -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    diagnostic = {
+        **receipt,
+        "schema": DIAGNOSTICS.LOCAL_DIAGNOSTIC_SCHEMA,
+        "runtime_roots": {
+            "plugin-install": "/Users/alice/.gemini/config/plugins",
+            "saga-state": "/Users/alice/repo/.gemini/saga",
+        },
+        "stdout": "raw output",
+        "stderr": "raw error",
+        "argv": ["agy", "--help"],
+        "environment": {"TOKEN": "secret"},
+        "transcript": "private prompt",
+    }
+    diagnostic.pop("catalog_digest")
+
+    promoted = DIAGNOSTICS.sanitize_for_promotion(diagnostic, catalog)
+
+    assert promoted["runtime_roots"] == ["plugin-install", "saga-state"]
+    for forbidden in ("stdout", "stderr", "argv", "environment", "transcript"):
+        assert forbidden not in promoted
+    assert "/Users/" not in json.dumps(promoted)
+    assert CAPS.validate_receipt(promoted, catalog) == []
+    assert CAPS.validate_receipt(diagnostic, catalog)
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "promoted-unsafe-home-path.json",
+        "promoted-unsafe-credential.json",
+        "promoted-unsafe-hostname.json",
+        "promoted-unsafe-transcript.json",
+    ],
+)
+def test_promoted_unsafe_fixtures_are_rejected_without_echo(fixture_name: str) -> None:
+    receipt = json.loads((FIXTURES / fixture_name).read_text())
+    errors = CAPS.validate_receipt(receipt)
+    assert errors
+    rendered_errors = json.dumps(errors)
+    assert "/Users/alice" not in rendered_errors
+    assert "ghp_super-secret-token" not in rendered_errors
+    assert "jeffs-mac.local" not in rendered_errors
+    assert "private prompt history" not in rendered_errors
+
+
+def test_promoted_safe_fixture_accepts_dotted_values() -> None:
+    receipt = json.loads((FIXTURES / "promoted-safe.json").read_text())
+    assert CAPS.validate_receipt(receipt) == []

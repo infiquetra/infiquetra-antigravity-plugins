@@ -30,6 +30,7 @@ def test_default_state_paths_share_gemini_saga_root() -> None:
     assert Path(".gemini/saga") == SAGA.STATE_DIR
     assert EFFORT.DEFAULT_LEDGER_PATH.parent == SAGA.STATE_DIR
     assert SAGA.SAGAS_DIR == GATE_READER._SAGAS_DIR
+    assert Path(".gemini/saga/capability-doctor").is_relative_to(SAGA.STATE_DIR)
 
 
 def test_gate_reader_discovers_envelope_written_to_canonical_root(tmp_path: Path) -> None:

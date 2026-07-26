@@ -64,7 +64,12 @@ _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _VERSION_RE = re.compile(r"^[0-9]+(?:[.][0-9A-Za-z+-]+)*$")
 _FLAG_RE = re.compile(r"^--[a-z0-9]+(?:-[a-z0-9]+)*$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
-_SAFE_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$")
+_MODEL_RE = re.compile(
+    r"^(?:gemini|claude|gpt|codex|o[0-9]+)-?[A-Za-z0-9]+"
+    r"(?:[._+-][A-Za-z0-9]+)*$"
+)
+_EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
+_HOSTNAME_SUFFIXES = (".local", ".lan", ".home", ".internal")
 
 _CATALOG_KEYS = frozenset(
     {"catalog_schema", "receipt_schema", "catalog_revision", "capabilities"}
@@ -286,12 +291,21 @@ def _validate_facts(value: object, path: str, errors: list[str]) -> None:
     for key, fact in value.items():
         if key not in FACT_IDS:
             errors.append(f"{path}: unknown fact {key!r}")
-        if (
-            fact is not None
-            and not isinstance(fact, bool)
-            and (not isinstance(fact, str) or not _SAFE_TOKEN_RE.fullmatch(fact))
-        ):
-            errors.append(f"{path}.{key}: expected bool, safe token, or null")
+            continue
+        if fact is None:
+            continue
+        if key == "model-selection":
+            if (
+                not isinstance(fact, str)
+                or not _MODEL_RE.fullmatch(fact)
+                or fact.lower().endswith(_HOSTNAME_SUFFIXES)
+            ):
+                errors.append(f"{path}.{key}: expected a normalized model identifier or null")
+        elif key == "effort-selection":
+            if fact not in _EFFORTS:
+                errors.append(f"{path}.{key}: expected a normalized effort or null")
+        elif not isinstance(fact, bool):
+            errors.append(f"{path}.{key}: expected bool or null")
 
 
 def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) -> list[str]:

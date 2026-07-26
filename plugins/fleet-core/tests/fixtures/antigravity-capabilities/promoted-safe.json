@@ -1,0 +1,11 @@
+{
+  "schema": "antigravity.capabilities.v1",
+  "catalog_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "agy_cli_version": "1.1.7",
+  "antigravity_host_version": "2.3.1",
+  "supported_flags": ["--agent", "--effort", "--model"],
+  "runtime_roots": ["plugin-install", "saga-state"],
+  "requested_facts": {"model-selection": "gemini-3.1-pro"},
+  "observed_facts": {"model-selection": "gemini-3.1-pro"},
+  "results": []
+}
