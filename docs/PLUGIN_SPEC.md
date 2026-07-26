@@ -58,4 +58,19 @@ For machine-readable output:
 uv run python scripts/validate_plugins.py --json
 ```
 
-The doctor reports manifest errors, surface counts, inert empty agents, install state under `~/.gemini/config/plugins`, stale current-spec text, and next actions.
+The doctor reports manifest errors, surface counts, inert empty agents, install
+state under `~/.gemini/config/plugins`, stale current-spec text, capability
+catalog and receipt status, promotable-receipt privacy, active host-contract
+findings, and next actions.
+
+The default `repository-validation` profile makes no `agy` subprocess call.
+Use `--observe-host` to request registered bounded local observations. Use
+`--capability-profile PROFILE --capability-receipt PATH` to evaluate a named
+consumer against a strict `antigravity.capabilities.v1` receipt. Required
+`failed`, `unknown`, or `unavailable` capabilities return exit 1. A declared
+optional fallback may produce `degraded` with exit 0; it cannot downgrade a
+required failure.
+
+The JSON result contains separate `catalog`, `capability`,
+`receipt_privacy`, and `host_contract` sections. The marketplace validator
+remains a byte-for-byte output and exit-status compatibility wrapper.

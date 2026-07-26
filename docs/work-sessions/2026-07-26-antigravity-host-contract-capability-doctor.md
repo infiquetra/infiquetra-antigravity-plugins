@@ -125,3 +125,38 @@ Commits:
 
 Next step: integrate the capability catalog, receipt evaluator, privacy checks,
 and zero-unresolved host-contract scan into the canonical plugin doctor (U7).
+
+## Phase 4 — U7 canonical doctor integration
+
+The existing `scripts/validate_plugins.py` doctor now composes four structured
+contract sections with its prior manifest, surface, install, warning, and action
+output:
+
+- catalog schema, revision, digest, and capability count;
+- capability receipt source and unchanged consumer evaluation;
+- strict promotable-receipt privacy disposition;
+- selector digest, classified findings, unresolved findings, and remediation.
+
+The default `repository-validation` path constructs a deterministic unavailable
+receipt without calling an `agy` runner. `--observe-host` is explicit and runs
+only registered bounded observation vectors; controlled behavior remains
+unavailable without accepted evidence. `--capability-profile` plus
+`--capability-receipt` evaluates a named consumer, returns nonzero for required
+non-passing capabilities, and reports a valid optional fallback as degraded
+without converting it into a failure.
+
+Invalid receipts are not retained in the result and are rejected with generic
+schema/privacy errors so unsafe values are not echoed. Unknown consumer profiles
+also fail instead of passing through an empty requirement set. The marketplace
+wrapper remains output- and exit-equivalent to the canonical command.
+
+Checks:
+
+- Doctor, harness-doc, capability-contract, and host-linter tests — 74 passed.
+- Doctor-focused Ruff and mypy — passed.
+- Canonical doctor human and JSON modes — passed.
+- Marketplace JSON output equals canonical JSON output — passed.
+- `git diff --check` — passed.
+
+Next step: add Saga's direct shared-receipt consumer and finish release metadata
+and conformance documentation (U8).

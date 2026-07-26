@@ -3,9 +3,19 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from copy import deepcopy
 from pathlib import Path
+from typing import Any, cast
 
 from scripts import validate_plugins
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CATALOG = cast(
+    dict[str, Any],
+    json.loads(
+        (REPO_ROOT / "plugins/fleet-core/references/antigravity-capability-probes.yaml").read_text()
+    ),
+)
 
 
 def write_plugin(root: Path, name: str = "demo", manifest: dict | None = None) -> Path:
@@ -14,6 +24,61 @@ def write_plugin(root: Path, name: str = "demo", manifest: dict | None = None) -
     payload = manifest or {"name": name, "version": "1.0.0", "description": "Demo plugin"}
     (plugin_dir / "plugin.json").write_text(json.dumps(payload))
     return plugin_dir
+
+
+def contract_repo(root: Path, active_text: str = "# Clean\n") -> dict[str, Any]:
+    write_plugin(
+        root,
+        "fleet-core",
+        {
+            "name": "fleet-core",
+            "version": "1.0.0",
+            "description": "Fleet core",
+        },
+    )
+    active = root / "plugins/saga/skills/demo/SKILL.md"
+    active.parent.mkdir(parents=True)
+    active.write_text(active_text)
+    (root / "tests").mkdir()
+    return {
+        "schema": "antigravity.host-contract-surfaces.v1",
+        "active_globs": ["plugins/saga/skills/**/*.md"],
+        "exact_paths": ["plugins/fleet-core/plugin.json"],
+        "comparison_roots": ["tests"],
+        "digest_inputs": [
+            "schema",
+            "active_globs",
+            "exact_paths",
+            "comparison_roots",
+        ],
+    }
+
+
+def receipt_with_states(**states: str) -> dict[str, Any]:
+    capabilities, probes, _host_lint = validate_plugins._contract_modules()
+    receipt = cast(dict[str, Any], probes.probe_catalog(CATALOG))
+    rows = {row["id"]: row for row in CATALOG["capabilities"]}
+    for result in receipt["results"]:
+        state = states.get(result["id"], result["state"])
+        result["state"] = state
+        result["evidence"] = (
+            list(rows[result["id"]]["expected_evidence"]) if state in {"passed", "failed"} else []
+        )
+    assert capabilities.validate_receipt(receipt, CATALOG) == []
+    return receipt
+
+
+class RecordingRunner:
+    safe_for_stateful_observation = False
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, ...]] = []
+
+    def run(self, argv, *, timeout_s: float):
+        self.calls.append(tuple(argv))
+        if tuple(argv) == ("agy", "--version"):
+            return validate_plugins._contract_modules()[1].CommandResult(0, "agy 9.1.0")
+        return validate_plugins._contract_modules()[1].CommandResult(0, "agy [--model] [--effort]")
 
 
 def test_valid_plugin_reports_surfaces_and_linked_install(tmp_path: Path) -> None:
@@ -123,3 +188,156 @@ def test_marketplace_wrapper_delegates_to_canonical_doctor(tmp_path: Path) -> No
 
     assert wrapper.returncode == canonical.returncode == 0
     assert json.loads(wrapper.stdout) == json.loads(canonical.stdout)
+
+
+def test_repository_profile_is_deterministic_and_executes_no_runner(
+    tmp_path: Path,
+) -> None:
+    selector = contract_repo(tmp_path)
+    runner = RecordingRunner()
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        runner=runner,
+        catalog=CATALOG,
+        selector=selector,
+    )
+
+    assert result.ok is True
+    assert runner.calls == []
+    assert result.catalog.status == "passed"
+    assert result.capability.status == "passed"
+    assert result.capability.source == "deterministic"
+    assert result.receipt_privacy.promotable is True
+    assert result.host_contract.unresolved_count == 0
+
+
+def test_observe_host_runs_only_registered_passive_vectors(tmp_path: Path) -> None:
+    selector = contract_repo(tmp_path)
+    runner = RecordingRunner()
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        observe_host=True,
+        runner=runner,
+        catalog=CATALOG,
+        selector=selector,
+    )
+
+    assert result.ok is True
+    assert runner.calls == [("agy", "--version"), ("agy", "--help")]
+    assert result.capability.receipt is not None
+    assert result.capability.receipt["agy_cli_version"] == "9.1.0"
+
+
+def test_required_profile_failure_blocks_with_exact_capability(tmp_path: Path) -> None:
+    selector = contract_repo(tmp_path)
+    receipt = receipt_with_states(**{row["id"]: "passed" for row in CATALOG["capabilities"]})
+    target = next(result for result in receipt["results"] if result["id"] == "agy.agent.execution")
+    target["state"] = "failed"
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        capability_profile="live-canary",
+        catalog=CATALOG,
+        receipt=receipt,
+        selector=selector,
+    )
+
+    assert result.ok is False
+    assert result.capability.status == "blocked"
+    assert result.capability.evaluation is not None
+    assert result.capability.evaluation["blocking_capabilities"] == ["agy.agent.execution"]
+
+
+def test_optional_proven_fallback_reports_degraded_without_failure(
+    tmp_path: Path,
+) -> None:
+    selector = contract_repo(tmp_path)
+    receipt = receipt_with_states(**{"agy.sequential.isolation": "passed"})
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        capability_profile="saga.work",
+        catalog=CATALOG,
+        receipt=receipt,
+        selector=selector,
+    )
+
+    assert result.ok is True
+    assert result.capability.status == "degraded"
+    assert result.capability.evaluation is not None
+    assert result.capability.evaluation["fallbacks"] == {
+        "agy.agent.execution": "agy.sequential.isolation"
+    }
+
+
+def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Path, capsys) -> None:
+    selector = contract_repo(tmp_path, "Call AskUserQuestion now.\n")
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        catalog=CATALOG,
+        selector=selector,
+    )
+
+    assert result.ok is False
+    assert result.host_contract.status == "failed"
+    assert result.host_contract.unresolved_count == 1
+    finding = result.host_contract.findings[0]
+    assert finding["path"] == "plugins/saga/skills/demo/SKILL.md"
+    assert finding["rule"] == "AGHC002"
+    assert finding["line"] == 1
+    assert finding["remediation"] == "use-session-blocking-question"
+    validate_plugins.print_human(result)
+    human = capsys.readouterr().out
+    assert (
+        "plugins/saga/skills/demo/SKILL.md:1 AGHC002 remediation=use-session-blocking-question"
+    ) in human
+    encoded = json.dumps(validate_plugins.asdict(result))
+    assert '"rule": "AGHC002"' in encoded
+
+
+def test_unsafe_supplied_receipt_fails_without_echoing_private_value(
+    tmp_path: Path,
+) -> None:
+    selector = contract_repo(tmp_path)
+    unsafe = receipt_with_states()
+    private_value = "/Users/alice/.gemini/private"
+    unsafe["agy_cli_version"] = private_value
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        catalog=CATALOG,
+        receipt=unsafe,
+        selector=selector,
+    )
+    rendered = json.dumps(validate_plugins.asdict(result))
+
+    assert result.ok is False
+    assert result.receipt_privacy.status == "failed"
+    assert result.capability.receipt is None
+    assert private_value not in rendered
+
+
+def test_unknown_profile_is_rejected_instead_of_passing_vacuously(
+    tmp_path: Path,
+) -> None:
+    selector = contract_repo(tmp_path)
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        capability_profile="saga.unknown",
+        catalog=deepcopy(CATALOG),
+        selector=selector,
+    )
+
+    assert result.ok is False
+    assert result.capability.errors == ["unknown capability profile"]
