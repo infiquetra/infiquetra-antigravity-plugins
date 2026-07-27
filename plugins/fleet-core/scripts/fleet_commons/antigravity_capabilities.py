@@ -58,6 +58,9 @@ FACT_IDS = frozenset(
         "agent-execution",
         "conversation-resume",
         "plan-mode",
+        "plugin-links",
+        "plugin-load",
+        "plugin-validation",
         "sandbox-isolation",
         "sequential-isolation",
     }
@@ -90,6 +93,9 @@ CAPABILITY_FACT_IDS = {
     "agy.agent.execution": "agent-execution",
     "agy.conversation.resume": "conversation-resume",
     "agy.plan.mode": "plan-mode",
+    "antigravity.plugin.links": "plugin-links",
+    "antigravity.plugin.load": "plugin-load",
+    "antigravity.plugin.validation": "plugin-validation",
     "agy.sandbox.isolation": "sandbox-isolation",
     "agy.sequential.isolation": "sequential-isolation",
 }
@@ -101,6 +107,9 @@ BOOLEAN_FACT_IDS = frozenset(
         "agent-execution",
         "conversation-resume",
         "plan-mode",
+        "plugin-links",
+        "plugin-load",
+        "plugin-validation",
         "sandbox-isolation",
         "sequential-isolation",
     }
@@ -185,7 +194,7 @@ def load_catalog(path: Path | str) -> dict[str, Any]:
     try:
         parsed = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise CapabilityContractError(f"could not load capability catalog: {exc}") from exc
+        raise CapabilityContractError("could not load capability catalog") from exc
     errors = validate_catalog(parsed)
     if errors:
         raise CapabilityContractError("invalid capability catalog: " + "; ".join(errors))
@@ -355,6 +364,7 @@ def _validate_version(value: object, path: str, errors: list[str]) -> None:
         not isinstance(value, str)
         or len(value) > MAX_PROMOTABLE_VALUE_LENGTH
         or _CREDENTIAL_SHAPE_RE.search(value) is not None
+        or value.lower().endswith(_HOSTNAME_SUFFIXES)
         or not _VERSION_RE.fullmatch(value)
     ):
         errors.append(f"{path}: expected a normalized version string or null")
@@ -479,6 +489,7 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
 
         if result.get("state") not in RAW_STATES:
             errors.append(f"{path}.state: expected one of {sorted(RAW_STATES)}")
+        state = result.get("state")
         evidence = _validate_id_list(result.get("evidence"), f"{path}.evidence", errors)
         if result_id in catalog_rows:
             allowed_evidence = set(catalog_rows[result_id]["expected_evidence"])
@@ -494,7 +505,6 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
             observed_facts = receipt.get("observed_facts")
             requested = requested_facts.get(fact_id) if isinstance(requested_facts, dict) else None
             observed = observed_facts.get(fact_id) if isinstance(observed_facts, dict) else None
-            state = result.get("state")
             if fact_id == "model-selection" and (requested is not None or observed is not None):
                 model_row = catalog_rows.get(result_id or "")
                 if model_row is None:
@@ -530,6 +540,21 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
                     errors.append(
                         f"{path}.state: non-observed result must not retain an observed fact"
                     )
+
+        if result_id == "agy.cli.version" and state == "passed":
+            if receipt.get("agy_cli_version") is None:
+                errors.append(f"{path}.state: passed result requires the observed CLI version")
+        elif result_id == "antigravity.host.version" and state == "passed":
+            if receipt.get("antigravity_host_version") is None:
+                errors.append(f"{path}.state: passed result requires the observed host version")
+        elif result_id == "antigravity.runtime.roots" and state == "passed":
+            observed_roots = (
+                set(cast(Sequence[object], runtime_roots))
+                if _is_sequence(runtime_roots)
+                else set()
+            )
+            if observed_roots != RUNTIME_ROOT_ROLES:
+                errors.append(f"{path}.state: passed result requires every logical runtime root")
 
     requested_facts = receipt.get("requested_facts")
     observed_facts = receipt.get("observed_facts")

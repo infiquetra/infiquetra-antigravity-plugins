@@ -85,6 +85,12 @@ def receipt_with_states(**states: str) -> dict[str, Any]:
             observed = None
         receipt["requested_facts"][fact_id] = requested
         receipt["observed_facts"][fact_id] = observed
+    if states.get("agy.cli.version") == "passed":
+        receipt["agy_cli_version"] = "9.1.0"
+    if states.get("antigravity.host.version") == "passed":
+        receipt["antigravity_host_version"] = "10.2.0"
+    if states.get("antigravity.runtime.roots") == "passed":
+        receipt["runtime_roots"] = sorted(capabilities.RUNTIME_ROOT_ROLES)
     assert capabilities.validate_receipt(receipt, CATALOG) == []
     return receipt
 

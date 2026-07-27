@@ -149,6 +149,11 @@ _METHOD_FACT_IDS = {
     "controlled-sandbox": "sandbox-isolation",
     "controlled-sequential-isolation": "sequential-isolation",
 }
+_OBSERVATION_FACT_IDS = {
+    "plugin-links": "plugin-links",
+    "plugin-load": "plugin-load",
+    "plugin-validation": "plugin-validation",
+}
 
 
 def registry_revisions() -> dict[str, int]:
@@ -413,6 +418,10 @@ def probe_catalog(
             supported_flags = list(outcome.value)
         elif method == "runtime-root-discovery" and isinstance(outcome.value, list):
             runtime_roots = list(outcome.value)
+        elif method in _OBSERVATION_FACT_IDS and isinstance(outcome.value, bool):
+            fact_id = _OBSERVATION_FACT_IDS[method]
+            requested_facts[fact_id] = True
+            observed_facts[fact_id] = outcome.value
         elif method in _METHOD_FACT_IDS and isinstance(outcome.value, Mapping):
             fact_id = _METHOD_FACT_IDS[method]
             requested_facts[fact_id] = outcome.value.get("requested")

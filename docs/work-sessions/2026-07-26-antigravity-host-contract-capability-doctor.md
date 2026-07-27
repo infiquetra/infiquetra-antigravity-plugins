@@ -329,3 +329,53 @@ Checks:
 Next step: commit the final policy binding, rerun the exact privacy and
 adversarial reviewers against the immutable SHA, and resolve any remaining
 findings before the Saga code-review gate.
+
+## Phase 9 — content-addressed authorization closure
+
+The next privacy and adversarial reviews of `f5c6363` requested changes after
+reproducing five real authorization and privacy gaps:
+
+- runtime-base results could claim passed using evidence identifiers without
+  the corresponding typed observations;
+- version metadata and lint finding paths could carry private host or
+  credential-shaped values into promotable output;
+- catalog and selector loader errors could echo private input paths;
+- line-only foreign-runtime exceptions did not constrain later changes in the
+  same module;
+- open-ended historical annotations could hide unrecognized imperative forms.
+
+The fixes stay within the existing contract:
+
+- passed CLI and host version rows require their normalized receipt values,
+  passed runtime-root evidence requires the complete logical-root set, and
+  plugin link/load/validation rows reuse the existing requested/observed fact
+  map with affirmative boolean observations;
+- version and finding-path fields apply field-specific non-echo privacy checks;
+- catalog and selector loaders return stable messages with chained causes;
+- the two reviewed foreign-runtime reads are bound to path, complete-file
+  digest, and line digest;
+- every current historical exception is bound to a closed path-and-line-digest
+  allowlist, so new natural-language variants fail closed without an imperative
+  parser.
+
+The privacy review's P3 concurrent symlink-race proposal is non-actionable for
+this scope. A concurrent local actor able to replace repository directories
+already has direct access to the ignored diagnostic data and can delete it
+without this API. Descriptor-relative no-follow operations would add
+POSIX-specific complexity and portability cost without changing that trust
+boundary. Existing deterministic checks still reject pre-existing symlinks,
+including links back into the repository.
+
+Checks:
+
+- Affected capability, host-contract, doctor, and Saga host-gate suites —
+  204 passed, one skipped.
+- Full pytest — 1215 passed, one skipped.
+- Ruff lint and format checks — passed across 165 files.
+- Mypy — passed for the changed fleet-core and doctor surfaces.
+- Bandit medium/high scan excluding tests — passed.
+- Canonical doctor — capability, catalog, host contract, and receipt privacy
+  passed; zero errors and zero unresolved findings.
+
+Next step: commit the content-addressed closure and rerun the exact privacy and
+adversarial reviewers against the new immutable SHA.

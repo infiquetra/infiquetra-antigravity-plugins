@@ -13,10 +13,16 @@
   ],
   "requested_facts": {
     "agent-execution": true,
+    "plugin-links": true,
+    "plugin-load": true,
+    "plugin-validation": true,
     "sequential-isolation": true
   },
   "observed_facts": {
     "agent-execution": null,
+    "plugin-links": true,
+    "plugin-load": true,
+    "plugin-validation": true,
     "sequential-isolation": true
   },
   "results": [

@@ -57,28 +57,72 @@ _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\}
 _PY_ANNOTATION_RE = re.compile(r"^\s*#\s*antigravity-host-contract:\s*(\{.*\})\s*$")
 MAX_SELECTED_FILE_BYTES = 1024 * 1024
 ALLOWED_COMPARISON_ROOTS = frozenset(REQUIRED_COMPARISON_ROOTS)
-_MUTATING_CONTEXT_RE = re.compile(
-    r"(?i)\b(?:output|write|written|create|copy|delete|mkdir|move|remove|rmdir|rmtree|"
-    r"unlink|rename|replace|touch|chmod|chown|symlink|archive|save|emit|append|ledger|"
-    r"destination)\b|(?:write_text|write_bytes|open\([^)]*[\"'][awx+])"
+_CREDENTIAL_PATH_RE = re.compile(
+    r"(?i)(?:api[_-]?key|access[_-]?token|auth[_-]?token|authorization|bearer[ _-]|"
+    r"password|secret|ghp_|github_pat_|glpat-|xox[baprs]-|npm_|pypi-AgEI|ya29[.]|"
+    r"sk-[A-Za-z0-9]|A(?:KI|SI)A[0-9A-Z]{8,}|"
+    r"eyJ[A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,})"
 )
-_MARKDOWN_PREFIX_RE = re.compile(r"^\s*(?:(?:>|[-+*]|\d+[.)])\s+|\[[ xX]\]\s+|[*_`]+\s*)+")
-_HISTORICAL_IMPERATIVE_RE = re.compile(
-    r"(?i)(?:"
-    r"^(?:run|use|call|invoke|execute|launch|start)\b"
-    r"|\b(?:must|should|please|then|need\s+to)\s+"
-    r"(?:run|use|call|invoke|execute|launch|start)\b"
-    r")"
-)
+_HOSTNAME_PATH_SUFFIXES = (".local", ".lan", ".home", ".internal")
 _FOREIGN_RUNTIME_READ_ALLOWLIST = frozenset(
     {
         (
             "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+            "65e209d8065d4681777ff975a0e52b0f299ec8071ceaa8e1bf0bcfe2363b209c",
             "d11d3b3f76f345fda91fbc92e9741c11ca267d04b4d519140fc8da984c6bb73d",
         ),
         (
             "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+            "65e209d8065d4681777ff975a0e52b0f299ec8071ceaa8e1bf0bcfe2363b209c",
             "af73c91789685f05c5410063e3da771b02c0550e5eeb08619999bdaca2e16345",
+        ),
+    }
+)
+_HISTORICAL_LINE_ALLOWLIST = frozenset(
+    {
+        (
+            "plugins/saga/references/operator-choice.md",
+            "adee019867eb46e2a20c0550083a4e699d3ea866f0b69c10a7b675f00a29de07",
+        ),
+        (
+            "plugins/saga/scripts/execution_spec.py",
+            "28daab9cce391b8a09b00a723a53dda525084bd7af1c3eeca76bb93c594e8eef",
+        ),
+        (
+            "plugins/saga/scripts/outcome_dispatcher.py",
+            "239546d9661611d5e9bfca46e34062416ba1478e864d0ff24a9eabddaf994a37",
+        ),
+        (
+            "plugins/saga/scripts/outcome_spec.py",
+            "947e287593feb5211391b3a0e630c4a5148089b7f6bbb8dd2dcd349d4eff016b",
+        ),
+        (
+            "plugins/saga/skills/code-review/SKILL.md",
+            "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
+        ),
+        (
+            "plugins/saga/skills/founder-review/SKILL.md",
+            "50e81777770eccdf8e96cf1d4a59863eab54b9baabeda3b3e9398859cd874ec8",
+        ),
+        (
+            "plugins/saga/skills/investigate/SKILL.md",
+            "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
+        ),
+        (
+            "plugins/saga/skills/optimize/SKILL.md",
+            "318c1ec102618e775ad240c4ad8a8305d3cb4c03bb2218a42024989b1acfd721",
+        ),
+        (
+            "plugins/saga/skills/plan/SKILL.md",
+            "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
+        ),
+        (
+            "plugins/saga/skills/qa/SKILL.md",
+            "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
+        ),
+        (
+            "plugins/saga/skills/retro/SKILL.md",
+            "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
     }
 )
@@ -155,6 +199,16 @@ def _safe_relative(value: object, *, allow_glob: bool) -> bool:
     if not allow_glob and any(char in value for char in "*?[]"):
         return False
     return not (allow_glob and value.strip("*/") == "")
+
+
+def _private_path_segment(value: str) -> bool:
+    candidates = (value, PurePosixPath(value).stem)
+    return any(
+        _CREDENTIAL_PATH_RE.search(candidate) is not None
+        or candidate.lower().endswith(_HOSTNAME_PATH_SUFFIXES)
+        or (len(candidate) > 48 and re.fullmatch(r"[A-Za-z0-9_-]+", candidate) is not None)
+        for candidate in candidates
+    )
 
 
 def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
@@ -258,7 +312,7 @@ def load_selector(path: Path | str, repo_root: Path | str) -> dict[str, Any]:
     try:
         selector = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise HostContractError(f"could not load host-contract selector: {exc}") from exc
+        raise HostContractError("could not load host-contract selector") from exc
     errors = validate_selector(selector, repo_root)
     if errors:
         raise HostContractError("invalid host-contract selector: " + "; ".join(errors))
@@ -335,27 +389,18 @@ def _validate_annotation(
     return None
 
 
-def _is_historical_imperative(line: str) -> bool:
-    normalized = line
-    while True:
-        stripped = _MARKDOWN_PREFIX_RE.sub("", normalized, count=1)
-        if stripped == normalized:
-            break
-        normalized = stripped
-    return _HISTORICAL_IMPERATIVE_RE.search(normalized.strip()) is not None
-
-
 def _annotation_semantically_safe(
     payload: Mapping[str, Any],
     path: str,
     line: str,
+    source_digest: str,
 ) -> bool:
     classification = payload.get("class")
+    line_digest = hashlib.sha256(line.encode()).hexdigest()
     if classification == "foreign-runtime-input":
-        line_digest = hashlib.sha256(line.encode()).hexdigest()
-        return (path, line_digest) in _FOREIGN_RUNTIME_READ_ALLOWLIST
+        return (path, source_digest, line_digest) in _FOREIGN_RUNTIME_READ_ALLOWLIST
     if classification == "historical":
-        return _MUTATING_CONTEXT_RE.search(line) is None and not _is_historical_imperative(line)
+        return (path, line_digest) in _HISTORICAL_LINE_ALLOWLIST
     return True
 
 
@@ -397,6 +442,7 @@ def scan_text(
     capabilities = known_capabilities or set()
     states = capability_states or {}
     lines = text.splitlines()
+    source_digest = hashlib.sha256(text.encode()).hexdigest()
     findings: list[dict[str, Any]] = []
     consumed_annotations: set[int] = set()
 
@@ -435,6 +481,7 @@ def scan_text(
                     annotation,
                     path,
                     line,
+                    source_digest,
                 ):
                     annotation_error = "annotation-conflicts-with-executable-write"
             if annotation is None or annotation_error is not None:
@@ -581,6 +628,10 @@ def validate_lint_receipt(receipt: object) -> list[str]:
         relative = finding.get("path")
         if not _safe_relative(relative, allow_glob=False):
             errors.append(f"{path}.path: expected a safe repository-relative path")
+        elif isinstance(relative, str) and any(
+            _private_path_segment(part) for part in PurePosixPath(relative).parts
+        ):
+            errors.append(f"{path}.path: contains a private or unbounded path segment")
         line = finding.get("line")
         if not isinstance(line, int) or isinstance(line, bool) or line < 1:
             errors.append(f"{path}.line: expected a positive integer")

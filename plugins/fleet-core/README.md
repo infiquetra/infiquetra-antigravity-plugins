@@ -29,6 +29,11 @@ keeps arbitrary hostnames, credentials, and high-entropy strings out of
 promotable receipts; add a reviewed canonical model to the catalog before using
 it in evidence.
 
+Passed runtime-base evidence is cross-bound to typed observations: normalized
+CLI and host versions, the complete logical runtime-root set, and affirmative
+requested/observed plugin link, load, and validation facts. Evidence identifier
+strings alone cannot authorize a consumer.
+
 Promotable evidence uses the strict `antigravity.capabilities.v1` schema. Raw
 output, absolute runtime roots, transcripts, prompts, environment data, and
 credentials belong only in ignored local diagnostics under

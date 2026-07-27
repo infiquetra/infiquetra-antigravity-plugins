@@ -258,6 +258,37 @@ def test_dotted_safe_values_are_accepted() -> None:
     assert CAPS.validate_receipt(receipt, catalog) == []
 
 
+@pytest.mark.parametrize(
+    ("field", "unsafe_version"),
+    [
+        ("agy_cli_version", "1.jeffs-macbook-pro.local"),
+        ("antigravity_host_version", "2.ghp_examplecredential.local"),
+    ],
+)
+def test_version_evidence_rejects_private_host_values_without_echo(
+    field: str,
+    unsafe_version: str,
+) -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    receipt[field] = unsafe_version
+
+    rendered = json.dumps(CAPS.validate_receipt(receipt, catalog))
+
+    assert "normalized version" in rendered
+    assert unsafe_version not in rendered
+
+
+def test_catalog_loader_does_not_echo_private_paths(tmp_path: Path) -> None:
+    private_path = tmp_path / "ghp_examplecredential.local" / "catalog.yaml"
+
+    with pytest.raises(CAPS.CapabilityContractError) as captured:
+        CAPS.load_catalog(private_path)
+
+    assert "ghp_examplecredential" not in str(captured.value)
+    assert str(tmp_path) not in str(captured.value)
+
+
 def test_receipt_rejects_credential_shaped_promotable_values_without_echo() -> None:
     catalog = _catalog()
     receipt = _receipt(catalog)
@@ -329,6 +360,32 @@ def test_model_facts_require_catalog_allowlisted_values() -> None:
     receipt["requested_facts"]["model-selection"] = "gemini-3.5-flash"
     receipt["observed_facts"]["model-selection"] = "gemini-3.5-flash"
     assert CAPS.validate_receipt(receipt, catalog) == []
+
+
+def test_runtime_authorization_requires_typed_observations() -> None:
+    catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
+    receipt = PROBES.probe_catalog(catalog)
+    runtime_ids = {
+        "agy.cli.version",
+        "antigravity.host.version",
+        "antigravity.plugin.links",
+        "antigravity.plugin.load",
+        "antigravity.plugin.validation",
+        "antigravity.runtime.roots",
+    }
+    rows = {row["id"]: row for row in catalog["capabilities"]}
+    for result in receipt["results"]:
+        if result["id"] in runtime_ids:
+            result["state"] = "passed"
+            result["evidence"] = list(rows[result["id"]]["expected_evidence"])
+
+    errors = CAPS.validate_receipt(receipt, catalog)
+    rendered = json.dumps(errors)
+
+    assert "observed CLI version" in rendered
+    assert "observed host version" in rendered
+    assert "every logical runtime root" in rendered
+    assert rendered.count("matching requested and observed facts") >= 3
 
 
 @pytest.mark.parametrize("state", ["unknown", "unavailable"])
@@ -453,6 +510,12 @@ def test_observe_host_uses_only_registered_bounded_vectors(tmp_path: Path) -> No
     assert receipt["antigravity_host_version"] == "11.4.0"
     assert receipt["supported_flags"] == ["--agent", "--effort", "--model"]
     assert receipt["runtime_roots"] == sorted(PROBES.REQUIRED_RUNTIME_ROOT_ROLES)
+    assert receipt["requested_facts"]["plugin-links"] is True
+    assert receipt["requested_facts"]["plugin-load"] is True
+    assert receipt["requested_facts"]["plugin-validation"] is True
+    assert receipt["observed_facts"]["plugin-links"] is True
+    assert receipt["observed_facts"]["plugin-load"] is True
+    assert receipt["observed_facts"]["plugin-validation"] is True
     assert all(isinstance(argv, tuple) for argv, _timeout in runner.calls)
     assert all(timeout <= 5 for _argv, timeout in runner.calls)
     assert CAPS.validate_receipt(receipt, catalog) == []

@@ -58,15 +58,28 @@ def test_named_active_rules_emit_exact_ids_and_unresolved_findings() -> None:
     assert all("excerpt" not in finding for finding in findings)
 
 
-def test_historical_annotations_classify_only_the_adjacent_match() -> None:
-    findings = LINT.scan_text(
+def test_only_reviewed_historical_lines_are_allowlisted() -> None:
+    synthetic = LINT.scan_text(
         "docs/history.md",
         (FIXTURES / "historical-all.md").read_text(),
         known_capabilities=_known_capabilities(),
     )
-    assert len(findings) == 6
-    assert {finding["classification"] for finding in findings} == {"historical"}
-    assert not any(finding["unresolved"] for finding in findings)
+    assert synthetic
+    assert all(finding["classification"] == "active" for finding in synthetic)
+    assert all(finding["unresolved"] for finding in synthetic)
+
+    receipt = LINT.scan_repository(
+        REPO_ROOT,
+        _selector(),
+        known_capabilities=_known_capabilities(),
+    )
+    reviewed = [
+        finding
+        for finding in receipt["findings"]
+        if finding["classification"] == "historical" and finding["reason"] == "annotated-historical"
+    ]
+    assert len(reviewed) == len(LINT._HISTORICAL_LINE_ALLOWLIST)
+    assert not any(finding["unresolved"] for finding in reviewed)
 
 
 def test_markdown_quote_is_active_without_lineage_annotation() -> None:
@@ -105,6 +118,24 @@ def test_exact_reviewed_foreign_runtime_reads_are_allowlisted() -> None:
     assert len(foreign) == 2
     assert all(finding["classification"] == "foreign-runtime-input" for finding in foreign)
     assert not any(finding["unresolved"] for finding in foreign)
+
+
+def test_reviewed_foreign_runtime_file_digest_rejects_later_mutation() -> None:
+    source = (
+        REPO_ROOT / "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py"
+    ).read_text()
+    source += "\nshutil.rmtree(bundle_root)\n"
+
+    findings = LINT.scan_text(
+        "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+        source,
+        known_capabilities=_known_capabilities(),
+    )
+    foreign = [finding for finding in findings if finding["rule"] == "AGHC001"]
+
+    assert len(foreign) == 2
+    assert all(finding["classification"] == "active" for finding in foreign)
+    assert all(finding["unresolved"] for finding in foreign)
 
 
 @pytest.mark.parametrize(
@@ -323,6 +354,12 @@ def test_historical_annotation_cannot_hide_an_imperative_workflow() -> None:
         '**Run** `Workflow("source")` now.',
         'You must run `Workflow("source")` now.',
         'Please execute `Workflow("source")` now.',
+        'Always call `Workflow("source")` now.',
+        'IMPORTANT: Run `Workflow("source")` now.',
+        'You are required to call `Workflow("source")` now.',
+        'Dispatch `Workflow("source")` now.',
+        'Open `Workflow("source")` now.',
+        'Route through `Workflow("source")` now.',
     ],
 )
 def test_historical_annotation_rejects_structured_imperatives(
@@ -492,3 +529,39 @@ def test_lint_receipt_is_strict_excerpt_free_and_digest_bound() -> None:
     assert errors
     assert "/Users/alice" not in json.dumps(errors)
     assert "private prompt" not in json.dumps(errors)
+
+
+@pytest.mark.parametrize(
+    "private_path",
+    [
+        "plugins/saga/skills/jeffs-macbook-pro.local.md",
+        "plugins/saga/skills/ghp_examplecredential.md",
+        "plugins/saga/skills/abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnop.md",
+    ],
+)
+def test_lint_receipt_rejects_private_path_segments_without_echo(
+    private_path: str,
+) -> None:
+    selector = _selector()
+    findings = LINT.scan_text(
+        "plugins/saga/skills/example/SKILL.md",
+        'Run `Workflow("source")`.',
+        known_capabilities=_known_capabilities(),
+    )
+    receipt = LINT.build_lint_receipt(selector, findings)
+    receipt["findings"][0]["path"] = private_path
+
+    rendered = json.dumps(LINT.validate_lint_receipt(receipt))
+
+    assert rendered != "[]"
+    assert private_path not in rendered
+
+
+def test_selector_loader_does_not_echo_private_paths(tmp_path: Path) -> None:
+    private_path = tmp_path / "ghp_examplecredential.local" / "selector.json"
+
+    with pytest.raises(LINT.HostContractError) as captured:
+        LINT.load_selector(private_path, tmp_path)
+
+    assert "ghp_examplecredential" not in str(captured.value)
+    assert str(tmp_path) not in str(captured.value)
