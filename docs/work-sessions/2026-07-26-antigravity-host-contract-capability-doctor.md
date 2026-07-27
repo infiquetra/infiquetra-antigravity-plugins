@@ -379,3 +379,46 @@ Checks:
 
 Next step: commit the content-addressed closure and rerun the exact privacy and
 adversarial reviewers against the new immutable SHA.
+
+## Phase 10 — promotable evidence minimization
+
+The final reviewers of `5065fcf` accepted the typed runtime observations,
+foreign-runtime complete-file binding, stable loader errors, and concurrent
+local symlink-race reclassification. They reproduced three remaining gaps:
+
+- bare host-like or IP-shaped version values could pass the normalized version
+  field;
+- raw repository-relative finding paths could disclose private names from
+  untracked active-surface files;
+- historical exemptions and standalone lint receipts did not independently
+  bind all meaning-bearing context and canonical selector policy.
+
+The final remediation removes the heuristics rather than expanding them:
+
+- promotable versions use a strict numeric version core with a closed
+  alpha/beta/rc/dev prerelease vocabulary and reject IP addresses in both probe
+  normalization and receipt validation;
+- promotable lint findings contain only `path_sha256`; raw paths remain local
+  scan context and are omitted from doctor JSON and human output;
+- historical exceptions now use the same path, complete-file digest, and line
+  digest binding as foreign-runtime reads;
+- lint receipt construction and standalone validation both require the exact
+  canonical selector-policy digest.
+
+The requirements, plan, reference documentation, and operator output contract
+were updated to describe path digests rather than promotable raw paths.
+
+Checks:
+
+- Affected capability, host-contract, doctor, and Saga host-gate suites —
+  211 passed, one skipped.
+- Full pytest — 1222 passed, one skipped.
+- Ruff lint and format checks — passed across 165 files.
+- Mypy — passed for the changed fleet-core and doctor surfaces.
+- Bandit medium/high scan excluding tests — passed.
+- Canonical doctor — capability, catalog, host contract, and receipt privacy
+  passed; zero errors, zero unresolved findings, and no raw finding paths.
+- `git diff --check` — passed.
+
+Next step: commit the minimized evidence contract and run the final two
+immutable-SHA reviews before the Saga code-review gate.

@@ -22,7 +22,7 @@ _ANNOTATION_KEYS = frozenset({"class", "rule", "reason", "revisit", "capability"
 _ANNOTATION_CLASSES = frozenset({"historical", "foreign-runtime-input", "capability-gated"})
 _FINDING_KEYS = frozenset(
     {
-        "path",
+        "path_sha256",
         "line",
         "rule",
         "classification",
@@ -57,13 +57,6 @@ _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\}
 _PY_ANNOTATION_RE = re.compile(r"^\s*#\s*antigravity-host-contract:\s*(\{.*\})\s*$")
 MAX_SELECTED_FILE_BYTES = 1024 * 1024
 ALLOWED_COMPARISON_ROOTS = frozenset(REQUIRED_COMPARISON_ROOTS)
-_CREDENTIAL_PATH_RE = re.compile(
-    r"(?i)(?:api[_-]?key|access[_-]?token|auth[_-]?token|authorization|bearer[ _-]|"
-    r"password|secret|ghp_|github_pat_|glpat-|xox[baprs]-|npm_|pypi-AgEI|ya29[.]|"
-    r"sk-[A-Za-z0-9]|A(?:KI|SI)A[0-9A-Z]{8,}|"
-    r"eyJ[A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,})"
-)
-_HOSTNAME_PATH_SUFFIXES = (".local", ".lan", ".home", ".internal")
 _FOREIGN_RUNTIME_READ_ALLOWLIST = frozenset(
     {
         (
@@ -82,46 +75,57 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
     {
         (
             "plugins/saga/references/operator-choice.md",
+            "3a4576759cc6093db675799045bfc2155c8a381c7d2bb72c4cf03e2bd2fe4254",
             "adee019867eb46e2a20c0550083a4e699d3ea866f0b69c10a7b675f00a29de07",
         ),
         (
             "plugins/saga/scripts/execution_spec.py",
+            "a52d69f7c1a43a4835c8ef0fa9470fdb4911a3c0d157b7f8fb4a534fbe1cd4ba",
             "28daab9cce391b8a09b00a723a53dda525084bd7af1c3eeca76bb93c594e8eef",
         ),
         (
             "plugins/saga/scripts/outcome_dispatcher.py",
+            "9cd0d71b9ab96e6944a8bcc5742ec288896a091da0cc29a8e8c70ebeb29b218e",
             "239546d9661611d5e9bfca46e34062416ba1478e864d0ff24a9eabddaf994a37",
         ),
         (
             "plugins/saga/scripts/outcome_spec.py",
+            "a7abeaea57a4515547ba9be116bfecdfa127738067d3fd738fc3690e31e407ca",
             "947e287593feb5211391b3a0e630c4a5148089b7f6bbb8dd2dcd349d4eff016b",
         ),
         (
             "plugins/saga/skills/code-review/SKILL.md",
+            "0f99ac2af09b7e165fe4b0cc14ce1f1100e27730c0887eceeaa90d8b34e1f249",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (
             "plugins/saga/skills/founder-review/SKILL.md",
+            "3e2b026a6a8a0e7a2aa6a09093de7c34a43c7771db9d59b9e457cb4f36f85cac",
             "50e81777770eccdf8e96cf1d4a59863eab54b9baabeda3b3e9398859cd874ec8",
         ),
         (
             "plugins/saga/skills/investigate/SKILL.md",
+            "fbb28612db69aaab10f5234a31eaf44bfe628f556ab8eb2ac32759898024cba2",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
         (
             "plugins/saga/skills/optimize/SKILL.md",
+            "4ad091548295cc5aa1187ba2f5add2f0a40956f09a1b4568dfb1a3f9956524ca",
             "318c1ec102618e775ad240c4ad8a8305d3cb4c03bb2218a42024989b1acfd721",
         ),
         (
             "plugins/saga/skills/plan/SKILL.md",
+            "3e913d5c7a0c9079348c1520f706e0d1b0d9c61df0b086eed4c703573bac27be",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (
             "plugins/saga/skills/qa/SKILL.md",
+            "55194d1fce3f8b9900274314b93b816329fad3fe209aef6ad1efe0124fce7518",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
         (
             "plugins/saga/skills/retro/SKILL.md",
+            "4f084f4b9034600eb0cd0588c466badc1ad3aa0b2af69e8698db8bb2dd885f73",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
     }
@@ -199,16 +203,6 @@ def _safe_relative(value: object, *, allow_glob: bool) -> bool:
     if not allow_glob and any(char in value for char in "*?[]"):
         return False
     return not (allow_glob and value.strip("*/") == "")
-
-
-def _private_path_segment(value: str) -> bool:
-    candidates = (value, PurePosixPath(value).stem)
-    return any(
-        _CREDENTIAL_PATH_RE.search(candidate) is not None
-        or candidate.lower().endswith(_HOSTNAME_PATH_SUFFIXES)
-        or (len(candidate) > 48 and re.fullmatch(r"[A-Za-z0-9_-]+", candidate) is not None)
-        for candidate in candidates
-    )
 
 
 def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
@@ -325,6 +319,19 @@ def selector_digest(selector: Mapping[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def canonical_selector_digest() -> str:
+    """Return the digest of the closed repository selector policy."""
+
+    return selector_digest(
+        {
+            "schema": SELECTOR_SCHEMA,
+            "active_globs": list(REQUIRED_ACTIVE_GLOBS),
+            "exact_paths": list(REQUIRED_EXACT_PATHS),
+            "comparison_roots": list(REQUIRED_COMPARISON_ROOTS),
+        }
+    )
+
+
 def selected_active_paths(repo_root: Path | str, selector: Mapping[str, Any]) -> list[Path]:
     root = Path(repo_root).resolve()
     paths: set[Path] = set()
@@ -400,7 +407,7 @@ def _annotation_semantically_safe(
     if classification == "foreign-runtime-input":
         return (path, source_digest, line_digest) in _FOREIGN_RUNTIME_READ_ALLOWLIST
     if classification == "historical":
-        return (path, line_digest) in _HISTORICAL_LINE_ALLOWLIST
+        return (path, source_digest, line_digest) in _HISTORICAL_LINE_ALLOWLIST
     return True
 
 
@@ -417,7 +424,7 @@ def _finding(
     unresolved: bool,
 ) -> dict[str, Any]:
     return {
-        "path": path,
+        "path_sha256": hashlib.sha256(path.encode()).hexdigest(),
         "line": line,
         "rule": rule,
         "classification": classification,
@@ -590,9 +597,12 @@ def scan_repository(
 def build_lint_receipt(
     selector: Mapping[str, Any], findings: Sequence[Mapping[str, Any]]
 ) -> dict[str, Any]:
+    digest = selector_digest(selector)
+    if digest != canonical_selector_digest():
+        raise HostContractError("selector does not match the canonical surface policy")
     receipt = {
         "schema": LINT_RECEIPT_SCHEMA,
-        "selector_digest": selector_digest(selector),
+        "selector_digest": digest,
         "findings": [dict(finding) for finding in findings],
         "unresolved_count": sum(bool(finding.get("unresolved")) for finding in findings),
     }
@@ -613,6 +623,8 @@ def validate_lint_receipt(receipt: object) -> list[str]:
     digest = receipt.get("selector_digest")
     if not isinstance(digest, str) or not _DIGEST_RE.fullmatch(digest):
         errors.append("lint receipt.selector_digest: expected a SHA-256 digest")
+    elif digest != canonical_selector_digest():
+        errors.append("lint receipt.selector_digest: does not match canonical policy")
     findings = receipt.get("findings")
     if not isinstance(findings, list):
         errors.append("lint receipt.findings: expected a list")
@@ -625,13 +637,9 @@ def validate_lint_receipt(receipt: object) -> list[str]:
             continue
         for _key in sorted(set(finding) - _FINDING_KEYS):
             errors.append(f"{path}: unknown field")
-        relative = finding.get("path")
-        if not _safe_relative(relative, allow_glob=False):
-            errors.append(f"{path}.path: expected a safe repository-relative path")
-        elif isinstance(relative, str) and any(
-            _private_path_segment(part) for part in PurePosixPath(relative).parts
-        ):
-            errors.append(f"{path}.path: contains a private or unbounded path segment")
+        path_digest = finding.get("path_sha256")
+        if not isinstance(path_digest, str) or not _DIGEST_RE.fullmatch(path_digest):
+            errors.append(f"{path}.path_sha256: expected a SHA-256 digest")
         line = finding.get("line")
         if not isinstance(line, int) or isinstance(line, bool) or line < 1:
             errors.append(f"{path}.line: expected a positive integer")

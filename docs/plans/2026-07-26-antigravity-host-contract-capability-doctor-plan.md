@@ -320,13 +320,13 @@ Make privacy enforcement structural rather than dependent on callers remembering
 - `plugins/fleet-core/tests/fixtures/antigravity-capabilities/promoted-unsafe-*.json`
 - `plugins/saga/tests/test_state_paths.py`
 
-**Approach:** Define a separate local diagnostic writer rooted at `.gemini/saga/capability-doctor/` and accept its root through an injected repository state path. Bound file size and use atomic writes. Implement a shared explicit sanitizer that maps absolute discoveries to logical root roles or repository-relative paths and drops raw stdout/stderr, argv, environment, transcript, prompt, excerpt, and exception fields before either promotable receipt is constructed. Validate keys and values with field-specific allowlists and path/secret checks so safe dotted capability IDs and version strings are not mistaken for hostnames. The lint receipt stores only repository-relative path, line, rule, classification, capability, bounded reason/remediation codes, excerpt SHA-256, and the active-surface manifest digest.
+**Approach:** Define a separate local diagnostic writer rooted at `.gemini/saga/capability-doctor/` and accept its root through an injected repository state path. Bound file size and use atomic writes. Implement a shared explicit sanitizer that maps absolute discoveries to logical root roles or path digests and drops raw stdout/stderr, argv, environment, transcript, prompt, excerpt, raw path, and exception fields before either promotable receipt is constructed. Validate keys and values with field-specific allowlists and path/secret checks so safe dotted capability IDs and version strings are not mistaken for hostnames. The lint receipt stores only path SHA-256, line, rule, classification, capability, bounded reason/remediation codes, excerpt SHA-256, and the active-surface manifest digest.
 
 **Patterns to follow:** Use the ignored state-root assertions in `plugins/saga/tests/test_state_paths.py`, atomic write behavior from `plugins/saga/scripts/manifest_store.py`, and path-traversal rejection from its tests.
 
 **Test scenarios:**
 
-1. Happy path — write a bounded local diagnostic containing absolute fixture roots, sanitize it, and build a receipt; expect only logical root roles and repository-relative paths in the receipt.
+1. Happy path — write a bounded local diagnostic containing absolute fixture roots, sanitize it, and build a receipt; expect only logical root roles and path digests in the receipt.
 2. Unsafe promoted path — validate receipts containing `/Users/`, `/home/`, Windows home paths, or parent traversal; expect rejection with the exact field path.
 3. Secret material — validate token, authorization header, credential-like environment, URL query secret, hostname, and raw transcript/prompt fixtures; expect rejection and no echoed secret in the error.
 4. Unknown field — add `stdout`, `stderr`, `argv`, `cwd`, `environment`, or `transcript_path`; expect closed-schema rejection.
@@ -356,7 +356,7 @@ Create a semantic-enough static gate that finds real host dependencies without t
 - `plugins/fleet-core/tests/fixtures/host-contract/executable-*.py`
 - `plugins/fleet-core/references/host-contract-lint.md`
 
-**Approach:** Load and validate the closed active-surface selector defined above, then implement contextual rules for executable `.claude` paths, `AskUserQuestion`/`ToolSearch`, Workflow call syntax and active execution instructions, fixed brain roots, scheduling assertion verbs, and isolation assertion verbs. Parse line context and only the immediately preceding KTD11 annotation; emit `active`, `historical`, `foreign-runtime-input`, or `capability-gated` classifications with rule ID, repository-relative path, line, excerpt SHA-256, capability ID, bounded reason/remediation codes, and active-surface manifest digest. Unannotated matches in active surfaces are unresolved errors. Validate the resulting `antigravity.host-contract-lint.v1` object with the U3 sanitizer before it can be printed, persisted, or consumed.
+**Approach:** Load and validate the closed active-surface selector defined above, then implement contextual rules for executable `.claude` paths, `AskUserQuestion`/`ToolSearch`, Workflow call syntax and active execution instructions, fixed brain roots, scheduling assertion verbs, and isolation assertion verbs. Parse line context and only the immediately preceding KTD11 annotation; emit `active`, `historical`, `foreign-runtime-input`, or `capability-gated` classifications with rule ID, path SHA-256, line, excerpt SHA-256, capability ID, bounded reason/remediation codes, and active-surface manifest digest. Unannotated matches in active surfaces are unresolved errors. Validate the resulting `antigravity.host-contract-lint.v1` object with the U3 sanitizer before it can be printed, persisted, or consumed.
 
 **Patterns to follow:** Return structured findings and human-readable errors rather than booleans, as in `bridge_receipt.validate_receipt`; keep the scanner pure over injected paths and text. Follow the repository formatting contract for the rule reference.
 
@@ -656,7 +656,7 @@ The single-PR exception is deliberate: merging the catalog without an active con
 
 **Compatibility:** Existing package/install validation and the marketplace wrapper remain stable. Legacy `.claude` inputs may be read only through explicit migration or foreign-runtime classifications; Antigravity-owned writes move to logical `.gemini` roles.
 
-**Privacy:** The promotable schema is closed and value-sanitized. Downstream consumers receive only logical roles, repository-relative paths, bounded facts, and stable reason codes, never a raw command or transcript record.
+**Privacy:** The promotable schema is closed and value-sanitized. Downstream consumers receive only logical roles, path digests, bounded facts, and stable reason codes, never a raw command, raw path, or transcript record.
 
 ---
 

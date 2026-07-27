@@ -323,14 +323,17 @@ def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Pat
     assert result.host_contract.status == "failed"
     assert result.host_contract.unresolved_count == 1
     finding = result.host_contract.findings[0]
-    assert finding["path"] == "plugins/saga/skills/demo/SKILL.md"
+    assert finding["path_sha256"] == (
+        "266f3cc721b3b056306e154e7830077bf22d4ad0b1634325e0decb4d1ed6e120"
+    )
     assert finding["rule"] == "AGHC002"
     assert finding["line"] == 1
     assert finding["remediation"] == "use-session-blocking-question"
     validate_plugins.print_human(result)
     human = capsys.readouterr().out
     assert (
-        "plugins/saga/skills/demo/SKILL.md:1 AGHC002 remediation=use-session-blocking-question"
+        "path-sha256=266f3cc721b3b056306e154e7830077bf22d4ad0b1634325e0decb4d1ed6e120 "
+        "line=1 AGHC002 remediation=use-session-blocking-question"
     ) in human
     encoded = json.dumps(validate_plugins.asdict(result))
     assert '"rule": "AGHC002"' in encoded

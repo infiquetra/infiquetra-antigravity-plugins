@@ -28,15 +28,16 @@ non-passing capability leaves the finding unresolved.
 
 Annotations apply to one immediately following matched statement. Wildcards,
 file-wide exemptions, missing reasons, stale rule IDs, unknown capabilities,
-and non-adjacent annotations fail closed. Historical exceptions are bound to a
-closed repository-relative path and line-digest allowlist. Python
-foreign-runtime reads are bound to a closed path, complete-file digest, and
-line-digest allowlist. Adding or changing either kind of exception requires an
-explicit code review; arbitrary annotations, helpers, or later data-flow
-changes remain unresolved.
+and non-adjacent annotations fail closed. Historical exceptions and Python
+foreign-runtime reads are bound to closed repository-relative path,
+complete-file digest, and line-digest allowlists. Adding or changing either
+kind of exception requires an explicit code review; arbitrary annotations,
+helpers, context edits, or later data-flow changes remain unresolved.
 
 The active globs, exact adjacent paths, and comparison roots are independently
 bound to the canonical policy in the linter. Editing the selector cannot narrow
 the scan or reclassify active paths without updating that reviewed policy.
-Promotable finding paths reject credential-shaped, machine-hostname, and
-unbounded high-entropy path segments without echoing the rejected value.
+Promotable findings contain only a SHA-256 digest of the repository-relative
+path. Raw paths stay in local scan context and cannot disclose private worktree
+names through a promotable receipt. The receipt also accepts only the canonical
+selector-policy digest.

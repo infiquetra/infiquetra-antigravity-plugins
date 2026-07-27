@@ -262,7 +262,10 @@ def test_dotted_safe_values_are_accepted() -> None:
     ("field", "unsafe_version"),
     [
         ("agy_cli_version", "1.jeffs-macbook-pro.local"),
+        ("agy_cli_version", "1.jeffs-macbook-pro"),
+        ("agy_cli_version", "192.168.1.42"),
         ("antigravity_host_version", "2.ghp_examplecredential.local"),
+        ("antigravity_host_version", "2001:db8::1"),
     ],
 )
 def test_version_evidence_rejects_private_host_values_without_echo(
@@ -287,6 +290,25 @@ def test_catalog_loader_does_not_echo_private_paths(tmp_path: Path) -> None:
 
     assert "ghp_examplecredential" not in str(captured.value)
     assert str(tmp_path) not in str(captured.value)
+
+
+@pytest.mark.parametrize(
+    "private_output",
+    [
+        "agy 1.jeffs-macbook-pro\n",
+        "agy 192.168.1.42\n",
+    ],
+)
+def test_probe_version_normalization_rejects_private_metadata(
+    private_output: str,
+) -> None:
+    outcome = PROBES._version_outcome(
+        PROBES.CommandResult(0, private_output),
+        "agy-cli-version",
+    )
+
+    assert outcome.state == "unknown"
+    assert outcome.value is None
 
 
 def test_receipt_rejects_credential_shaped_promotable_values_without_echo() -> None:

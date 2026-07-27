@@ -538,7 +538,7 @@ def print_human(result: DoctorResult) -> None:
     for finding in result.host_contract.findings:
         if finding["unresolved"]:
             print(
-                f"  violation: {finding['path']}:{finding['line']} "
+                f"  violation: path-sha256={finding['path_sha256']} line={finding['line']} "
                 f"{finding['rule']} remediation={finding['remediation']}"
             )
     plugin_names = {plugin.name for plugin in result.plugins}

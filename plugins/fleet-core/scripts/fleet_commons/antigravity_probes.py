@@ -9,6 +9,7 @@ start a model interaction.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import re
 import subprocess
@@ -29,7 +30,11 @@ REQUIRED_RUNTIME_ROOT_ROLES = frozenset(
     }
 )
 
-_VERSION_RE = re.compile(r"(?<![0-9])([0-9]+(?:[.][0-9A-Za-z+-]+)+)")
+_VERSION_RE = re.compile(
+    r"(?<![0-9A-Za-z.])"
+    r"([0-9]+(?:[.][0-9]+){1,3}(?:-(?:alpha|beta|rc|dev)(?:[.-]?[0-9]+)?)?)"
+    r"(?![0-9A-Za-z.])"
+)
 _FLAG_RE = re.compile(r"(?<![A-Za-z0-9])(--[a-z0-9]+(?:-[a-z0-9]+)*)")
 
 
@@ -65,6 +70,14 @@ class ProbeOutcome:
     state: str
     evidence: tuple[str, ...] = ()
     value: Any = None
+
+
+def _is_ip_address(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
 
 
 class SubprocessProbeRunner:
@@ -185,7 +198,7 @@ def _version_outcome(result: CommandResult | None, evidence_id: str) -> ProbeOut
     if result.returncode != 0:
         return ProbeOutcome("failed")
     match = _VERSION_RE.search(output)
-    if match is None:
+    if match is None or _is_ip_address(match.group(1)):
         return ProbeOutcome("unknown")
     return ProbeOutcome("passed", (evidence_id,), match.group(1))
 
@@ -237,7 +250,7 @@ def _host_version_outcome(
     if not isinstance(value, str):
         return ProbeOutcome("unknown")
     match = _VERSION_RE.fullmatch(value)
-    if match is None:
+    if match is None or _is_ip_address(value):
         return ProbeOutcome("unknown")
     return ProbeOutcome("passed", (evidence_id,), value)
 

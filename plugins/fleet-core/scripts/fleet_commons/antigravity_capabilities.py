@@ -8,6 +8,7 @@ registered probe method and revision, but cannot provide executable commands.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import re
 from collections.abc import Mapping, Sequence
@@ -67,7 +68,10 @@ FACT_IDS = frozenset(
 )
 
 _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
-_VERSION_RE = re.compile(r"^[0-9]+(?:[.][0-9A-Za-z+-]+)*$")
+_VERSION_RE = re.compile(
+    r"^[0-9]+(?:[.][0-9]+){1,3}"
+    r"(?:-(?:alpha|beta|rc|dev)(?:[.-]?[0-9]+)?)?$"
+)
 _FLAG_RE = re.compile(r"^--[a-z0-9]+(?:-[a-z0-9]+)*$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _MODEL_RE = re.compile(
@@ -360,11 +364,20 @@ def validate_catalog(catalog: object) -> list[str]:
 
 
 def _validate_version(value: object, path: str, errors: list[str]) -> None:
+    is_ip_address = False
+    if isinstance(value, str):
+        try:
+            ipaddress.ip_address(value)
+        except ValueError:
+            pass
+        else:
+            is_ip_address = True
     if value is not None and (
         not isinstance(value, str)
         or len(value) > MAX_PROMOTABLE_VALUE_LENGTH
         or _CREDENTIAL_SHAPE_RE.search(value) is not None
         or value.lower().endswith(_HOSTNAME_SUFFIXES)
+        or is_ip_address
         or not _VERSION_RE.fullmatch(value)
     ):
         errors.append(f"{path}: expected a normalized version string or null")
@@ -549,9 +562,7 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
                 errors.append(f"{path}.state: passed result requires the observed host version")
         elif result_id == "antigravity.runtime.roots" and state == "passed":
             observed_roots = (
-                set(cast(Sequence[object], runtime_roots))
-                if _is_sequence(runtime_roots)
-                else set()
+                set(cast(Sequence[object], runtime_roots)) if _is_sequence(runtime_roots) else set()
             )
             if observed_roots != RUNTIME_ROOT_ROLES:
                 errors.append(f"{path}.state: passed result requires every logical runtime root")
