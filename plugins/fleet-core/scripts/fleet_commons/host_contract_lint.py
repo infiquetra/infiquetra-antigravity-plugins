@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import re
@@ -39,9 +40,51 @@ _CODE_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$")
 _PY_ANNOTATION_RE = re.compile(r"^\s*#\s*antigravity-host-contract:\s*(\{.*\})\s*$")
 MAX_SELECTED_FILE_BYTES = 1024 * 1024
+ALLOWED_COMPARISON_ROOTS = frozenset({"docs", "tests"})
 _MUTATING_CONTEXT_RE = re.compile(
-    r"(?i)\b(?:output|write|written|create|mkdir|unlink|rename|replace|touch|save|emit|"
-    r"append|ledger|destination)\b|(?:write_text|write_bytes|open\([^)]*[\"'][awx+])"
+    r"(?i)\b(?:output|write|written|create|copy|delete|mkdir|move|remove|rmdir|rmtree|"
+    r"unlink|rename|replace|touch|chmod|chown|symlink|archive|save|emit|append|ledger|"
+    r"destination)\b|(?:write_text|write_bytes|open\([^)]*[\"'][awx+])"
+)
+_HISTORICAL_IMPERATIVE_RE = re.compile(r"(?i)^\s*(?:run|use|call|invoke|execute|launch|start)\b")
+_MUTATING_METHODS = frozenset(
+    {
+        "chmod",
+        "hardlink_to",
+        "mkdir",
+        "rename",
+        "replace",
+        "rmdir",
+        "symlink_to",
+        "touch",
+        "truncate",
+        "unlink",
+        "write",
+        "write_bytes",
+        "write_text",
+        "writelines",
+    }
+)
+_MUTATING_CALLS = frozenset(
+    {
+        "chmod",
+        "chown",
+        "copy",
+        "copy2",
+        "copyfile",
+        "copytree",
+        "link",
+        "make_archive",
+        "move",
+        "remove",
+        "removedirs",
+        "rename",
+        "replace",
+        "rmdir",
+        "rmtree",
+        "symlink",
+        "unlink",
+    }
 )
 
 
@@ -166,8 +209,48 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
     comparison_roots = selector.get("comparison_roots")
     if isinstance(comparison_roots, list):
         for value in comparison_roots:
-            if _safe_relative(value, allow_glob=False) and not (root / value).is_dir():
+            if not _safe_relative(value, allow_glob=False):
+                continue
+            if value not in ALLOWED_COMPARISON_ROOTS:
+                errors.append(
+                    f"selector.comparison_roots: root is not in the controlled allowlist: {value}"
+                )
+                continue
+            candidate = root / value
+            if candidate == root:
+                errors.append("selector.comparison_roots: repository root is not allowed")
+            elif not candidate.is_dir():
                 errors.append(f"selector.comparison_roots: declared directory is missing: {value}")
+            elif candidate.is_symlink():
+                errors.append(f"selector.comparison_roots: symlinks are not allowed: {value}")
+            else:
+                try:
+                    candidate.resolve(strict=True).relative_to(root)
+                except (FileNotFoundError, OSError, ValueError):
+                    errors.append(
+                        f"selector.comparison_roots: declared directory escapes repository: {value}"
+                    )
+
+        active_candidates: set[Path] = set()
+        active_globs = selector.get("active_globs")
+        if isinstance(active_globs, list):
+            for pattern in active_globs:
+                if _safe_relative(pattern, allow_glob=True):
+                    active_candidates.update(path for path in root.glob(pattern) if path.is_file())
+        if isinstance(exact_paths, list):
+            active_candidates.update(
+                root / value
+                for value in exact_paths
+                if _safe_relative(value, allow_glob=False) and (root / value).is_file()
+            )
+        for value in comparison_roots:
+            if value not in ALLOWED_COMPARISON_ROOTS:
+                continue
+            comparison = root / value
+            if any(path == comparison or comparison in path.parents for path in active_candidates):
+                errors.append(
+                    f"selector.comparison_roots: active selection overlaps comparison root: {value}"
+                )
     return errors
 
 
@@ -252,14 +335,136 @@ def _validate_annotation(
     return None
 
 
+def _assigned_names(node: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name) and isinstance(child.ctx, (ast.Store, ast.Del)):
+            names.add(child.id)
+    return names
+
+
+def _referenced_names(node: ast.AST | None) -> set[str]:
+    if node is None:
+        return set()
+    return {
+        child.id
+        for child in ast.walk(node)
+        if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load)
+    }
+
+
+def _assignment_value(node: ast.AST) -> ast.AST | None:
+    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
+        return node.value
+    return None
+
+
+def _call_name(call: ast.Call) -> str | None:
+    if isinstance(call.func, ast.Name):
+        return call.func.id
+    if isinstance(call.func, ast.Attribute):
+        return call.func.attr
+    return None
+
+
+def _write_open_references(call: ast.Call) -> set[str]:
+    if _call_name(call) != "open":
+        return set()
+    target: ast.expr | None
+    positional_mode: ast.expr | None
+    if isinstance(call.func, ast.Attribute):
+        target = call.func.value
+        positional_mode = call.args[0] if call.args else None
+    else:
+        target = call.args[0] if call.args else None
+        positional_mode = call.args[1] if len(call.args) > 1 else None
+    keyword_mode = next(
+        (keyword.value for keyword in call.keywords if keyword.arg == "mode"),
+        None,
+    )
+    mode: ast.expr | None = keyword_mode if keyword_mode is not None else positional_mode
+    if mode is None:
+        return set()
+    if (
+        isinstance(mode, ast.Constant)
+        and isinstance(mode.value, str)
+        and not any(character in mode.value for character in "awx+")
+    ):
+        return set()
+    return _referenced_names(target)
+
+
+def _python_foreign_write_lines(text: str, annotated_lines: set[int]) -> set[int]:
+    """Return annotated source lines whose foreign path can reach a mutation."""
+
+    if not annotated_lines:
+        return set()
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return set(annotated_lines)
+
+    name_origins: dict[str, set[int]] = {}
+    assignments = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr))
+    ]
+    for node in assignments:
+        if node.lineno in annotated_lines:
+            for name in _assigned_names(node):
+                name_origins.setdefault(name, set()).add(node.lineno)
+
+    changed = True
+    while changed:
+        changed = False
+        for node in assignments:
+            origins: set[int] = set()
+            for name in _referenced_names(_assignment_value(node)):
+                origins.update(name_origins.get(name, set()))
+            if not origins:
+                continue
+            for name in _assigned_names(node):
+                current = name_origins.setdefault(name, set())
+                before = len(current)
+                current.update(origins)
+                changed = changed or len(current) != before
+
+    unsafe: set[int] = set()
+    for call in (node for node in ast.walk(tree) if isinstance(node, ast.Call)):
+        call_name = _call_name(call)
+        if call.lineno in annotated_lines and call_name in _MUTATING_METHODS | _MUTATING_CALLS:
+            unsafe.add(call.lineno)
+
+        referenced: set[str] = set()
+        if isinstance(call.func, ast.Attribute) and call.func.attr in _MUTATING_METHODS:
+            referenced.update(_referenced_names(call.func.value))
+        if call_name in _MUTATING_CALLS:
+            for argument in call.args:
+                referenced.update(_referenced_names(argument))
+            for keyword in call.keywords:
+                referenced.update(_referenced_names(keyword.value))
+        referenced.update(_write_open_references(call))
+        for name in referenced:
+            unsafe.update(name_origins.get(name, set()))
+    return unsafe
+
+
 def _annotation_semantically_safe(
     payload: Mapping[str, Any],
     line: str,
+    *,
+    python_write: bool = False,
 ) -> bool:
     classification = payload.get("class")
     if classification == "foreign-runtime-input":
-        return _MUTATING_CONTEXT_RE.search(line) is None
-    return not (classification == "historical" and _MUTATING_CONTEXT_RE.search(line) is not None)
+        return not python_write and _MUTATING_CONTEXT_RE.search(line) is None
+    if classification == "historical":
+        return (
+            _MUTATING_CONTEXT_RE.search(line) is None
+            and _HISTORICAL_IMPERATIVE_RE.search(line) is None
+        )
+    return True
 
 
 def _finding(
@@ -302,6 +507,14 @@ def scan_text(
     lines = text.splitlines()
     findings: list[dict[str, Any]] = []
     consumed_annotations: set[int] = set()
+    foreign_code_lines = {
+        index + 2
+        for index, line in enumerate(lines[:-1])
+        if (_annotation_payload(line)[0] or {}).get("class") == "foreign-runtime-input"
+    }
+    python_write_lines = (
+        _python_foreign_write_lines(text, foreign_code_lines) if path.endswith(".py") else set()
+    )
 
     for index, line in enumerate(lines):
         matched_rules = [rule for rule in RULES if rule.pattern.search(line)]
@@ -334,7 +547,11 @@ def scan_text(
             annotation_error = parse_error
             if annotation is not None:
                 annotation_error = _validate_annotation(annotation, rule, capabilities)
-                if annotation_error is None and not _annotation_semantically_safe(annotation, line):
+                if annotation_error is None and not _annotation_semantically_safe(
+                    annotation,
+                    line,
+                    python_write=index + 1 in python_write_lines,
+                ):
                     annotation_error = "annotation-conflicts-with-executable-write"
             if annotation is None or annotation_error is not None:
                 findings.append(

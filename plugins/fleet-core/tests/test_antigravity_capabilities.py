@@ -190,6 +190,8 @@ def test_optional_fallback_blocks_when_fallback_result_is_absent() -> None:
     receipt["results"] = [
         result for result in receipt["results"] if result["id"] != "agy.sequential.isolation"
     ]
+    receipt["requested_facts"].pop("sequential-isolation")
+    receipt["observed_facts"].pop("sequential-isolation")
     evaluation = CAPS.evaluate_for_consumer(receipt, catalog, "saga.ideate")
     assert evaluation["state"] == "blocked"
 
@@ -253,6 +255,75 @@ def test_receipt_rejects_credential_shaped_promotable_values_without_echo() -> N
     errors = CAPS.validate_receipt(receipt, catalog)
     assert errors
     assert "gpt-secret-key" not in json.dumps(errors)
+
+
+@pytest.mark.parametrize(
+    "credential_shape",
+    [
+        "gpt-ghp_abcdefghijklmnopqrstuvwxyz123456",
+        "gpt-github_pat_abcdefghijklmnopqrstuvwxyz",
+        "gpt-sk-abcdefghijklmnopqrstuvwxyz",
+        "gpt-xoxb-abcdefghijklmnopqrstuvwxyz",
+        "gpt-AKIAABCDEFGHIJKLMNOP",
+        "gpt-eyJabcdefghijk.eyJabcdefghijk.abcdefghijk",
+    ],
+)
+def test_receipt_rejects_common_credential_shapes_without_echo(
+    credential_shape: str,
+) -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    receipt["requested_facts"]["model-selection"] = credential_shape
+    receipt["observed_facts"]["model-selection"] = credential_shape
+
+    errors = CAPS.validate_receipt(receipt, catalog)
+
+    assert errors
+    assert credential_shape not in json.dumps(errors)
+
+
+@pytest.mark.parametrize("state", ["unknown", "unavailable"])
+def test_nonobserved_controlled_result_rejects_observed_fact(state: str) -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog, agent_state=state)
+    receipt["observed_facts"]["agent-execution"] = True
+
+    errors = CAPS.validate_receipt(receipt, catalog)
+
+    assert any("must not retain an observed fact" in error for error in errors)
+
+
+def test_controlled_facts_require_matching_keys_and_present_results() -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    receipt["observed_facts"].pop("agent-execution")
+    assert any(
+        "fact identifiers must match" in error for error in CAPS.validate_receipt(receipt, catalog)
+    )
+
+    receipt = _receipt(catalog)
+    receipt["results"] = [
+        result for result in receipt["results"] if result["id"] != "agy.agent.execution"
+    ]
+    assert any(
+        "present controlled result" in error for error in CAPS.validate_receipt(receipt, catalog)
+    )
+
+
+@pytest.mark.parametrize(("requested", "observed"), [(False, False), (False, True)])
+def test_false_boolean_request_never_authorizes_receipt(
+    requested: bool,
+    observed: bool,
+) -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    receipt["requested_facts"]["agent-execution"] = requested
+    receipt["observed_facts"]["agent-execution"] = observed
+    receipt["results"][0]["state"] = "passed" if requested == observed else "failed"
+
+    errors = CAPS.validate_receipt(receipt, catalog)
+
+    assert any("boolean capability requests must be true" in error for error in errors)
 
 
 def test_bounded_receipt_loader_rejects_oversized_input(tmp_path: Path) -> None:
@@ -407,6 +478,37 @@ def test_controlled_evidence_derives_state_and_rejects_submitted_state() -> None
     assert fabricated.state == "unknown"
 
 
+@pytest.mark.parametrize(
+    ("requested", "observed", "expected_state"),
+    [
+        (True, True, "passed"),
+        (True, False, "failed"),
+        (False, False, "unknown"),
+        (False, True, "unknown"),
+    ],
+)
+def test_controlled_boolean_probe_requires_an_affirmative_request(
+    requested: bool,
+    observed: bool,
+    expected_state: str,
+) -> None:
+    outcome = PROBES.execute_probe(
+        "controlled-agent-execution",
+        observe_host=True,
+        controlled_evidence={
+            "controlled-agent-execution": {
+                "requested": requested,
+                "observed": observed,
+            }
+        },
+    )
+
+    assert outcome.state == expected_state
+    if requested is False:
+        assert outcome.value is None
+        assert outcome.evidence == ()
+
+
 def test_plugin_link_probe_requires_every_expected_identity_and_target(
     tmp_path: Path,
 ) -> None:
@@ -507,6 +609,69 @@ def test_local_diagnostic_write_failure_leaves_no_partial(
     monkeypatch.setattr(DIAGNOSTICS.tempfile, "NamedTemporaryFile", deny)
     with pytest.raises(DIAGNOSTICS.DiagnosticError, match="atomically"):
         DIAGNOSTICS.write_local_diagnostic(tmp_path, "denied", {"stdout": "raw"})
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_local_diagnostic_retention_expires_and_bounds_files(tmp_path: Path) -> None:
+    root = tmp_path / ".gemini" / "saga" / "capability-doctor"
+    root.mkdir(parents=True)
+    old = root / "old.json"
+    first = root / "first.json"
+    second = root / "second.json"
+    for path in (old, first, second):
+        path.write_text("{}")
+    os.utime(old, (100.0, 100.0))
+    os.utime(first, (901.0, 901.0))
+    os.utime(second, (902.0, 902.0))
+
+    latest = DIAGNOSTICS.write_local_diagnostic(
+        tmp_path,
+        "latest",
+        {"stdout": "bounded"},
+        retention_seconds=100,
+        max_files=2,
+        now=lambda: 1000.0,
+    )
+
+    assert latest.is_file()
+    assert old.exists() is False
+    assert first.exists() is False
+    assert {path.name for path in root.glob("*.json")} == {"second.json", "latest.json"}
+
+
+def test_local_diagnostic_purge_removes_only_bounded_json_files(tmp_path: Path) -> None:
+    root = tmp_path / ".gemini" / "saga" / "capability-doctor"
+    root.mkdir(parents=True)
+    (root / "one.json").write_text("{}")
+    (root / "two.json").write_text("{}")
+    preserved = root / "operator-note.txt"
+    preserved.write_text("keep")
+
+    assert DIAGNOSTICS.purge_local_diagnostics(tmp_path) == 2
+    assert list(root.glob("*.json")) == []
+    assert preserved.read_text() == "keep"
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "message"),
+    [
+        ("retention_seconds", 0, "retention"),
+        ("max_files", 0, "file limit"),
+    ],
+)
+def test_local_diagnostic_retention_bounds_fail_closed(
+    tmp_path: Path,
+    keyword: str,
+    value: int,
+    message: str,
+) -> None:
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match=message):
+        DIAGNOSTICS.write_local_diagnostic(
+            tmp_path,
+            "latest",
+            {},
+            **{keyword: value},
+        )
     assert list(tmp_path.rglob("*.json")) == []
 
 

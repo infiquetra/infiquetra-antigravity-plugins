@@ -300,6 +300,10 @@ def _controlled_outcome(
         valid_types = isinstance(requested, bool) and isinstance(observed, bool)
     if not valid_types:
         return ProbeOutcome("unknown", value={"requested": requested, "observed": observed})
+    if method not in {"controlled-model-selection", "controlled-effort-selection"} and (
+        requested is not True
+    ):
+        return ProbeOutcome("unknown")
     state = "passed" if requested == observed else "failed"
     return ProbeOutcome(
         state,

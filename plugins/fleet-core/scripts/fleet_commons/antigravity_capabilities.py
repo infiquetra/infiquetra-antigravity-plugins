@@ -74,7 +74,10 @@ _MODEL_RE = re.compile(
 _EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 _HOSTNAME_SUFFIXES = (".local", ".lan", ".home", ".internal")
 _CREDENTIAL_SHAPE_RE = re.compile(
-    r"(?i)(?:api[_-]?key|access[_-]?token|auth[_-]?token|bearer[ _-]|password|secret)"
+    r"(?i)(?:api[_-]?key|access[_-]?token|auth[_-]?token|authorization|bearer[ _-]|"
+    r"password|secret|ghp_|github_pat_|glpat-|xox[baprs]-|npm_|pypi-AgEI|"
+    r"sk-[A-Za-z0-9]|A(?:KI|SI)A[0-9A-Z]{8,}|"
+    r"eyJ[A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,})"
 )
 CAPABILITY_FACT_IDS = {
     "agy.model.selection": "model-selection",
@@ -85,6 +88,18 @@ CAPABILITY_FACT_IDS = {
     "agy.sandbox.isolation": "sandbox-isolation",
     "agy.sequential.isolation": "sequential-isolation",
 }
+FACT_CAPABILITY_IDS = {
+    fact_id: capability_id for capability_id, fact_id in CAPABILITY_FACT_IDS.items()
+}
+BOOLEAN_FACT_IDS = frozenset(
+    {
+        "agent-execution",
+        "conversation-resume",
+        "plan-mode",
+        "sandbox-isolation",
+        "sequential-isolation",
+    }
+)
 
 _CATALOG_KEYS = frozenset({"catalog_schema", "receipt_schema", "catalog_revision", "capabilities"})
 _CAPABILITY_KEYS = frozenset(
@@ -458,7 +473,13 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
             requested = requested_facts.get(fact_id) if isinstance(requested_facts, dict) else None
             observed = observed_facts.get(fact_id) if isinstance(observed_facts, dict) else None
             state = result.get("state")
-            if state == "passed" and (requested is None or requested != observed):
+            if fact_id in BOOLEAN_FACT_IDS and requested is not None and requested is not True:
+                errors.append(f"{path}.state: boolean capability requests must be true")
+            if state == "passed" and (
+                requested is None
+                or requested != observed
+                or (fact_id in BOOLEAN_FACT_IDS and observed is not True)
+            ):
                 errors.append(
                     f"{path}.state: passed result requires matching requested and observed facts"
                 )
@@ -468,8 +489,28 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
                 errors.append(
                     f"{path}.state: failed result requires differing requested and observed facts"
                 )
-            elif state in FALLBACK_STATES and evidence:
-                errors.append(f"{path}.evidence: non-observed result must not claim evidence")
+            elif state in FALLBACK_STATES:
+                if evidence:
+                    errors.append(f"{path}.evidence: non-observed result must not claim evidence")
+                if observed is not None:
+                    errors.append(
+                        f"{path}.state: non-observed result must not retain an observed fact"
+                    )
+
+    requested_facts = receipt.get("requested_facts")
+    observed_facts = receipt.get("observed_facts")
+    if isinstance(requested_facts, dict) and isinstance(observed_facts, dict):
+        if set(requested_facts) != set(observed_facts):
+            errors.append("receipt requested and observed fact identifiers must match")
+        result_capabilities = {
+            result.get("id")
+            for result in cast(Sequence[object], results)
+            if isinstance(result, dict)
+        }
+        for fact_id in set(requested_facts) | set(observed_facts):
+            capability_id = FACT_CAPABILITY_IDS.get(fact_id)
+            if capability_id is not None and capability_id not in result_capabilities:
+                errors.append("receipt facts must correspond to a present controlled result")
     return errors
 
 

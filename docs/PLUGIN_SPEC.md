@@ -85,4 +85,10 @@ phase complete.
 
 Rich local diagnostics live only under the ignored
 `.gemini/saga/capability-doctor/` root. A local diagnostic is not a promoted
-receipt and is rejected at every consumer gate.
+receipt and is rejected at every consumer gate. Ignoring the directory prevents
+normal source-control promotion; it does not make the contents non-sensitive.
+Diagnostic writers expire JSON files after seven days and retain at most 20 by
+default. Call
+`antigravity_diagnostics.purge_local_diagnostics(repository_root)` for immediate
+purge. Filesystem snapshots and repository backups require their own retention
+policy.

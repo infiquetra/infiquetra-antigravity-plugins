@@ -8,7 +8,8 @@ import os
 import re
 import sys
 import tempfile
-from collections.abc import Mapping
+import time
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from functools import lru_cache
 from pathlib import Path
@@ -18,6 +19,10 @@ from typing import Any
 LOCAL_DIAGNOSTIC_SCHEMA = "antigravity.capability-diagnostic.local.v1"
 DEFAULT_DIAGNOSTIC_ROOT = Path(".gemini/saga/capability-doctor")
 MAX_DIAGNOSTIC_BYTES = 256 * 1024
+DEFAULT_RETENTION_SECONDS = 7 * 24 * 60 * 60
+MAX_RETENTION_SECONDS = 30 * 24 * 60 * 60
+DEFAULT_MAX_DIAGNOSTIC_FILES = 20
+MAX_DIAGNOSTIC_FILES = 100
 _SAFE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,79}$")
 
 
@@ -43,18 +48,77 @@ def _safe_name(name: str) -> str:
     return name
 
 
+def _diagnostic_files(target_root: Path) -> list[Path]:
+    try:
+        return [
+            path for path in target_root.glob("*.json") if path.is_file() and not path.is_symlink()
+        ]
+    except OSError as exc:
+        raise DiagnosticError("could not inspect local diagnostic retention") from exc
+
+
+def purge_local_diagnostics(repo_root: Path | str) -> int:
+    """Delete all bounded local diagnostic JSON files and return the count."""
+
+    repository = Path(repo_root).resolve()
+    target_root = (repository / DEFAULT_DIAGNOSTIC_ROOT).resolve()
+    if not target_root.is_relative_to(repository):
+        raise DiagnosticError("diagnostic state root escapes the repository")
+    removed = 0
+    for path in _diagnostic_files(target_root):
+        try:
+            path.unlink()
+        except OSError as exc:
+            raise DiagnosticError("could not purge local diagnostics") from exc
+        removed += 1
+    return removed
+
+
+def _prune_local_diagnostics(
+    target_root: Path,
+    *,
+    now: float,
+    retention_seconds: int,
+    max_files: int,
+) -> None:
+    cutoff = now - retention_seconds
+    retained: list[tuple[float, Path]] = []
+    for path in _diagnostic_files(target_root):
+        try:
+            modified = path.stat().st_mtime
+            if modified < cutoff:
+                path.unlink()
+            else:
+                retained.append((modified, path))
+        except OSError as exc:
+            raise DiagnosticError("could not enforce local diagnostic retention") from exc
+    retained.sort(key=lambda item: (item[0], item[1].name), reverse=True)
+    for _modified, path in retained[max(max_files - 1, 0) :]:
+        try:
+            path.unlink()
+        except OSError as exc:
+            raise DiagnosticError("could not enforce local diagnostic retention") from exc
+
+
 def write_local_diagnostic(
     repo_root: Path | str,
     name: str,
     payload: Mapping[str, Any],
     *,
     max_bytes: int = MAX_DIAGNOSTIC_BYTES,
+    retention_seconds: int = DEFAULT_RETENTION_SECONDS,
+    max_files: int = DEFAULT_MAX_DIAGNOSTIC_FILES,
+    now: Callable[[], float] = time.time,
 ) -> Path:
-    """Atomically write rich local evidence under an injected ignored state root."""
+    """Atomically write rich local evidence with bounded local retention."""
 
     safe_name = _safe_name(name)
     if max_bytes < 1 or max_bytes > MAX_DIAGNOSTIC_BYTES:
         raise DiagnosticError("diagnostic byte limit is outside the allowed bound")
+    if retention_seconds < 1 or retention_seconds > MAX_RETENTION_SECONDS:
+        raise DiagnosticError("diagnostic retention is outside the allowed bound")
+    if max_files < 1 or max_files > MAX_DIAGNOSTIC_FILES:
+        raise DiagnosticError("diagnostic file limit is outside the allowed bound")
     repository = Path(repo_root).resolve()
     target_root = (repository / DEFAULT_DIAGNOSTIC_ROOT).resolve()
     if not target_root.is_relative_to(repository):
@@ -69,6 +133,12 @@ def write_local_diagnostic(
         raise DiagnosticError("diagnostic payload exceeds the configured byte limit")
 
     target_root.mkdir(parents=True, exist_ok=True)
+    _prune_local_diagnostics(
+        target_root,
+        now=now(),
+        retention_seconds=retention_seconds,
+        max_files=max_files,
+    )
     target = target_root / f"{safe_name}.json"
     temporary_name: str | None = None
     try:

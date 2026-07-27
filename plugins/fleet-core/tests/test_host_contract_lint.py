@@ -92,6 +92,62 @@ def test_foreign_runtime_requires_read_only_and_does_not_hide_write() -> None:
     assert findings[1]["unresolved"] is True
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "target.write_text('state')",
+        "shutil.copy(target, destination)",
+        "shutil.move(target, destination)",
+        "os.remove(target)",
+        "shutil.rmtree(target)",
+        "target.chmod(0o600)",
+        "open(target, 'w')",
+        "target.open(mode='a')",
+    ],
+)
+def test_foreign_runtime_annotation_cannot_hide_later_python_mutation(
+    mutation: str,
+) -> None:
+    text = (
+        '# antigravity-host-contract: {"class":"foreign-runtime-input",'
+        '"rule":"AGHC001","reason":"read migration input only",'
+        '"revisit":"remove after migration window","access":"read-only"}\n'
+        'target = repo_root / ".claude" / "saga" / "state.json"\n'
+        f"{mutation}\n"
+    )
+
+    findings = LINT.scan_text(
+        "plugins/saga/hooks/example.py",
+        text,
+        known_capabilities=_known_capabilities(),
+    )
+
+    assert len(findings) == 1
+    assert findings[0]["classification"] == "active"
+    assert findings[0]["reason"] == "annotation-conflicts-with-executable-write"
+    assert findings[0]["unresolved"] is True
+
+
+def test_foreign_runtime_annotation_tracks_assignment_aliases() -> None:
+    text = (
+        '# antigravity-host-contract: {"class":"foreign-runtime-input",'
+        '"rule":"AGHC001","reason":"read migration input only",'
+        '"revisit":"remove after migration window","access":"read-only"}\n'
+        'source = repo_root / ".claude" / "saga" / "state.json"\n'
+        "alias = source\n"
+        "alias.unlink()\n"
+    )
+
+    findings = LINT.scan_text(
+        "plugins/saga/hooks/example.py",
+        text,
+        known_capabilities=_known_capabilities(),
+    )
+
+    assert findings[0]["unresolved"] is True
+    assert findings[0]["reason"] == "annotation-conflicts-with-executable-write"
+
+
 def test_constructed_claude_path_is_an_active_violation() -> None:
     findings = LINT.scan_text(
         "plugins/saga/scripts/example.py",
@@ -163,6 +219,24 @@ def test_exemption_abuse_fails_closed(annotation: str) -> None:
     assert findings[0]["unresolved"] is True
 
 
+def test_historical_annotation_cannot_hide_an_imperative_workflow() -> None:
+    text = (
+        '<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003",'
+        '"reason":"legacy workflow example","revisit":"remove with legacy notes"} -->\n'
+        'Run `Workflow("source")` now.'
+    )
+
+    findings = LINT.scan_text(
+        "plugins/saga/skills/example/SKILL.md",
+        text,
+        known_capabilities=_known_capabilities(),
+    )
+
+    assert findings[0]["classification"] == "active"
+    assert findings[0]["reason"] == "annotation-conflicts-with-executable-write"
+    assert findings[0]["unresolved"] is True
+
+
 def test_nonadjacent_annotation_is_an_unresolved_finding() -> None:
     text = (
         '<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003",'
@@ -217,21 +291,58 @@ def test_selector_abuse_fails_before_scanning(mutation) -> None:
     assert LINT.validate_selector(selector, REPO_ROOT)
 
 
+def test_selector_restricts_comparison_roots_to_controlled_corpora() -> None:
+    selector = _selector()
+    selector["comparison_roots"] = ["plugins/saga"]
+
+    errors = LINT.validate_selector(selector, REPO_ROOT)
+
+    assert any("controlled allowlist" in error for error in errors)
+
+
+def test_selector_rejects_active_overlap_with_comparison_root() -> None:
+    selector = _selector()
+    selector["active_globs"].append("docs/**/*.md")
+
+    errors = LINT.validate_selector(selector, REPO_ROOT)
+
+    assert any("active selection overlaps comparison root" in error for error in errors)
+
+
 def test_selector_rejects_symlinked_exact_path(tmp_path: Path) -> None:
     outside = tmp_path.parent / f"{tmp_path.name}-outside.md"
     outside.write_text("outside")
     linked = tmp_path / "linked.md"
     linked.symlink_to(outside)
-    (tmp_path / "comparison").mkdir()
+    (tmp_path / "docs").mkdir()
     selector = {
         "schema": LINT.SELECTOR_SCHEMA,
         "active_globs": ["*.md"],
         "exact_paths": ["linked.md"],
-        "comparison_roots": ["comparison"],
+        "comparison_roots": ["docs"],
         "digest_inputs": list(LINT._SELECTOR_DIGEST_INPUTS),
     }
     errors = LINT.validate_selector(selector, tmp_path)
     assert any("symlinks are not allowed" in error for error in errors)
+
+
+def test_selector_rejects_symlinked_comparison_root(tmp_path: Path) -> None:
+    active = tmp_path / "active.md"
+    active.write_text("active")
+    outside = tmp_path.parent / f"{tmp_path.name}-comparison"
+    outside.mkdir()
+    (tmp_path / "tests").symlink_to(outside, target_is_directory=True)
+    selector = {
+        "schema": LINT.SELECTOR_SCHEMA,
+        "active_globs": ["*.md"],
+        "exact_paths": ["active.md"],
+        "comparison_roots": ["tests"],
+        "digest_inputs": list(LINT._SELECTOR_DIGEST_INPUTS),
+    }
+
+    errors = LINT.validate_selector(selector, tmp_path)
+
+    assert any("comparison_roots: symlinks are not allowed" in error for error in errors)
 
 
 def test_lint_receipt_is_strict_excerpt_free_and_digest_bound() -> None:

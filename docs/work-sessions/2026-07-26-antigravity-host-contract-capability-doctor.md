@@ -249,3 +249,42 @@ Checks:
 Next step: commit the remediation, rerun the exact privacy and adversarial
 reviewers against the new SHA, and resolve any remaining findings before the
 Saga code-review gate.
+
+## Phase 7 — final-review boundary hardening
+
+The second privacy and adversarial reviews found five remaining abuse paths.
+All were fixed at the shared contract boundary:
+
+- common credential shapes, including GitHub, OpenAI, AWS, Slack, npm, PyPI,
+  and JWT forms, are rejected from promotable values without echo;
+- controlled facts now require matching requested/observed identifiers and a
+  present controlled result; unknown or unavailable results cannot retain an
+  observed fact;
+- boolean capability authorization requires an affirmative request and
+  affirmative observation, so false/false cannot pass;
+- ignored local diagnostics expire after seven days, retain at most 20 JSON
+  files by default, and expose an explicit bounded purge API;
+- comparison roots are limited to the controlled `docs` and `tests` corpora,
+  cannot be symlinks, and cannot overlap active selection;
+- read-only foreign annotations are checked with Python AST alias flow for
+  later writes, copies, moves, deletes, permission changes, and write-mode
+  opens;
+- historical annotations cannot suppress imperative workflow instructions.
+
+Negative coverage includes the full boolean request/observation matrix,
+orphaned and mismatched facts, non-observed facts, token-shaped model values,
+retention expiry and file-count pruning, explicit purge, comparison-root
+reclassification, cross-line mutation aliases, and imperative historical text.
+
+Checks:
+
+- Focused capability, lint, and doctor tests — 121 passed.
+- Full pytest — 1171 passed, one skipped.
+- Ruff lint and format checks — passed across 165 files.
+- Mypy — passed across 164 source files.
+- Bandit medium/high scan excluding tests — passed.
+- Canonical doctor — passed with zero unresolved host-contract findings.
+- `git diff --check` — passed.
+
+Next step: commit this boundary hardening and rerun the exact privacy and
+adversarial reviewers against the resulting SHA.

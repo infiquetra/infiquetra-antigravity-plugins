@@ -7,5 +7,12 @@
   "runtime_roots": ["plugin-install", "saga-state"],
   "requested_facts": {"model-selection": "gemini-3.1-pro"},
   "observed_facts": {"model-selection": "gemini-3.1-pro"},
-  "results": []
+  "results": [
+    {
+      "id": "agy.model.selection",
+      "probe_revision": 1,
+      "state": "passed",
+      "evidence": ["model-selection-proof"]
+    }
+  ]
 }
