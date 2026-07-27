@@ -264,6 +264,12 @@ def test_dotted_safe_values_are_accepted() -> None:
         ("agy_cli_version", "1.jeffs-macbook-pro.local"),
         ("agy_cli_version", "1.jeffs-macbook-pro"),
         ("agy_cli_version", "192.168.1.42"),
+        ("agy_cli_version", "192.168.001.042"),
+        ("agy_cli_version", "010.000.000.001"),
+        ("agy_cli_version", "192.168.1.42-rc1"),
+        ("agy_cli_version", "127.0.0.1-dev"),
+        ("agy_cli_version", "10.0.0.7-dev2"),
+        ("agy_cli_version", "192.168.1.999"),
         ("antigravity_host_version", "2.ghp_examplecredential.local"),
         ("antigravity_host_version", "2001:db8::1"),
     ],
@@ -297,6 +303,12 @@ def test_catalog_loader_does_not_echo_private_paths(tmp_path: Path) -> None:
     [
         "agy 1.jeffs-macbook-pro\n",
         "agy 192.168.1.42\n",
+        "agy 192.168.001.042\n",
+        "agy 010.000.000.001\n",
+        "agy 192.168.1.42-rc1\n",
+        "agy 127.0.0.1-dev\n",
+        "agy 10.0.0.7-dev2\n",
+        "agy 192.168.1.999\n",
     ],
 )
 def test_probe_version_normalization_rejects_private_metadata(
@@ -309,6 +321,10 @@ def test_probe_version_normalization_rejects_private_metadata(
 
     assert outcome.state == "unknown"
     assert outcome.value is None
+
+    host_outcome = PROBES._host_version_outcome(lambda: private_output.strip()[4:], "host-version")
+    assert host_outcome.state == "unknown"
+    assert host_outcome.value is None
 
 
 def test_receipt_rejects_credential_shaped_promotable_values_without_echo() -> None:

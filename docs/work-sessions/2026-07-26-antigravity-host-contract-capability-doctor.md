@@ -422,3 +422,38 @@ Checks:
 
 Next step: commit the minimized evidence contract and run the final two
 immutable-SHA reviews before the Saga code-review gate.
+
+## Phase 11 — exceptional privacy paths
+
+The final privacy review of `b147778` reproduced two narrow promotion leaks:
+
+- IPv4-shaped four-component values with leading-zero octets or an allowed
+  prerelease suffix could pass as normalized versions;
+- invalid UTF-8 or unreadable selected files could place a raw
+  repository-relative path in doctor errors.
+
+The adversarial review independently confirmed those defects and identified
+that declared comparison roots were validated but never traversed, contrary to
+the approved plan's requirement to preserve matched comparison evidence.
+
+The remediation stays inside the existing validator and linter. Both receipt
+validation and probe normalization now reject all ambiguous four-component
+dotted-decimal cores, including leading-zero, out-of-range, and prerelease
+variants. Repository scan failures now use stable non-echo messages while
+retaining the original exception through chaining. The scanner traverses only
+the declared `docs` and `tests` roots and a closed set of text suffixes,
+classifying their 82 current matches as non-active comparison evidence.
+
+Checks:
+
+- Focused capability, host-contract, and doctor suites — 188 passed.
+- Full pytest — 1238 passed, one skipped.
+- Ruff lint and format checks — passed across 165 files.
+- Mypy — passed for the changed fleet-core and doctor surfaces.
+- Bandit medium/high scan excluding tests — passed.
+- Canonical doctor — capability, catalog, host contract, and receipt privacy
+  passed; 95 classified findings, zero errors, and zero unresolved findings.
+- `git diff --check` — passed.
+
+Next step: commit the exceptional-path closure and rerun both immutable-SHA
+reviewers before the Saga code-review gate.

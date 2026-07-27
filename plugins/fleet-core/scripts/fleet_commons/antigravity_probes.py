@@ -76,7 +76,9 @@ def _is_ip_address(value: str) -> bool:
     try:
         ipaddress.ip_address(value)
     except ValueError:
-        return False
+        numeric_core = value.split("-", 1)[0]
+        parts = numeric_core.split(".")
+        return len(parts) == 4 and all(part.isdecimal() for part in parts)
     return True
 
 

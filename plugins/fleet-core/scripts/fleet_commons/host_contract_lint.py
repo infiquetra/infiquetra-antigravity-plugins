@@ -34,6 +34,9 @@ _FINDING_KEYS = frozenset(
     }
 )
 _RECEIPT_KEYS = frozenset({"schema", "selector_digest", "findings", "unresolved_count"})
+_COMPARISON_SUFFIXES = frozenset(
+    {".conf", ".json", ".md", ".py", ".sh", ".toml", ".txt", ".yaml", ".yml"}
+)
 REQUIRED_ACTIVE_GLOBS = (
     "plugins/saga/commands/**/*.md",
     "plugins/saga/skills/**/*.md",
@@ -351,6 +354,26 @@ def selected_active_paths(repo_root: Path | str, selector: Mapping[str, Any]) ->
     return selected
 
 
+def selected_comparison_paths(repo_root: Path | str, selector: Mapping[str, Any]) -> list[Path]:
+    root = Path(repo_root).resolve()
+    selected: list[Path] = []
+    for value in selector["comparison_roots"]:
+        for path in sorted((root / value).rglob("*")):
+            if path.is_symlink():
+                raise HostContractError("comparison host-contract path must not be a symlink")
+            if not path.is_file() or path.suffix.lower() not in _COMPARISON_SUFFIXES:
+                continue
+            try:
+                resolved = path.resolve(strict=True)
+                resolved.relative_to(root)
+            except (FileNotFoundError, OSError, ValueError) as exc:
+                raise HostContractError(
+                    "comparison host-contract path escapes the repository"
+                ) from exc
+            selected.append(resolved)
+    return selected
+
+
 def _annotation_payload(line: str) -> tuple[dict[str, Any] | None, str | None]:
     match = _MD_ANNOTATION_RE.fullmatch(line) or _PY_ANNOTATION_RE.fullmatch(line)
     if match is None:
@@ -568,7 +591,11 @@ def scan_repository(
 
     root = Path(repo_root).resolve()
     findings: list[dict[str, Any]] = []
-    for path in selected_active_paths(root, selector):
+    selected_paths = [
+        *selected_active_paths(root, selector),
+        *selected_comparison_paths(root, selector),
+    ]
+    for path in selected_paths:
         relative = path.relative_to(root).as_posix()
         try:
             if path.stat().st_size > MAX_SELECTED_FILE_BYTES:
@@ -578,9 +605,9 @@ def scan_repository(
                 raise HostContractError("selected host-contract path exceeds the size limit")
             text = raw.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise HostContractError(f"selected path is not valid UTF-8: {relative}") from exc
+            raise HostContractError("selected host-contract path is not valid UTF-8") from exc
         except OSError as exc:
-            raise HostContractError(f"could not read selected path {relative}") from exc
+            raise HostContractError("could not read selected host-contract path") from exc
         default = "historical" if _is_comparison_path(relative, selector) else "active"
         findings.extend(
             scan_text(

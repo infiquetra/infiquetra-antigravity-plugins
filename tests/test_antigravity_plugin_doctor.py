@@ -339,6 +339,30 @@ def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Pat
     assert '"rule": "AGHC002"' in encoded
 
 
+def test_host_contract_read_error_does_not_echo_private_path(tmp_path: Path, capsys) -> None:
+    selector = contract_repo(tmp_path)
+    private_path = tmp_path / "plugins/saga/skills/ghp_examplecredential/SKILL.md"
+    private_path.parent.mkdir(parents=True, exist_ok=True)
+    private_path.write_bytes(b"\xff")
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        catalog=CATALOG,
+        selector=selector,
+    )
+    rendered = json.dumps(validate_plugins.asdict(result))
+
+    assert result.ok is False
+    assert result.host_contract.status == "failed"
+    assert "ghp_examplecredential" not in rendered
+    assert private_path.as_posix() not in rendered
+    validate_plugins.print_human(result)
+    human = capsys.readouterr().out
+    assert "ghp_examplecredential" not in human
+    assert private_path.as_posix() not in human
+
+
 def test_unsafe_supplied_receipt_fails_without_echoing_private_value(
     tmp_path: Path,
 ) -> None:

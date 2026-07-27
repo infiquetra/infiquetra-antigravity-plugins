@@ -369,7 +369,9 @@ def _validate_version(value: object, path: str, errors: list[str]) -> None:
         try:
             ipaddress.ip_address(value)
         except ValueError:
-            pass
+            numeric_core = value.split("-", 1)[0]
+            parts = numeric_core.split(".")
+            is_ip_address = len(parts) == 4 and all(part.isdecimal() for part in parts)
         else:
             is_ip_address = True
     if value is not None and (

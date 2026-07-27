@@ -82,6 +82,23 @@ def test_only_reviewed_historical_lines_are_allowlisted() -> None:
     assert not any(finding["unresolved"] for finding in reviewed)
 
 
+def test_repository_scan_classifies_comparison_matches(tmp_path: Path) -> None:
+    for relative in LINT.REQUIRED_EXACT_PATHS:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# Clean\n")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs/history.md").write_text('Run `Workflow("source")`.\n')
+    (tmp_path / "tests").mkdir()
+
+    receipt = LINT.scan_repository(tmp_path, _selector())
+
+    assert receipt["unresolved_count"] == 0
+    assert len(receipt["findings"]) == 1
+    assert receipt["findings"][0]["classification"] == "historical"
+    assert receipt["findings"][0]["reason"] == "comparison-corpus"
+
+
 def test_markdown_quote_is_active_without_lineage_annotation() -> None:
     findings = LINT.scan_text(
         "plugins/saga/references/example.md",
@@ -600,3 +617,36 @@ def test_selector_loader_does_not_echo_private_paths(tmp_path: Path) -> None:
 
     assert "ghp_examplecredential" not in str(captured.value)
     assert str(tmp_path) not in str(captured.value)
+
+
+def test_repository_scan_read_error_does_not_echo_private_path(tmp_path: Path) -> None:
+    private_path = tmp_path / "plugins/saga/skills/ghp_examplecredential/SKILL.md"
+    private_path.parent.mkdir(parents=True)
+    private_path.write_bytes(b"\xff")
+    selector = _selector()
+
+    with pytest.raises(LINT.HostContractError) as captured:
+        LINT.scan_repository(tmp_path, selector)
+
+    assert "ghp_examplecredential" not in str(captured.value)
+    assert private_path.as_posix() not in str(captured.value)
+
+
+def test_repository_scan_os_error_does_not_echo_private_path(tmp_path: Path, monkeypatch) -> None:
+    private_path = tmp_path / "plugins/saga/skills/ghp_examplecredential/SKILL.md"
+    private_path.parent.mkdir(parents=True)
+    private_path.write_text("# Clean\n")
+    original_read_bytes = Path.read_bytes
+
+    def fail_private_read(path: Path) -> bytes:
+        if path == private_path:
+            raise OSError("private read failure")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", fail_private_read)
+
+    with pytest.raises(LINT.HostContractError) as captured:
+        LINT.scan_repository(tmp_path, _selector())
+
+    assert "ghp_examplecredential" not in str(captured.value)
+    assert private_path.as_posix() not in str(captured.value)
