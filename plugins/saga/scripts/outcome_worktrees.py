@@ -95,8 +95,8 @@ def worktrees_root(repo_root: Path) -> Path:
 
 def worktree_path(repo_root: Path, outcome_id: str, subplot_id: str) -> Path:
     """The deterministic on-disk path for a sub-outcome's durable worktree (R13 return address)."""
-    o = outcome_store._safe_name(outcome_id, what="outcome_id")
-    s = outcome_store._safe_name(subplot_id, what="subplot_id")
+    o = str(outcome_store._safe_name(outcome_id, what="outcome_id"))
+    s = str(outcome_store._safe_name(subplot_id, what="subplot_id"))
     return worktrees_root(repo_root) / o / s
 
 
@@ -202,12 +202,12 @@ def ensure_worktree(
     cap: int = WORKTREE_CAP,
     at: str = "",
 ) -> WorktreeResult:
-    """Ensure exactly one durable worktree for a sub-outcome node (R15). Idempotent + cap-bounded.
+    """Reconcile requested worktree state for a sub-outcome node.
 
     Only ``is_outcome`` nodes (``child_spec_ref`` set) are managed — a plain leaf returns
     ``skipped-not-suboutcome`` (it runs in the ambient outcome worktree). If the sub-outcome already has
-    a **live** registered worktree, it is **reused** (the "not one-per-leaf, reused across its leaves"
-    guarantee). Otherwise, if the live count is already at ``cap``, provisioning **defers**
+    a **live** registered worktree, the observed registration is reused. Otherwise,
+    if the live count is already at ``cap``, provisioning **defers**
     (``capped``) — never an (N+1)th worktree. Else a worktree is created (named + owner-tagged + sharing
     the outcome's one ``shared_install_ref``) and registered.
     """
@@ -373,7 +373,7 @@ def provision_pending(
     cap: int = WORKTREE_CAP,
     at: str = "",
 ) -> dict[str, Any]:
-    """Ensure a worktree for every **dispatched** sub-outcome that lacks one (cap-bounded, R15).
+    """Reconcile requested worktrees for dispatched sub-outcomes.
 
     Only acts on sub-outcomes whose live derived state is ``dispatched`` (handed to a backend, still
     running) — a not-yet-dispatched sub-outcome has no work to isolate, and a terminal one is reaped by

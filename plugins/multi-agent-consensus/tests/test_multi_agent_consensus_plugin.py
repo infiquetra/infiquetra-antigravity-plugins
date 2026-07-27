@@ -52,9 +52,9 @@ def _frontmatter_name(path: Path) -> str:
     raise AssertionError(f"{path} has no frontmatter name")
 
 
-def test_team_execution_metadata_is_v2_and_marketplace_matches() -> None:
+def test_multi_agent_consensus_metadata_matches_current_release() -> None:
     plugin_json = json.loads(_read(PLUGIN_ROOT / "plugin.json"))
-    assert plugin_json["version"] == "2.2.0"
+    assert plugin_json["version"] == "2.3.0"
     assert "validator" in plugin_json["description"].lower()
     assert "nonprod" in plugin_json["description"].lower()
     assert {"validators", "automation", "nonprod"} <= set(plugin_json["keywords"])
@@ -80,6 +80,18 @@ def test_validator_references_are_packaged_and_linked() -> None:
         assert path.exists(), f"missing validator reference: {path}"
         assert filename in skill_doc
         assert filename in readme
+
+
+def test_validator_state_uses_antigravity_root() -> None:
+    state_doc = _read(
+        PLUGIN_ROOT
+        / "skills"
+        / "multi-agent-consensus"
+        / "references"
+        / "validator-evidence-state.md"
+    )
+    assert ".gemini/multi-agent-consensus/validators/" in state_doc
+    assert ".claude/" not in state_doc
 
 
 def test_appsec_audit_skill_documents_url_trust_boundaries() -> None:

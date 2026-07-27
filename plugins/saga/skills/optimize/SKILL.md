@@ -73,20 +73,23 @@ Resolve any cross-command route through the lifecycle routing reference at
    developer-experience, maintainability. Each metric is measured as **hard** (a direct numeric, gated)
    or by **judge** (semantic quality), chosen per metric — see `references/metric-taxonomy.md`.
 6. **Default bounded & serial; escalate by CHOICE.** The loop runs serial and in working state by
-   default. For **independent experiment fan-out** it **OFFERS** `team-execution` ("team execution") /
-   `cc-workflows-ultracode` ("dynamic workflows") per the operator-choice contract, recorded
+   default. For **independent experiment fan-out** it **OFFERS**
+   `multi-agent-consensus` per the operator-choice contract, recorded
    **narratively** (this engine writes no saga). It never auto-spawns a backend, never auto-commits, never auto-merges, never deploys.
+   <!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
+   Source `team-execution` and `cc-workflows-ultracode` both map to this target
+   backend and are not offered separately.
 
 ## Interaction method
 
-Use `AskUserQuestion` for choices from a known set — spec approval, the metric class, the execution
-backend, and stop-vs-continue at a stopping-rule boundary. Call `ToolSearch` with
-`select:AskUserQuestion` first if its schema is not loaded; a pending schema load is not a reason to
-skip the question. Ask one question at a time; never silently skip a question. Use **free-form** for the
+Ask one blocking question through the current session for choices from a known
+set — spec approval, the metric class, the execution backend, and
+stop-vs-continue at a stopping-rule boundary. Ask one question at a time, stop
+until the operator answers, and never silently skip it. Use **free-form** for the
 substantive content (the hypothesis backlog, the strategy digest, learnings) — menu options would
 flatten them.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices
 in your reply text instead, following the canonical channel-inline convention in
 `../brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -124,7 +127,7 @@ schema):
   user to commit or stash before proceeding.
 
 Write the spec to `.gemini/saga/optimize/<slug>/spec.yaml`, verify it by re-reading, and
-**present it for approval** via `AskUserQuestion`. **Do NOT proceed to Phase 2 without an approved spec
+**present it for approval** via a structured blocking interaction. **Do NOT proceed to Phase 2 without an approved spec
 and a defined primary metric.** If the target is qualitative, recommend `judge`; if the user insists on
 `hard` for a qualitative target, warn that it may optimize a misleading proxy.
 
@@ -154,8 +157,8 @@ start of every batch.
 
 **Select a batch** from the runnable backlog. **Serial default = batch size 1.** For **independent
 experiment fan-out**, **OFFER** an execution backend HERE per `../../references/operator-choice.md`
-(§3.2 — broad, independent, low-risk fan-out leans `cc-workflows-ultracode` ("dynamic workflows");
-risky-and-parallel leans `team-execution` ("team execution")); record the chosen backend **narratively**
+(§2 — broad independent fan-out, risk, or gated evidence leans
+`multi-agent-consensus`); record the chosen backend **narratively**
 in the strategy digest (this engine writes no saga — §6 of operator-choice). Never auto-spawn.
 
 **Per experiment:**
@@ -177,7 +180,7 @@ After the batch, write the **strategy digest** (categories tried, what worked / 
 frontier, current best vs baseline) and the updated backlog to disk; verify. Then **check the stopping
 rules** (see `references/experiment-loop.md`): target reached / max_iterations / max_hours / judge-budget
 exhausted / plateau / manual stop / empty backlog. If none fire, run the next batch; otherwise go to
-Phase 5. At a stopping-rule boundary, offer stop-vs-continue via `AskUserQuestion`.
+Phase 5. At a stopping-rule boundary, offer stop-vs-continue via a structured blocking interaction.
 
 ## Phase 5 — Wrap-up + route
 

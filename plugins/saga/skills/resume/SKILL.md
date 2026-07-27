@@ -66,12 +66,12 @@ depth: `/resume` reads the whole tick chain, not the last frame.
 
 ## Interaction method
 
-Use `AskUserQuestion` for choices from a known set (which saga thread when several match, resume-vs-fresh,
-the reconciled-state confirmation, the route destination). Call `ToolSearch` with
-`select:AskUserQuestion` first if its schema is not loaded. Ask one question per turn; prefer a concise
-single-select. For open-ended discussion, ask inline.
+Ask one blocking question through the current session for choices from a known set (which saga thread when several match, resume-vs-fresh,
+the reconciled-state confirmation, the route destination). Ask one question per
+turn, stop until the operator answers, and prefer a concise single-select. For
+open-ended discussion, ask inline.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices in
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices in
 your reply text instead. Follow the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -115,7 +115,7 @@ Pick the one saga thread to reconstruct and **capture its EXACT `saga_id`** — 
 Phase 5; never re-derive it from a paraphrase of the task.
 
 - If `scan` surfaced **one** matching candidate, select it.
-- If **several** match, disambiguate with `AskUserQuestion` (single-select over the candidate list:
+- If **several** match, disambiguate with a structured blocking interaction (single-select over the candidate list:
   `saga_id` + `lifecycle_phase` + `issue_ref` + `updated_at`).
 - For an issue whose `issue-<N>` directory is absent, resolve the id via `state.json.sagas[*].issue_ref`
   ending in `#N` — the id is **sticky**; **never** rename the directory (slug-instability guard,
@@ -209,7 +209,7 @@ extract content into the dispatch prompt. (Full recipe + the CE guardrails: `ref
    this session's own `*.jsonl` basename under `~/.gemini/projects/<repo>/` (drop the `.jsonl`):
 
    ```bash
-   python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> --exclude <current-session-id>
+   python3 plugins/saga/scripts/discover_sessions.py --repo <repo-folder> --days <N> --projects-root <doctor-resolved-session-root> --exclude <current-session-id>
    ```
 
    The orchestrator reads only the path list + one-line `_meta` (no session content).

@@ -1,0 +1,18 @@
+{
+  "schema": "antigravity.capabilities.v1",
+  "catalog_digest": "7f2341d191e72208685e19b0f6ff6dc060375a89ce5232d8f197d8ed42d97653",
+  "agy_cli_version": "1.1.7",
+  "antigravity_host_version": "2.3.1",
+  "supported_flags": ["--agent", "--effort", "--model"],
+  "runtime_roots": ["plugin-install", "saga-state"],
+  "requested_facts": {"model-selection": "gemini-3.1-pro"},
+  "observed_facts": {"model-selection": "gemini-3.1-pro"},
+  "results": [
+    {
+      "id": "agy.model.selection",
+      "probe_revision": 1,
+      "state": "passed",
+      "evidence": ["model-selection-proof"]
+    }
+  ]
+}

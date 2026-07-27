@@ -119,10 +119,10 @@ construct a `Saga` (no default); all others have the listed default.
 | `status` | enum | — | `active` | Thread disposition (§4) — **MUST** be in `STATUSES`, **MUST NOT** be `pending`/`in_progress`. |
 | `next_step` | str | — | `""` | The one imperative resume anchor (top of `## Remaining`). |
 | `orchestration_mode` | enum | — | `inline` | How work runs — decision contract in `references/operator-choice.md`; **MUST** be in `ORCHESTRATION_MODES`. |
-| `orchestration_ref` | str | — | `""` | Pointer into the orchestration (team name, workflow id, …). |
+| `orchestration_ref` | str | — | `""` | Durable plan or backend receipt path. |
 | `orchestration_recommended` | str | — | `""` | The backend the recommender suggested for this decision (R12). Empty on older sagas. |
 | `orchestration_operator_choice` | str | — | `""` | The backend the operator actually picked (R12). Differs from `orchestration_mode` when overriding. Empty on older sagas. |
-| `orchestration_downgrade` | str | — | `""` | One-line capability-portable downgrade note (R11). Set on an off-host resume when the Workflow tool is unavailable and the orchestration tier recompiled DOWN (unit specs + per-unit tiers preserved); empty on a host that ran the authored tier. Empty on older sagas. |
+| `orchestration_downgrade` | str | — | `""` | One-line capability-portable downgrade note (R11). Set on an off-host resume when the native consensus runtime is unavailable and the orchestration tier recompiled DOWN (unit specs + per-unit tiers preserved); empty on a host that ran the authored tier. Empty on older sagas. |
 | `issue_ref` | str | — | `""` | `owner/repo#N` pointer; empty for plan-only / pre-issue work. |
 | `destination` | enum | — | `plan-only` | Routing intent — **MUST** be in `DESTINATIONS`. Mirrors `lifecycle_state`. |
 | `round` | int | — | `0` | Current PR/iteration round. |
@@ -217,10 +217,10 @@ lifecycle_phase: work
 phase_status: in_progress
 status: active
 next_step: "wire /resume to call saga.restore"
-orchestration_mode: cc-workflows-ultracode
+orchestration_mode: multi-agent-consensus
 orchestration_ref: "wf-saga-foundation"
-orchestration_recommended: cc-workflows-ultracode
-orchestration_operator_choice: cc-workflows-ultracode
+orchestration_recommended: multi-agent-consensus
+orchestration_operator_choice: multi-agent-consensus
 issue_ref: "infiquetra/infiquetra-claude-plugins#42"
 destination: pr
 round: 2
@@ -288,7 +288,7 @@ LIFECYCLE_PHASES   = ("ideation", "brainstorm", "plan", "review", "work", "qa", 
 PHASE_STATUSES     = ("pending", "in_progress", "complete")
 STATUSES           = ("active", "blocked", "paused", "handed-off", "done", "abandoned")
 DESTINATIONS       = ("plan-only", "pr", "merge", "nonprod-deploy")
-ORCHESTRATION_MODES= ("inline", "team-execution", "cc-workflows-ultracode")
+ORCHESTRATION_MODES= ("inline", "multi-agent-consensus")
 ```
 
 `destination` mirrors `lifecycle_state.normalize_destination`'s canonical set — use that helper to normalize
@@ -338,7 +338,7 @@ is `max(files, key=envelope_sort_key)`; `restore` reads exactly that file.
 > which would silently corrupt an mtime-ordered scan. Filename order survives any byte-faithful copy.
 >
 > **This is NOT about git worktrees.** Git worktrees do not copy git-ignored files at all, so saga state
-> created in a worktree lives only in that worktree's ignored `.claude/` and is discarded on cleanup — that
+> created in a worktree lives only in that worktree's ignored `.gemini/saga/` and is discarded on cleanup — that
 > is expected, volatile dev state. The filename-order win is the rsync/backup case, not the worktree case.
 
 ### 5.3 Scan ordering + collision
@@ -523,7 +523,7 @@ this table is the wiring contract for their own queued items.
 Ticks accumulate; there is **no GC today**. A future `max_ticks` retention policy is the planned seam — it
 prunes oldest ticks while keeping the newest authoritative, so it is purely additive and needs **no schema
 change**. Until then, growth is bounded only by save frequency and is acceptable for the volatile,
-machine-local `.claude/` location.
+machine-local `.gemini/saga/` location.
 
 ---
 
@@ -572,7 +572,7 @@ here may be absent from the `provenance_manifest.py` dataclasses (drift, both di
 | `execution_id` | `manifest_store.py`, `engine_dispatch.py` | `manifest_store.py` (read/list) | live |
 | `saga_ref` | `engine_dispatch.py`, `manifest_store.py` | `manifest_store.py` (path resolution) | live |
 | `schema` | `provenance_manifest.py` (`Manifest` default) | `manifest_store.py` (version check on read) | live |
-| `attribution.kind` | `engine_dispatch.py` (`external-engine`), `manifest_store.py` (`cc-workflows`), team-execution worker exit (`worker-manifest.md`) | `manifest_reader.py` (disposition/attribution tallies) | live (cc-workflows/engine); scheduled (team-execution-worker producer path, R2) |
+| `attribution.kind` | `engine_dispatch.py` (`external-engine`), `manifest_store.py` (`multi-agent-consensus`) | `manifest_reader.py` (disposition/attribution tallies) | live when the producer emits a receipt |
 | `attribution.identity` | `engine_dispatch.py`, `manifest_store.py` | `manifest_reader.py` | live |
 | `attribution.effort` | `engine_dispatch.py`, `manifest_store.py` | `manifest_reader.py` | live |
 | `attribution.protocol` | `engine_dispatch.py` | `manifest_reader.py` | live |
@@ -600,11 +600,10 @@ here may be absent from the `provenance_manifest.py` dataclasses (drift, both di
 | `claims[].adjudication.revision` | `engine_dispatch.py` | `code-review/SKILL.md` B.0 | live |
 | `claims[].adjudication.decision` | `engine_dispatch.py` | `manifest_reader.py`, `retro/SKILL.md` Phase 1.8 | live |
 
-The one honestly-scheduled leg is `attribution.kind == team-execution` as a *producer* of the
-`claim_provenance` subrecord for **external-engine workers running inside team-execution** — it waits
-on `#283`'s deferred U12 external-worker wrapper contract (R14). Claude team-execution workers already
-emit manifests today per `worker-manifest.md`; only the external-engine-via-team-execution leg is
-scheduled, not the field itself.
+Repeated manifest production requires an explicit external caller. Saga does not
+claim that Antigravity schedules a producer. A
+`multi-agent-consensus` producer may write the subrecord only when its current
+run returns the required evidence.
 
 ---
 

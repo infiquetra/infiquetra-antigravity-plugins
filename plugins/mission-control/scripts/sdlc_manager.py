@@ -129,12 +129,16 @@ def get_sdlc_path() -> Path:
 # ===========================
 # PER-USER DEFAULTS
 # ===========================
-# Sticky defaults persisted at ~/.claude/sdlc-defaults.json. The first-run
+# Sticky defaults persisted at ~/.gemini/mission-control/sdlc-defaults.json. The first-run
 # wizard (`config init-defaults`) seeds the file. Subsequent commands read
 # defaults from here and present them as prompt-default values; operators
 # override per-card by typing a different value at the prompt.
 
-_USER_DEFAULTS_PATH = Path.home() / ".claude" / "sdlc-defaults.json"
+_USER_DEFAULTS_PATH = (
+    Path(os.environ.get("ANTIGRAVITY_STATE_ROOT", Path.home() / ".gemini"))
+    / "mission-control"
+    / "sdlc-defaults.json"
+)
 
 # Schema (all keys optional; missing keys = no default for that prompt).
 # Listed here so callers and the wizard agree on the set:
@@ -150,7 +154,7 @@ _USER_DEFAULTS_KEYS = (
 
 
 def load_user_defaults() -> dict[str, Any]:
-    """Read ~/.claude/sdlc-defaults.json. Returns {} on:
+    """Read ~/.gemini/mission-control/sdlc-defaults.json. Returns {} on:
       - file missing (first run)
       - malformed JSON (warn + return {})
       - non-object root (warn + return {})
@@ -181,7 +185,7 @@ def load_user_defaults() -> dict[str, Any]:
 
 
 def save_user_defaults(data: dict[str, Any]) -> None:
-    """Atomically write ~/.claude/sdlc-defaults.json. Creates parent dir
+    """Atomically write ~/.gemini/mission-control/sdlc-defaults.json. Creates parent dir
     if missing. Atomic via tempfile + rename so a crash mid-write doesn't
     corrupt the file."""
     _USER_DEFAULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -2951,7 +2955,7 @@ def config_show(fmt: str) -> None:
 
 
 def config_show_defaults(fmt: str) -> None:
-    """Display the current per-user defaults from ~/.claude/sdlc-defaults.json."""
+    """Display the current per-user defaults from ~/.gemini/mission-control/sdlc-defaults.json."""
     defaults = load_user_defaults()
     if fmt == "json":
         _out({"path": str(_USER_DEFAULTS_PATH), "defaults": defaults}, fmt)
@@ -2968,7 +2972,7 @@ def config_show_defaults(fmt: str) -> None:
 
 
 def config_init_defaults(non_interactive: bool, fmt: str) -> None:
-    """First-run wizard: seed ~/.claude/sdlc-defaults.json.
+    """First-run wizard: seed ~/.gemini/mission-control/sdlc-defaults.json.
 
     Interactive by default — prompts for each key with the existing value
     (or a sensible suggestion) as the default. Type a value to override;
@@ -4985,7 +4989,7 @@ def issue_create(
       2. Sub-issue-first prompt: parent issue?
       3. Discover project the repo maps to (if any)
       4. Per-project schema discovery: which project fields exist?
-      5. Prompt for field values, defaults from ~/.claude/sdlc-defaults.json
+      5. Prompt for field values, defaults from ~/.gemini/mission-control/sdlc-defaults.json
       6. Capability-adaptive: prompt for Size if type is capability/objective AND project exposes the field
       7. Open `gh issue create --web` in browser; operator fills body
       8. Operator pastes back the issue number
@@ -5554,7 +5558,8 @@ def main() -> None:
     config_sp = config_p.add_subparsers(dest="action", required=True)
     config_sp.add_parser("show", help="Show loaded configuration")
     config_sp.add_parser(
-        "show-defaults", help="Show per-user defaults from ~/.claude/sdlc-defaults.json"
+        "show-defaults",
+        help="Show per-user defaults from ~/.gemini/mission-control/sdlc-defaults.json",
     )
     config_init_p = config_sp.add_parser(
         "init-defaults",

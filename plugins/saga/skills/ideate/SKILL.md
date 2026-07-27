@@ -33,10 +33,11 @@ requirements, plans, or code.
 
 ## Interaction method
 
-Use the platform's blocking question tool: `AskUserQuestion` in Claude Code (call `ToolSearch`
-with `select:AskUserQuestion` first if its schema isn't loaded). Fall back to numbered options in
-chat only when no blocking tool exists or the call errors. In a channel session, inline the
-choices in the reply text. Never silently skip a gate question. Ask one question at a time.
+Ask one blocking question through the current session and stop until the
+operator answers. Use a structured interaction surface only when the capability
+receipt proves it; otherwise ask inline. In a channel session, inline the
+choices in the reply text. Never silently skip a gate question. Ask one question
+at a time.
 
 ## Focus hint
 

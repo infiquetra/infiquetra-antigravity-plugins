@@ -9,6 +9,50 @@ contributes nothing to an Antigravity session directly; it exists so other insta
 resolve shared code at a single canonical location instead of hand-copying it (the
 `validate_card_body` drift incident, #222, is the failure mode this prevents).
 
+## Antigravity capability catalog
+
+`references/antigravity-capability-probes.yaml` is the canonical, schema-versioned
+host capability catalog. Despite the `.yaml` suffix, it intentionally uses only
+comment-free JSON syntax and is parsed with the Python standard library. Do not
+add YAML comments, anchors, tags, shell commands, executable paths, or other
+general YAML features.
+
+Catalog rows select a fixed registered probe method and revision. The Python
+registry owns argument vectors, timeouts, parsers, and sanitization. Consumer
+requiredness is declared by profile; a required failed, unknown, or unavailable
+capability blocks that consumer. Only an optional capability with a previously
+declared and proven fallback can evaluate as degraded.
+
+Controlled model-selection facts are valid only when the requested and observed
+identifiers appear in that catalog row's closed `allowed_values` list. This
+keeps arbitrary hostnames, credentials, and high-entropy strings out of
+promotable receipts; add a reviewed canonical model to the catalog before using
+it in evidence.
+
+Passed runtime-base evidence is cross-bound to typed observations: normalized
+CLI and host versions, the complete logical runtime-root set, and affirmative
+requested/observed plugin link, load, and validation facts. Evidence identifier
+strings alone cannot authorize a consumer.
+
+Promotable evidence uses the strict `antigravity.capabilities.v1` schema. Raw
+output, absolute runtime roots, transcripts, prompts, environment data, and
+credentials belong only in ignored local diagnostics under
+`.gemini/saga/capability-doctor/`. Use
+`antigravity_diagnostics.sanitize_for_promotion` to cross that boundary; do not
+copy diagnostic fields into a receipt. Ignored diagnostics can still contain
+sensitive local evidence. Writers automatically remove files older than seven
+days, including crash-left writer temporary files, and keep at most 20 completed
+JSON files by default. Operators can immediately clear every writer-owned
+artifact with `antigravity_diagnostics.purge_local_diagnostics(repo_root)`.
+Repository backups and filesystem snapshots remain outside this retention
+boundary.
+
+Consumers load `antigravity_capabilities` through the shim, validate the
+receipt against the canonical catalog, and call `evaluate_for_consumer`
+directly. They may format the returned object or choose an exit status, but they
+must not rename its states, collapse its blocking/degraded lists, or infer
+lifecycle completion from it.
+
 ## Layout
 
 ```

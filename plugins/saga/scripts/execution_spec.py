@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Structured execution-spec + Claude Code workflow-script emitter (R9 keystone).
+"""Legacy Claude execution-spec emitters retained for source-lineage comparison.
 
-`/plan` authors ONE structured execution-spec and emits from it **either** a runnable
-Claude Code workflow script (this module) **or** the team-execution markdown protocol
-(``team_emitter.py``, U11). Saga stores only an ``orchestration_ref`` pointer; it never
-vendors backend machinery (R9, KTD6). The governance difference is *which emitter runs*,
-not the authoring.
+Active Antigravity planning and dispatch must not call this module. Source
+``team-execution`` and Workflow behavior maps to the native
+``multi-agent-consensus`` skill, which consumes the implementation plan directly.
 
 The spec is the single source of truth: units carry a per-unit ``{model, effort}`` tier
 (R2(b)), a return contract, dependency barriers, escalations, and -- for fan-out units --
@@ -126,13 +124,12 @@ READONLY_VERIFIER_ISOLATION = "worktree"
 # its residents run bypassPermissions with no per-leaf tool restriction.
 SANDBOX_ENFORCEABLE_BY_BACKEND: dict[str, frozenset[str]] = {
     "inline": frozenset({"read-only", "disposable-worktree"}),
-    "cc-workflows-ultracode": frozenset({"read-only", "disposable-worktree"}),
     "team-execution": frozenset(),
 }
 
 # Per-backend tier enforceability (#369 U1, KTD2) -- the tier-axis sibling of
 # SANDBOX_ENFORCEABLE_BY_BACKEND. Each backend maps to the set of MODELS it can actually spawn a unit
-# at. ``inline`` and ``cc-workflows-ultracode`` set the per-call {model, effort} (the readonly-verifier
+# at. ``inline`` and ``multi-agent-consensus`` set the per-call {model, effort} (the readonly-verifier
 # per-call pattern / the Workflow ``agent()`` model+effort opts), so they reach the whole palette.
 # ``team-execution`` spawns by ``agentType`` and inherits the agent's frontmatter ``model:`` -- whose
 # closed set across all 25 team-execution agents is {opus, sonnet, haiku}; NONE pin ``fable`` (it is
@@ -144,7 +141,6 @@ SANDBOX_ENFORCEABLE_BY_BACKEND: dict[str, frozenset[str]] = {
 # {#team-execution-per-teammate-effort} ask).
 TIER_ENFORCEABLE_BY_BACKEND: dict[str, frozenset[str]] = {
     "inline": frozenset(MODELS),
-    "cc-workflows-ultracode": frozenset(MODELS),
     "team-execution": frozenset(MODELS),
 }
 
@@ -2181,7 +2177,7 @@ def emit_workflow_script(
 # ---------------------------------------------------------------------------
 #
 # Every authored plan carries a runnable inline/serial baseline so it executes on ANY
-# host, with or without the Workflow tool. The dynamic-workflow layer (emit_workflow_script)
+# host, with or without the native consensus runtime. The dynamic-workflow layer (emit_workflow_script)
 # applies only on a capable host; on an off-host resume the orchestration tier recompiles
 # DOWN (lifecycle_state.recheck_orchestration_capability) and this baseline is what the
 # inline floor runs. The recompile preserves every unit spec and its per-unit {model,
@@ -2198,7 +2194,7 @@ def emit_inline_baseline(spec: ExecutionSpec) -> str:
     declared order, dependency barriers honored by ordering, the per-unit ``{model, effort}``
     tier PRESERVED on every unit (the recompile preserves tiers -- R11), fan-out targets
     enumerated inline (R10, never a silent filter). This is the always-runnable floor an
-    off-host resume degrades to; it requires no Workflow tool.
+    off-host resume degrades to; it requires no native consensus runtime.
 
     Returned as a Markdown checklist string (the inline executor reads it as its serial
     run order). It is NOT a .workflow.js -- by construction it dispatches nothing in
@@ -2210,7 +2206,7 @@ def emit_inline_baseline(spec: ExecutionSpec) -> str:
     lines.append(f"# Inline/serial baseline -- {spec.name}")
     lines.append("")
     lines.append(
-        "Runnable on ANY host (no Workflow tool required). The orchestration tier "
+        "Runnable on ANY host (no native consensus runtime required). The orchestration tier "
         "recompiled DOWN to inline; unit specs and per-unit {model, effort} tiers preserved."
     )
     if spec.description:
@@ -2250,9 +2246,11 @@ def emit_inline_baseline(spec: ExecutionSpec) -> str:
 # The orchestration tiers, mirrored from lifecycle_state.ORCHESTRATION_TIERS, so the
 # emitter can render the correct floor for a given (possibly downgraded) tier without a
 # cross-module import at module scope (the scripts load standalone in tests).
+# antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"legacy emitter accepts the source enum only in quarantined tests","revisit":"delete with the legacy emitter"}
 _WORKFLOW_TIER = "cc-workflows-ultracode"
 _TEAM_TIER = "team-execution"
 _INLINE_TIER = "inline"
+_ACTIVE_CONSENSUS_TIER = "multi-agent-consensus"
 
 
 def _emit_team_structure(spec: ExecutionSpec) -> str:
@@ -2271,19 +2269,18 @@ def _emit_team_structure(spec: ExecutionSpec) -> str:
 
 
 def recompile_for_tier(spec: ExecutionSpec, orchestration_mode: str) -> str:
-    """Re-emit the spec for a (possibly downgraded) orchestration tier (R11 recompile).
+    """Re-emit a legacy source artifact or the host-independent inline baseline.
 
-    ONLY the orchestration tier changes -- every unit survives in every emitter. The inline and
-    workflow emitters additionally render each unit's ``{model, effort}`` tier verbatim;
-    ``team-execution`` re-emits the ``team_emitter`` ``## Team Structure`` markdown protocol (the R5
-    third leg of the by-mode dispatcher seam), which renders the team roles/units but not the
-    per-unit ``{model, effort}`` (the team-execution protocol selects models per its own roster).
-    ``cc-workflows-ultracode`` re-emits the dynamic ``.workflow.js`` harness; ``inline`` or any
-    unknown floor re-emits the inline/serial baseline, the always-runnable floor. This is the
-    function an off-host resume calls after ``recheck_orchestration_capability`` decides the new
-    tier: it never errors and always returns a runnable artifact (AE3).
+    ``multi-agent-consensus`` is deliberately rejected: active Antigravity
+    dispatch invokes its native skill and must never route through a Claude
+    script emitter.
     """
     spec.validate()
+    if orchestration_mode == _ACTIVE_CONSENSUS_TIER:
+        raise SpecError(
+            "multi-agent-consensus is a native Antigravity skill; "
+            "legacy execution-spec emission is disabled"
+        )
     if orchestration_mode == _WORKFLOW_TIER:
         return emit_workflow_script(spec)
     if orchestration_mode == _TEAM_TIER:
@@ -2477,21 +2474,10 @@ def _load_spec(path: Path) -> ExecutionSpec:
     return ExecutionSpec.from_dict(json.loads(path.read_text()))
 
 
-def _read_session_ceiling(root: Path | None = None) -> Tier | None:
-    """Read the #365 session-override ceiling, or None when absent.
-
-    Lazy import keeps this module's "no I/O at import" property intact.
-    """
-    import tier_session
-
-    ceiling = tier_session.read_session_override(root).get("ceiling")
-    if ceiling is None:
-        return None
-    return Tier(model=str(ceiling["model"]), effort=str(ceiling["effort"]))
-
-
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Execution-spec validator + workflow emitter.")
+    parser = argparse.ArgumentParser(
+        description="Execution-spec validator + inline baseline emitter."
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_val = sub.add_parser("validate", help="validate a spec JSON (R3/R10 invariants)")
@@ -2500,16 +2486,6 @@ def main(argv: list[str] | None = None) -> int:
         "--require-receipts",
         action="store_true",
         help="also enforce the #367 premium-tier worth-it hard-block (the /plan authoring gate)",
-    )
-
-    p_emit = sub.add_parser("emit", help="emit a workflow script from a spec JSON")
-    p_emit.add_argument("spec", type=Path)
-    p_emit.add_argument("-o", "--out", type=Path, help="write the script here (default: stdout)")
-    p_emit.add_argument(
-        "--unattended",
-        action="store_true",
-        help="operator is away (#364 KTD3): escalate_on_signal refutes climb one rung "
-        "in-script instead of throwing the attended ask-gate proposal",
     )
 
     p_base = sub.add_parser(
@@ -2602,14 +2578,7 @@ def main(argv: list[str] | None = None) -> int:
                 else "spend_envelope: unset"
             )
             return 0
-        if args.cmd == "baseline":
-            script = emit_inline_baseline(spec)
-        else:
-            script = emit_workflow_script(
-                spec,
-                session_ceiling=_read_session_ceiling(),
-                unattended=bool(getattr(args, "unattended", False)),
-            )
+        script = emit_inline_baseline(spec)
     except (SpecError, _cost_weights.CostWeightsError) as exc:
         print(f"SPEC ERROR: {exc}", file=sys.stderr)
         return 2

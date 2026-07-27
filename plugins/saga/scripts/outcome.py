@@ -6,7 +6,7 @@ cache + completion + locks). It is a **level-triggered reconcile loop** (R29), n
 imperative process: every ``advance`` tick reconstructs live state from the durable store, advances
 the ready frontier, **dispatches** non-gated leaves to their executors, and pages on exceptions —
 holding no authoritative in-memory DAG, so it is crash-tolerant and host-agnostic (a local ``/loop``
-session or a scheduled routine drives the repeats).
+session or another explicit external caller drives each repeat).
 
 Two invariants this module enforces structurally:
 
@@ -48,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # exactly one ``BackendHaltError`` class regardless of how the engine is launched). The reconcile loop
 # catches ``outcome_dispatcher.BackendHaltError`` per leaf. outcome_dispatcher does NOT import this
 # module (it duck-types the request), so there is no import cycle.
+import host_capability_gate  # noqa: E402
 import outcome_dispatcher  # noqa: E402
 import outcome_spec  # noqa: E402  (after the sys.path shim, by design)
 import outcome_store  # noqa: E402
@@ -88,7 +89,7 @@ class DispatchRequest:
 def _default_dispatcher(req: DispatchRequest) -> str:
     """Record-only dispatch: mint a stable leaf saga id, run NOTHING (R3).
 
-    Real execution backends (team-execution, cc-workflows-ultracode, ``/goal``, fork, subagent,
+    Real execution backends (team-execution, multi-agent-consensus, ``/goal``, fork, subagent,
     manual) are dispatcher implementations that arrive in U4/U9. The skeleton just allocates the
     handoff address; the leaf is executed by its own native saga, never here.
     """
@@ -1246,14 +1247,9 @@ def main(argv: list[str] | None = None) -> int:
         help="operator is away — an unavailable backend degrades one rung instead of HALTing (R23)",
     )
     p_advance.add_argument(
-        "--host-capable",
-        action="store_true",
-        help="this host can run the forked-context backends (fork/subagent/goal)",
-    )
-    p_advance.add_argument(
-        "--workflow-available",
-        action="store_true",
-        help="this host can run cc-workflows-ultracode (the Workflow tool is present)",
+        "--capability-receipt",
+        type=Path,
+        help="validated fleet-core receipt authorizing host-dependent backends",
     )
     p_advance.add_argument(
         "--persist",
@@ -1375,8 +1371,20 @@ def main(argv: list[str] | None = None) -> int:
             # HALTs when attended/guaranteed/side-effected, else degrades one rung when --autonomous.
             import outcome_decompose
 
+            capability_states: dict[str, str] = {}
+            profile_state = "blocked"
+            if args.capability_receipt is not None:
+                catalog, receipt, capability_states = host_capability_gate.load_capability_evidence(
+                    args.capability_receipt
+                )
+                profile_state = host_capability_gate.evaluate_loaded_evidence(
+                    "saga.independent-deliberation",
+                    catalog,
+                    receipt,
+                )["state"]
             avail = outcome_dispatcher.resolve_available(
-                host_capable=args.host_capable, workflow_available=args.workflow_available
+                capability_states=capability_states,
+                profile_state=profile_state,
             )
             # The dispatcher mints any backend the degrade decision resolves to (it never halts here —
             # _reconcile_once owns the HALT/degrade decision via degrade_decision with `avail`).
@@ -1384,7 +1392,10 @@ def main(argv: list[str] | None = None) -> int:
                 root,
                 args.outcome_id,
                 loop=args.loop,
-                dispatcher=outcome_dispatcher.make_dispatcher(available=outcome_spec.NODE_BACKENDS),
+                dispatcher=outcome_dispatcher.make_dispatcher(
+                    available=outcome_spec.ACTIVE_NODE_BACKENDS,
+                    capability_states=capability_states,
+                ),
                 harvester=production_harvester(root),
                 merge_processor=production_merge_processor(),
                 worktree_processor=production_worktree_processor(root),

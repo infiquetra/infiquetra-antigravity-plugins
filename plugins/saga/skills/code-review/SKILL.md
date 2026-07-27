@@ -58,11 +58,11 @@ where `/work` set it.
 
 ## Interaction method
 
-Use `AskUserQuestion` for choices from a known set (review mode, execution backend, fixer-dispatch
-routing). Call `ToolSearch` with `select:AskUserQuestion` first if its schema is not loaded. Ask one
-question per turn. For open-ended discussion, ask inline in chat. Never silently skip a question.
+Ask one blocking question through the current session for choices from a known set (review mode, execution backend, fixer-dispatch
+routing). Ask one question per turn, stop until the operator answers, and never
+silently skip it. For open-ended discussion, ask inline in chat.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` cannot be called — inline the choices
+In a channel session (`redis-channel` active), the capability receipt does not prove structured interaction — inline the choices
 in your reply text instead. Follow the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -166,29 +166,18 @@ do **not** reference named `ce-*` agents). Each lens returns findings in the sch
 `references/findings-schema.md`.
 
 **Operator-choice backend.** Offer the execution backend per `../../references/operator-choice.md` (the
-plugin-root decision contract). There are exactly three backends — `inline` ("inline") |
-`team-execution` ("team execution") | `cc-workflows-ultracode` ("dynamic workflows"). Read the work
-shape, recommend the cheapest-correct backend and pre-select it, but surface the alternatives so
-escalation is one step. `inline` ("inline") suits small diffs.
+plugin-root decision contract). The Antigravity backends are `inline` and
+`multi-agent-consensus`. Use `inline` for a small serial review. Recommend
+`multi-agent-consensus` for broad independent review, explicit adversarial
+confidence, gated evidence, or material size/risk. Claude `team-execution`
+behavior maps to `multi-agent-consensus`; it is not a separate target backend.
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
+The historical source enum `cc-workflows-ultracode` is also inactive.
 
-**Dynamic workflows serve BOTH purposes** (per `operator-choice.md` §3.2) — escalate to
-`cc-workflows-ultracode` ("dynamic workflows"), without elevated risk, for **either**:
-
-- **Breadth / scale** — broad independent fan-out, the same review lens across many enumerated targets, or
-  an exhaustive probe-all sweep where missing a target is the failure mode.
-- **Adversarial confidence** — a judge panel over N independent attempts, prove-by-refutation (refute-N),
-  or perspective-diverse verifiers each applying a distinct lens. This is real review depth; the Workflow
-  tool names *confidence* as a first-class purpose. Set it only on an **explicit** request for
-  many-independent-attempt verification.
-
-**The team↔workflow fork is GOVERNANCE, not "review depth"** (both have review depth). The question is:
-**does the verdict need to stick?** Escalate to `team-execution` ("team execution") when the review needs
-**gated** consensus — a verdict that blocks a merge/deploy and persists as standing evidence (a reviewer-
-CONSENSUS gate, named scanners, a guarded deploy), or the size/risk signals fire (large diff, security,
-infra, cross-repo, deployment-sensitive). An **advisory** consensus signal — N throwaway in-session votes
-you act on yourself, nothing recorded or blocking — is a dynamic-workflow judge-panel, not a
-team-execution job. Omit `cc-workflows-ultracode` ("dynamic workflows") when the Workflow tool is
-observably absent.
+Only offer `multi-agent-consensus` when a capability receipt proves
+`agy.agent.execution` and every requested isolation capability. The
+`multi-agent-consensus` skill owns the native subagent, reviewer, validator, and
+evidence protocol.
 
 **Search-before-recommending.** Before citing a fix pattern (concurrency, caching, auth, framework
 behavior), verify it is current best practice for the version in use — check for a built-in solution in
@@ -281,7 +270,7 @@ python3 plugins/saga/scripts/saga.py save \
   --kind <issue|task> \
   --id <the-existing-saga-id> \
   --review-paths docs/code-reviews/YYYY-MM-DD-<branch-or-pr>-code-review.md \
-  --orchestration-mode <inline|team-execution|cc-workflows-ultracode>
+  --orchestration-mode <inline|multi-agent-consensus>
 ```
 
 **If no saga was found in 5.1, SKIP this command entirely and say so** ("No work-thread saga found —
@@ -292,7 +281,8 @@ the CLI.
 ### 5.5 Offer fixer dispatch (never auto-run)
 
 For actionable findings (`safe_auto`/`gated_auto`/`manual`), **OFFER** a fixer route — a review-fixer
-agent, `/work`, or `team-execution` (operator-choice). `/code-review` never applies the fix itself.
+agent, `/work`, or `multi-agent-consensus` (operator-choice). `/code-review`
+never applies the fix itself.
 `advisory` findings are report-only.
 
 ### 5.6 Route

@@ -25,6 +25,41 @@
 
 ---
 
+## 2026-07-26
+
+### Consumer names must be closed before evaluating sparse capability receipts  {#capability-consumer-vacuous-pass}
+
+**Context.** The capability receipt deliberately permits sparse result lists so
+missing evidence evaluates as `unknown`, but `evaluate_for_consumer` accepts any
+syntactically valid dotted consumer name.
+
+**Evidence.** The U7/U8 doctor and Saga gate tests prove that a declared
+`saga.resume` consumer blocks when `agy.conversation.resume` is unknown, while
+an undeclared `saga.unknown` name is rejected before evaluation.
+
+**Mechanism.** Requiredness lives on catalog rows. An undeclared consumer
+matches no `required_for` row and would otherwise pass vacuously even though it
+has no contract. Sparse receipts are safe only when the consumer itself is
+known.
+
+**Fix.** Both `scripts/validate_plugins.py` and
+`plugins/saga/scripts/host_capability_gate.py` derive the closed consumer set
+from catalog requiredness and fallback declarations before calling the shared
+evaluator.
+
+**Validation.** Doctor tests cover deterministic no-host validation, blocked
+required evidence, optional degradation, and unknown profiles. Saga integration
+tests cover unchanged degraded output, required uncertainty, schema drift,
+local-diagnostic rejection, and fleet-core resolution failure.
+
+**Generalizable rule.** When policy is expressed as per-resource membership,
+validate the policy subject before evaluating its matching rules; an unknown
+subject must not inherit an empty requirement set.
+
+**Refs.** Decision
+[`#antigravity-host-contract-plan`](DECISIONS.md#antigravity-host-contract-plan)
+and issue `infiquetra/infiquetra-antigravity-plugins#20`.
+
 ## 2026-07-09
 
 ### Advisory locks must cover the read-compute-write cycle atomically for state ledgers  {#ledger-concurrency-flock}

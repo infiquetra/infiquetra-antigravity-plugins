@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -243,7 +245,7 @@ def test_plan_engine_merge_contract() -> None:
 
     # Operator-choice citation: the doc-only decision contract plus the 3 backend enum strings.
     assert "references/operator-choice.md" in skill_doc
-    for backend in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for backend in ("inline", "multi-agent-consensus"):
         assert backend in skill_doc
 
     # Deepening / confidence pass: Phase 4 conditional strengthening, with the rubric in the ref.
@@ -312,7 +314,7 @@ def test_code_review_engine_merge_contract() -> None:
     assert "docs/code-reviews/" in skill_doc
     # Operator-choice citation at the plugin-root path + the 3 backend enums.
     assert "references/operator-choice.md" in skill_doc
-    for backend in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for backend in ("inline", "multi-agent-consensus"):
         assert backend in skill_doc
 
     # Blunt thin-port tripwire: each of the 4 reference files carries real content.
@@ -428,7 +430,7 @@ def test_founder_review_engine_port_contract() -> None:
 
     # Operator-choice citation at the plugin-root path + the 3 backend enums.
     assert "references/operator-choice.md" in skill_doc
-    for backend in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for backend in ("inline", "multi-agent-consensus"):
         assert backend in skill_doc
 
     # NO SAGA WRITE (the mechanism that separates /founder-review from /code-review):
@@ -991,7 +993,7 @@ def test_qa_engine_merge_contract() -> None:
     # --- Operator-choice citation at the plugin-root path + the 3 backend enums (large/parallel
     # verification is OFFERED, never auto-spawned; generic agents only — no agents/ dir). ---
     assert "references/operator-choice.md" in skill_doc
-    for backend in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for backend in ("inline", "multi-agent-consensus"):
         assert backend in skill_doc
     assert "Explore" in skill_doc and "Task" in skill_doc  # generic-agent dispatch
 
@@ -1210,10 +1212,10 @@ def test_strategy_engine_merge_contract() -> None:
         "the dispatch-table lead sentence must not be restated in /strategy"
     )
 
-    # --- MECHANISM FLOOR 12: the interaction model — AskUserQuestion for routing, free-form for
+    # --- MECHANISM FLOOR 12: one current-session blocking question for routing, free-form for
     # substance, and the channel-inline fallback when redis-channel is active. ---
-    assert "AskUserQuestion" in skill_doc, "routing decisions must use AskUserQuestion"
-    assert re.search(r"routing", skill_doc), "AskUserQuestion is reserved for routing decisions"
+    assert "blocking question through the current session" in skill_doc
+    assert re.search(r"routing", skill_doc), "blocking questions are reserved for routing decisions"
     assert "free-form" in skill_doc, "substantive sections must use free-form responses"
     assert "redis-channel" in skill_doc and "inline" in skill_doc, (
         "the channel-inline fallback must be named for redis-channel sessions"
@@ -1404,7 +1406,7 @@ def test_retro_engine_merge_contract() -> None:
     # --- MECHANISM FLOOR 8: the operator-choice offer — a big multi-file refactor is OFFERED with a
     # backend, never auto-run (references operator-choice.md + the 3 backend enums). ---
     assert "operator-choice.md" in corpus, "the operator-choice contract must be cited by path"
-    for backend in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for backend in ("inline", "multi-agent-consensus"):
         assert backend in corpus, f"the operator-choice backend {backend!r} must be named"
     # generic-agent fan-out for non-mechanical work; the agents/ dir now exists but must contain
     # ONLY the lifecycle-router (the cheap-tier Bash-only agent added by U14/R16).
@@ -1492,15 +1494,15 @@ def test_retro_engine_merge_contract() -> None:
             f"engine-identity verb {identity_verb!r} must be present as positive identity"
         )
 
-    # --- MECHANISM FLOOR 13: the interaction model — AskUserQuestion for routing/choices, free-form
+    # --- MECHANISM FLOOR 13: one current-session blocking question for routing/choices, free-form
     # for substance, and the channel-inline fallback when redis-channel is active. ---
-    assert "AskUserQuestion" in skill_doc, "routing / choices must use AskUserQuestion"
+    assert "blocking question through the current session" in skill_doc
     assert "free-form" in skill_doc.lower(), "substantive interview questions must be free-form"
     assert "redis-channel" in skill_doc, (
         "the channel-inline fallback must be named for redis-channel"
     )
     assert re.search(r"inline the choices|channel-inline", corpus, re.IGNORECASE), (
-        "in a channel session the choices must be inlined instead of AskUserQuestion"
+        "channel sessions must inline choices when structured interaction is not proven"
     )
 
     # --- MECHANISM FLOOR 14: thin-port tripwire — each of the 3 reference files carries real
@@ -1766,7 +1768,7 @@ def test_investigate_engine_merge_contract() -> None:
     assert "../../../references/operator-choice.md" in corpus, (
         "the refs must cite operator-choice.md at the deeper depth (../../../references/)"
     )
-    for backend in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for backend in ("inline", "multi-agent-consensus"):
         assert backend in corpus, f"the operator-choice backend {backend!r} must be named"
     assert re.search(r">5 files|>5-file|blast-radius", corpus, re.IGNORECASE), (
         "the >5-file blast-radius FLAG must be present (a FLAG, not the inline-vs-route discriminator)"
@@ -2063,11 +2065,11 @@ def test_spec_engine_merge_contract() -> None:
         "no gstack-spec.md command shim must exist (the port is /spec, not a gstack-* alias)"
     )
 
-    # --- MECHANISM FLOOR 13: AskUserQuestion routing + the channel-inline fallback. AskUserQuestion
+    # --- MECHANISM FLOOR 13: current-session blocking routing + the channel-inline fallback.
     # is reserved for ROUTING; substance is free-form; in a redis-channel session the choices are
     # inlined (citing brainstorm/SKILL.md for the canonical convention, not duplicating it). ---
-    assert "AskUserQuestion" in skill_doc, "routing decisions must use AskUserQuestion"
-    assert re.search(r"routing", skill_doc), "AskUserQuestion is reserved for routing decisions"
+    assert "blocking question through the current session" in skill_doc
+    assert re.search(r"routing", skill_doc), "blocking questions are reserved for routing decisions"
     assert "free-form" in skill_doc, "substantive interrogation must use free-form responses"
     assert "redis-channel" in skill_doc and "inline" in skill_doc, (
         "the channel-inline fallback must be named for redis-channel sessions"
@@ -2208,7 +2210,7 @@ def test_optimize_engine_merge_contract() -> None:
     assert "operator-choice.md" in skill_doc, (
         "the SKILL must cite the operator-choice contract by relative path"
     )
-    for backend in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for backend in ("inline", "multi-agent-consensus"):
         assert backend in corpus, f"the operator-choice backend {backend!r} must be named"
     assert re.search(
         r"independent.*experiment|experiment.*fan-out|parallel.*experiment", corpus, re.IGNORECASE
@@ -2357,9 +2359,9 @@ def test_optimize_engine_merge_contract() -> None:
         r"LOOPS|loop", skill_doc
     ), "the /qa boundary must state gate-vs-loop (/qa gates one-shot, /optimize loops to a target)"
 
-    # --- MECHANISM FLOOR 12: the interaction model — AskUserQuestion for choices, free-form for
+    # --- MECHANISM FLOOR 12: one current-session blocking question for choices, free-form for
     # substance, and the channel-inline fallback citing brainstorm when redis-channel is active. ---
-    assert "AskUserQuestion" in skill_doc, "choices from a known set must use AskUserQuestion"
+    assert "blocking question through the current session" in skill_doc
     assert "free-form" in skill_doc, "substantive content must use free-form responses"
     assert "redis-channel" in skill_doc and "inline" in skill_doc, (
         "the channel-inline fallback must be named for redis-channel sessions"
@@ -2386,7 +2388,7 @@ def test_operator_choice_framework_is_documented_and_cited() -> None:
     operator_choice_path = PLUGIN_ROOT / "references" / "operator-choice.md"
     assert operator_choice_path.exists()
     operator_choice_doc = _read(operator_choice_path)
-    for enum_value in ("inline", "team-execution", "cc-workflows-ultracode"):
+    for enum_value in ("inline", "multi-agent-consensus"):
         assert enum_value in operator_choice_doc
 
     loop_doc = _read(PLUGIN_ROOT / "skills" / "loop" / "SKILL.md")
@@ -2404,7 +2406,7 @@ def test_destination_selector_and_escalation_helpers() -> None:
     assert not lifecycle.destination_includes_deploy("pr")
 
     assert (
-        lifecycle.should_offer_team_execution(
+        lifecycle.should_offer_consensus(
             file_count=2,
             phase_count=2,
             has_security=False,
@@ -2415,7 +2417,7 @@ def test_destination_selector_and_escalation_helpers() -> None:
         is False
     )
     assert (
-        lifecycle.should_offer_team_execution(
+        lifecycle.should_offer_consensus(
             file_count=1,
             phase_count=1,
             has_security=True,
@@ -2428,68 +2430,62 @@ def test_destination_selector_and_escalation_helpers() -> None:
 
 
 def test_recommend_execution_backend_precedence_and_overlap() -> None:
-    """Unit-level contract for the deferred-from-0.5.0 backend helper that lands with /work.
-
-    Precedence is the lean operator-choice section 3.3 ladder: a size/risk OR consensus
-    signal -> team-execution; broad independent fan-out without elevated risk ->
-    cc-workflows-ultracode; neither -> inline. The load-bearing case is the OVERLAP one:
-    alternatives is computed independently of which backend won precedence, so a job that
-    is both contested AND broadly parallel recommends team-execution yet still LISTS
-    cc-workflows-ultracode as a one-keystroke escalation.
-    """
+    """Every escalation signal maps to the native Antigravity consensus skill."""
     lifecycle = _load_module("lifecycle_state.py")
 
-    # Precedence: a size/risk trigger (file_count >= 8) -> team-execution. The helper
-    # reuses should_offer_team_execution's thresholds, so the >= 8 boundary must carry.
-    risky_by_size = lifecycle.recommend_execution_backend(file_count=9)
-    assert risky_by_size["recommended"] == "team-execution"
-    risky_by_security = lifecycle.recommend_execution_backend(has_security=True)
-    assert risky_by_security["recommended"] == "team-execution"
+    risky_by_size = lifecycle.recommend_execution_backend(file_count=9, consensus_available=True)
+    assert risky_by_size["recommended"] == "multi-agent-consensus"
+    risky_by_security = lifecycle.recommend_execution_backend(
+        has_security=True, consensus_available=True
+    )
+    assert risky_by_security["recommended"] == "multi-agent-consensus"
 
-    # Reuses should_offer_team_execution thresholds: file_count == 8 trips, 7 does not.
-    assert lifecycle.recommend_execution_backend(file_count=8)["recommended"] == "team-execution"
+    assert (
+        lifecycle.recommend_execution_backend(file_count=8, consensus_available=True)["recommended"]
+        == "multi-agent-consensus"
+    )
     assert lifecycle.recommend_execution_backend(file_count=7)["recommended"] == "inline"
 
-    # Precedence: broad independent fan-out without elevated risk -> cc-workflows-ultracode.
-    fanout = lifecycle.recommend_execution_backend(broad_independent_fanout=True)
-    assert fanout["recommended"] == "cc-workflows-ultracode"
-
-    # An elevated-risk signal suppresses the ultracode branch (it must not run risky
-    # work through deterministic fan-out) and falls back to team-execution.
-    risky_fanout = lifecycle.recommend_execution_backend(
-        broad_independent_fanout=True, has_infra=True
+    # Precedence: broad independent fan-out without elevated risk -> multi-agent-consensus.
+    fanout = lifecycle.recommend_execution_backend(
+        broad_independent_fanout=True, consensus_available=True
     )
-    assert risky_fanout["recommended"] == "team-execution"
+    assert fanout["recommended"] == "multi-agent-consensus"
+
+    risky_fanout = lifecycle.recommend_execution_backend(
+        broad_independent_fanout=True, has_infra=True, consensus_available=True
+    )
+    assert risky_fanout["recommended"] == "multi-agent-consensus"
 
     # Precedence: neither signal -> inline.
     assert lifecycle.recommend_execution_backend()["recommended"] == "inline"
 
-    # OVERLAP: consensus (-> team wins precedence) AND broad fan-out (-> ultracode reachable).
-    # Recommended is team-execution, but cc-workflows-ultracode MUST still be an alternative.
     overlap = lifecycle.recommend_execution_backend(
-        broad_independent_fanout=True, needs_consensus=True
+        broad_independent_fanout=True, needs_consensus=True, consensus_available=True
     )
-    assert overlap["recommended"] == "team-execution"
-    assert "cc-workflows-ultracode" in overlap["alternatives"]
-    # The recommended backend is never echoed back into its own alternatives.
-    assert "team-execution" not in overlap["alternatives"]
+    assert overlap["recommended"] == "multi-agent-consensus"
+    assert overlap["alternatives"] == ["inline"]
 
-    # omit_ultracode when the Workflow tool is unavailable: the flag is set AND
-    # cc-workflows-ultracode is dropped from alternatives (it is no longer reachable).
-    no_workflow = lifecycle.recommend_execution_backend(
-        broad_independent_fanout=True, needs_consensus=True, workflow_available=False
+    unavailable = lifecycle.recommend_execution_backend(
+        broad_independent_fanout=True,
+        needs_consensus=True,
+        consensus_available=False,
     )
-    assert no_workflow["omit_ultracode"] is True
-    assert "cc-workflows-ultracode" not in no_workflow["alternatives"]
-    # With ultracode capability-gated out, a pure-fan-out job degrades to inline.
+    assert unavailable["omit_multi_agent_consensus"] is True
+    assert unavailable["alternatives"] == []
     assert (
         lifecycle.recommend_execution_backend(
-            broad_independent_fanout=True, workflow_available=False
+            broad_independent_fanout=True,
+            consensus_available=False,
         )["recommended"]
         == "inline"
     )
-    # When workflow IS available, omit_ultracode stays false.
-    assert lifecycle.recommend_execution_backend()["omit_ultracode"] is False
+    assert (
+        lifecycle.recommend_execution_backend(consensus_available=True)[
+            "omit_multi_agent_consensus"
+        ]
+        is False
+    )
 
 
 def test_lifecycle_state_cli_subcommands(capsys: pytest.CaptureFixture[str]) -> None:
@@ -2503,20 +2499,30 @@ def test_lifecycle_state_cli_subcommands(capsys: pytest.CaptureFixture[str]) -> 
     lifecycle = _load_module("lifecycle_state.py")
 
     # recommend-backend subcommand -> JSON on stdout, parsed and asserted.
-    assert lifecycle.main(["recommend-backend", "--file-count", "9"]) == 0
+    assert lifecycle.main(["recommend-backend", "--file-count", "9", "--consensus-proven"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["recommended"] == "team-execution"
+    assert payload["recommended"] == "multi-agent-consensus"
 
     # The overlap escalation survives the CLI surface end-to-end.
-    assert lifecycle.main(["recommend-backend", "--broad-fanout", "--needs-consensus"]) == 0
+    assert (
+        lifecycle.main(
+            [
+                "recommend-backend",
+                "--broad-fanout",
+                "--needs-consensus",
+                "--consensus-proven",
+            ]
+        )
+        == 0
+    )
     overlap = json.loads(capsys.readouterr().out)
-    assert overlap["recommended"] == "team-execution"
-    assert "cc-workflows-ultracode" in overlap["alternatives"]
+    assert overlap["recommended"] == "multi-agent-consensus"
+    assert overlap["alternatives"] == ["inline"]
 
-    # --no-workflow flows through to omit_ultracode via the CLI.
-    assert lifecycle.main(["recommend-backend", "--broad-fanout", "--no-workflow"]) == 0
-    no_workflow = json.loads(capsys.readouterr().out)
-    assert no_workflow["omit_ultracode"] is True
+    # Missing proof omits multi-agent consensus by default.
+    assert lifecycle.main(["recommend-backend", "--broad-fanout"]) == 0
+    unavailable = json.loads(capsys.readouterr().out)
+    assert unavailable["omit_multi_agent_consensus"] is True
 
     # normalize subcommand preserves the legacy alias resolution.
     assert lifecycle.main(["normalize", "deploy"]) == 0
@@ -2530,101 +2536,108 @@ def test_lifecycle_state_cli_subcommands(capsys: pytest.CaptureFixture[str]) -> 
 
 
 def test_recommend_execution_backend_adversarial_confidence() -> None:
-    """adversarial_confidence is the SECOND ultracode trigger beside broad fan-out.
-
-    Prove-by-refutation / judge-panel work with no deploy/security signal is an
-    ultracode shape (deterministic INDEPENDENT verification), not an inline one.
-    It rides the same risk gate and the same capability gate as broad fan-out.
-    """
+    """Adversarial review is native multi-agent-consensus work."""
     lifecycle = _load_module("lifecycle_state.py")
     rec = lifecycle.recommend_execution_backend
 
-    # adversarial_confidence alone, no risk -> cc-workflows-ultracode.
-    assert rec(adversarial_confidence=True)["recommended"] == "cc-workflows-ultracode"
+    # adversarial_confidence alone, no risk -> multi-agent-consensus.
+    assert (
+        rec(adversarial_confidence=True, consensus_available=True)["recommended"]
+        == "multi-agent-consensus"
+    )
 
-    # The risk gate still suppresses it: an elevated-risk signal routes to team.
-    assert rec(adversarial_confidence=True, has_security=True)["recommended"] == "team-execution"
+    assert (
+        rec(
+            adversarial_confidence=True,
+            has_security=True,
+            consensus_available=True,
+        )["recommended"]
+        == "multi-agent-consensus"
+    )
 
-    # Capability gate: with the Workflow tool absent it degrades to inline and
-    # drops ultracode from the offer (mirrors the broad-fanout degrade).
-    gated = rec(adversarial_confidence=True, workflow_available=False)
+    # Capability gate: with the native consensus runtime absent it degrades to inline and
+    gated = rec(adversarial_confidence=True, consensus_available=False)
     assert gated["recommended"] == "inline"
-    assert gated["omit_ultracode"] is True
+    assert gated["omit_multi_agent_consensus"] is True
 
-    # Overlap: adversarial_confidence (ultracode) AND needs_consensus (team wins)
-    # still lists ultracode as a one-keystroke alternative.
-    overlap = rec(adversarial_confidence=True, needs_consensus=True)
-    assert overlap["recommended"] == "team-execution"
-    assert "cc-workflows-ultracode" in overlap["alternatives"]
+    overlap = rec(
+        adversarial_confidence=True,
+        needs_consensus=True,
+        consensus_available=True,
+    )
+    assert overlap["recommended"] == "multi-agent-consensus"
+    assert overlap["alternatives"] == ["inline"]
 
 
 def test_recommend_execution_backend_gated_vs_advisory_consensus() -> None:
-    """R7 keystone: needs_consensus splits on the GOVERNANCE axis (gated vs advisory).
-
-    The old behavior hard-forced team-execution on EVERY consensus signal
-    (``or needs_consensus``). U6 replaces that with consensus_is_gated:
-
-    * GATED (default) -> team-execution: the verdict must block/persist.
-    * ADVISORY        -> cc-workflows-ultracode: throwaway in-session votes
-      ride the existing adversarial_confidence ultracode branch.
-
-    A contested-but-not-gated job must reach the ADVISORY ultracode branch and
-    NEVER regress to inline. The docs-gating (has_code_surface) and the overlap
-    alternatives behavior are preserved.
-    """
+    """Governance changes the rationale, not the Antigravity backend."""
     lifecycle = _load_module("lifecycle_state.py")
     rec = lifecycle.recommend_execution_backend
 
-    # AE2 — GATED consensus (the default) -> team-execution. A bare
-    # needs_consensus=True keeps the legacy behavior (default consensus_is_gated=True).
-    gated = rec(needs_consensus=True)
-    assert gated["recommended"] == "team-execution"
-    assert rec(needs_consensus=True, consensus_is_gated=True)["recommended"] == "team-execution"
+    gated = rec(needs_consensus=True, consensus_available=True)
+    assert gated["recommended"] == "multi-agent-consensus"
+    assert "gated" in gated["rationale"]
 
-    # AE1 — ADVISORY consensus, no risk -> cc-workflows-ultracode (the judge-panel),
-    # NOT team-execution and NOT inline.
-    advisory = rec(needs_consensus=True, consensus_is_gated=False)
-    assert advisory["recommended"] == "cc-workflows-ultracode"
+    # Advisory consensus uses the same native backend with advisory governance.
+    advisory = rec(
+        needs_consensus=True,
+        consensus_is_gated=False,
+        consensus_available=True,
+    )
+    assert advisory["recommended"] == "multi-agent-consensus"
 
-    # The hard-force is gone: advisory consensus alone no longer routes to team.
-    assert advisory["recommended"] != "team-execution"
-    # team-execution stays a one-keystroke alternative for the advisory pick.
-    assert "team-execution" in advisory["alternatives"]
+    assert "advisory" in advisory["rationale"]
+    assert advisory["alternatives"] == ["inline"]
 
     # consensus_is_gated is INERT when there is no consensus signal at all:
     # a bare job stays inline whether the flag is set or not.
     assert rec(consensus_is_gated=False)["recommended"] == "inline"
     assert rec(consensus_is_gated=True)["recommended"] == "inline"
 
-    # Advisory consensus rides the SAME risk gate as the other ultracode triggers:
-    # an elevated-risk code surface suppresses the ultracode branch -> team-execution.
     assert (
-        rec(needs_consensus=True, consensus_is_gated=False, has_security=True)["recommended"]
-        == "team-execution"
+        rec(
+            needs_consensus=True,
+            consensus_is_gated=False,
+            has_security=True,
+            consensus_available=True,
+        )["recommended"]
+        == "multi-agent-consensus"
     )
 
-    # Advisory consensus rides the SAME capability gate: absent the Workflow tool
-    # it degrades to inline and drops ultracode from the offer.
-    no_wf = rec(needs_consensus=True, consensus_is_gated=False, workflow_available=False)
-    assert no_wf["recommended"] == "inline"
-    assert no_wf["omit_ultracode"] is True
-    assert "cc-workflows-ultracode" not in no_wf["alternatives"]
+    unavailable = rec(
+        needs_consensus=True,
+        consensus_is_gated=False,
+        consensus_available=False,
+    )
+    assert unavailable["recommended"] == "inline"
+    assert unavailable["omit_multi_agent_consensus"] is True
+    assert "multi-agent-consensus" not in unavailable["alternatives"]
 
-    # OVERLAP — gated consensus AND broad fan-out: team wins precedence, but
-    # cc-workflows-ultracode is still listed as a one-keystroke escalation.
-    overlap = rec(needs_consensus=True, consensus_is_gated=True, broad_independent_fanout=True)
-    assert overlap["recommended"] == "team-execution"
-    assert "cc-workflows-ultracode" in overlap["alternatives"]
-    assert "team-execution" not in overlap["alternatives"]
+    overlap = rec(
+        needs_consensus=True,
+        consensus_is_gated=True,
+        broad_independent_fanout=True,
+        consensus_available=True,
+    )
+    assert overlap["recommended"] == "multi-agent-consensus"
+    assert overlap["alternatives"] == ["inline"]
 
-    # DOCS-GATING preserved. Advisory consensus on a pure-docs change (no code
-    # surface) still reaches the ultracode judge-panel — has_code_surface gates the
-    # code-shaped proxies, not the governance-shaped consensus routing.
-    docs_advisory = rec(needs_consensus=True, consensus_is_gated=False, has_code_surface=False)
-    assert docs_advisory["recommended"] == "cc-workflows-ultracode"
+    # Consensus remains a governance signal on pure documentation.
+    docs_advisory = rec(
+        needs_consensus=True,
+        consensus_is_gated=False,
+        has_code_surface=False,
+        consensus_available=True,
+    )
+    assert docs_advisory["recommended"] == "multi-agent-consensus"
     # GATED consensus survives the docs neutralizer (it is governance, not code).
-    docs_gated = rec(needs_consensus=True, consensus_is_gated=True, has_code_surface=False)
-    assert docs_gated["recommended"] == "team-execution"
+    docs_gated = rec(
+        needs_consensus=True,
+        consensus_is_gated=True,
+        has_code_surface=False,
+        consensus_available=True,
+    )
+    assert docs_gated["recommended"] == "multi-agent-consensus"
 
 
 def test_recommend_backend_cli_advisory_consensus(capsys: pytest.CaptureFixture[str]) -> None:
@@ -2632,73 +2645,88 @@ def test_recommend_backend_cli_advisory_consensus(capsys: pytest.CaptureFixture[
 
     Without a runnable flag the gated/advisory split is unreachable from the
     markdown caller, so the flag must flow end-to-end. Omitting it keeps the
-    gated default (team-execution); setting it routes to the ultracode judge-panel.
+    gated default; setting it changes governance while retaining the backend.
     """
     lifecycle = _load_module("lifecycle_state.py")
 
-    # Default (gated): --needs-consensus alone -> team-execution.
-    assert lifecycle.main(["recommend-backend", "--needs-consensus"]) == 0
+    # Default and advisory both route to the same native backend.
+    assert lifecycle.main(["recommend-backend", "--needs-consensus", "--consensus-proven"]) == 0
     gated = json.loads(capsys.readouterr().out)
-    assert gated["recommended"] == "team-execution"
+    assert gated["recommended"] == "multi-agent-consensus"
 
-    # --advisory-consensus flips it to the ultracode judge-panel.
-    assert lifecycle.main(["recommend-backend", "--needs-consensus", "--advisory-consensus"]) == 0
+    # --advisory-consensus changes the recorded governance.
+    assert (
+        lifecycle.main(
+            [
+                "recommend-backend",
+                "--needs-consensus",
+                "--advisory-consensus",
+                "--consensus-proven",
+            ]
+        )
+        == 0
+    )
     advisory = json.loads(capsys.readouterr().out)
-    assert advisory["recommended"] == "cc-workflows-ultracode"
-    assert "team-execution" in advisory["alternatives"]
+    assert advisory["recommended"] == "multi-agent-consensus"
+    assert advisory["alternatives"] == ["inline"]
 
 
 def test_recommend_execution_backend_docs_no_code_surface() -> None:
-    """has_code_surface=False neutralizes the OUTPUT-BLIND proxies for docs.
-
-    team-execution's scanners + deploy gate are code-shaped and inert on pure
-    docs/spec/research. So size (file/phase) and the parse_issue.py keyword flags
-    (has_infra/has_security/deployment_sensitive) must NOT force team-execution on
-    a docs change. The two output-AGNOSTIC governance signals survive: cross_repo
-    (ownership boundary) and needs_consensus (contested).
-    """
+    """Output-blind risk proxies stay neutral for pure documentation."""
     lifecycle = _load_module("lifecycle_state.py")
     rec = lifecycle.recommend_execution_backend
 
-    # Default (has_code_surface=True): the size proxy still trips team-execution.
-    assert rec(file_count=12)["recommended"] == "team-execution"
+    assert rec(file_count=12, consensus_available=True)["recommended"] == "multi-agent-consensus"
 
     # Docs: the size/sequencing proxies are voided -> inline.
     assert rec(file_count=12, has_code_surface=False)["recommended"] == "inline"
     assert rec(phase_count=6, has_code_surface=False)["recommended"] == "inline"
 
     # Docs: the keyword risk proxies are voided too (mention != touch). An infra
-    # runbook or a threat-model doc must not be conscripted into team-execution.
+    # runbook or a threat-model doc must not trigger consensus from keywords alone.
     assert rec(has_infra=True, has_code_surface=False)["recommended"] == "inline"
     assert rec(has_security=True, has_code_surface=False)["recommended"] == "inline"
     assert rec(deployment_sensitive=True, has_code_surface=False)["recommended"] == "inline"
 
-    # Broad docs (many files) fan out via ultracode even with a keyword risk flag
-    # set, because the suppressor is itself gated by has_code_surface.
+    # Explicit fan-out remains an independent execution signal.
     assert (
-        rec(file_count=12, broad_independent_fanout=True, has_code_surface=False)["recommended"]
-        == "cc-workflows-ultracode"
+        rec(
+            file_count=12,
+            broad_independent_fanout=True,
+            has_code_surface=False,
+            consensus_available=True,
+        )["recommended"]
+        == "multi-agent-consensus"
     )
     assert (
-        rec(has_infra=True, broad_independent_fanout=True, has_code_surface=False)["recommended"]
-        == "cc-workflows-ultracode"
+        rec(
+            has_infra=True,
+            broad_independent_fanout=True,
+            has_code_surface=False,
+            consensus_available=True,
+        )["recommended"]
+        == "multi-agent-consensus"
     )
 
-    # The output-AGNOSTIC governance signals SURVIVE the neutralizer: cross_repo
-    # (ownership boundary) and needs_consensus (contested) still fire on docs.
-    assert rec(cross_repo=True, has_code_surface=False)["recommended"] == "team-execution"
-    assert rec(needs_consensus=True, has_code_surface=False)["recommended"] == "team-execution"
+    assert (
+        rec(cross_repo=True, has_code_surface=False, consensus_available=True)["recommended"]
+        == "multi-agent-consensus"
+    )
+    assert rec(
+        needs_consensus=True,
+        has_code_surface=False,
+        consensus_available=True,
+    )["recommended"]
 
-    # Overlap still lists ultracode: docs breadth + consensus -> team recommended,
-    # ultracode an alternative.
     overlap = rec(
         file_count=12,
         broad_independent_fanout=True,
         needs_consensus=True,
         has_code_surface=False,
+        consensus_available=True,
     )
-    assert overlap["recommended"] == "team-execution"
-    assert "cc-workflows-ultracode" in overlap["alternatives"]
+    assert overlap["recommended"] == "multi-agent-consensus"
+    assert overlap["alternatives"] == ["inline"]
 
 
 def test_recommend_backend_cli_new_flags(capsys: pytest.CaptureFixture[str]) -> None:
@@ -2709,10 +2737,12 @@ def test_recommend_backend_cli_new_flags(capsys: pytest.CaptureFixture[str]) -> 
     """
     lifecycle = _load_module("lifecycle_state.py")
 
-    # --adversarial-confidence -> cc-workflows-ultracode.
-    assert lifecycle.main(["recommend-backend", "--adversarial-confidence"]) == 0
+    # --adversarial-confidence -> multi-agent-consensus.
+    assert (
+        lifecycle.main(["recommend-backend", "--adversarial-confidence", "--consensus-proven"]) == 0
+    )
     adv = json.loads(capsys.readouterr().out)
-    assert adv["recommended"] == "cc-workflows-ultracode"
+    assert adv["recommended"] == "multi-agent-consensus"
 
     # --no-code-surface voids the size proxy: a 12-file docs change -> inline.
     assert lifecycle.main(["recommend-backend", "--file-count", "12", "--no-code-surface"]) == 0
@@ -2720,9 +2750,19 @@ def test_recommend_backend_cli_new_flags(capsys: pytest.CaptureFixture[str]) -> 
     assert docs["recommended"] == "inline"
 
     # --no-code-surface keeps cross_repo live (the ownership-boundary signal).
-    assert lifecycle.main(["recommend-backend", "--cross-repo", "--no-code-surface"]) == 0
+    assert (
+        lifecycle.main(
+            [
+                "recommend-backend",
+                "--cross-repo",
+                "--no-code-surface",
+                "--consensus-proven",
+            ]
+        )
+        == 0
+    )
     cross = json.loads(capsys.readouterr().out)
-    assert cross["recommended"] == "team-execution"
+    assert cross["recommended"] == "multi-agent-consensus"
 
 
 def test_issue_progress_comments_include_required_evidence() -> None:
@@ -2984,7 +3024,7 @@ def test_scan_exposes_picker_fields(tmp_path, monkeypatch: pytest.MonkeyPatch) -
         issue_ref="owner/repo#7",
         plan_path="docs/plans/x.md",
         branch="feat/loop-probe",
-        orchestration_mode="cc-workflows-ultracode",
+        orchestration_mode="multi-agent-consensus",
         orchestration_ref="wf_probe123",
     )
     saga.save(tmp_path, probe, now=datetime(2026, 6, 2, 14, 5, 10, tzinfo=UTC))
@@ -2997,5 +3037,134 @@ def test_scan_exposes_picker_fields(tmp_path, monkeypatch: pytest.MonkeyPatch) -
     assert candidate["plan_path"] == "docs/plans/x.md"
     # branch is the third #code-review-saga-scan-touchups match key (Defect 1).
     assert candidate["branch"] == "feat/loop-probe"
-    assert candidate["orchestration_mode"] == "cc-workflows-ultracode"
+    assert candidate["orchestration_mode"] == "multi-agent-consensus"
     assert candidate["orchestration_ref"] == "wf_probe123"
+
+
+def _run_host_gate(
+    consumer: str,
+    receipt: Path,
+    *,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            str(PLUGIN_ROOT / "scripts" / "host_capability_gate.py"),
+            "--consumer",
+            consumer,
+            "--receipt",
+            str(receipt),
+            "--json",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def test_outcome_cli_accepts_only_receipt_based_host_authorization() -> None:
+    completed = subprocess.run(
+        [sys.executable, str(PLUGIN_ROOT / "scripts/outcome.py"), "advance", "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+    assert "--capability-receipt" in completed.stdout
+    assert "--host-capable" not in completed.stdout
+    assert "--consensus-available" not in completed.stdout
+
+
+def test_execution_spec_cli_rejects_legacy_workflow_emission(tmp_path: Path) -> None:
+    output = tmp_path / "legacy-workflow.py"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(PLUGIN_ROOT / "scripts/execution_spec.py"),
+            "emit",
+            "missing.json",
+            "--out",
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert not output.exists()
+
+
+def test_board_progression_ledger_is_antigravity_owned(tmp_path: Path) -> None:
+    progression = _load_module("board_progression.py")
+    assert progression._default_ledger_dir(tmp_path) == (
+        tmp_path / ".gemini" / "saga" / "board-progression"
+    )
+
+
+def test_host_capability_gate_preserves_shared_degraded_evaluation() -> None:
+    receipt = PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-work-degraded.json"
+
+    completed = _run_host_gate("saga.work", receipt)
+    payload = json.loads(completed.stdout)
+
+    assert completed.returncode == 0
+    assert payload == {
+        "schema": "antigravity.capability-evaluation.v1",
+        "consumer": "saga.work",
+        "state": "degraded",
+        "blocking_capabilities": [],
+        "degraded_capabilities": ["agy.agent.execution"],
+        "fallbacks": {
+            "agy.agent.execution": "agy.sequential.isolation",
+        },
+    }
+
+
+def test_host_capability_gate_blocks_required_unknown_without_state_write(
+    tmp_path: Path,
+) -> None:
+    receipt = PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-resume-blocked.json"
+    before = list(tmp_path.iterdir())
+
+    completed = _run_host_gate("saga.resume", receipt)
+    payload = json.loads(completed.stdout)
+
+    assert completed.returncode == 1
+    assert payload["state"] == "blocked"
+    assert payload["blocking_capabilities"] == ["agy.conversation.resume"]
+    assert list(tmp_path.iterdir()) == before
+
+
+def test_host_capability_gate_rejects_schema_drift_and_local_diagnostic(
+    tmp_path: Path,
+) -> None:
+    source = json.loads(
+        (PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-work-degraded.json").read_text()
+    )
+    source["schema"] = "antigravity.capabilities.v2"
+    drifted = tmp_path / "drifted.json"
+    drifted.write_text(json.dumps(source))
+    local = PLUGIN_ROOT / "tests/fixtures/host-capabilities/local-diagnostic-invalid.json"
+
+    schema_result = _run_host_gate("saga.work", drifted)
+    local_result = _run_host_gate("saga.work", local)
+
+    assert schema_result.returncode == local_result.returncode == 1
+    assert schema_result.stdout == local_result.stdout == ""
+    assert "strict schema and privacy validation" in schema_result.stderr
+    assert "private diagnostic output" not in local_result.stderr
+    assert "/Users/example" not in local_result.stderr
+
+
+def test_host_capability_gate_fails_loud_when_fleet_core_cannot_resolve() -> None:
+    receipt = PLUGIN_ROOT / "tests/fixtures/host-capabilities/saga-work-degraded.json"
+    env = dict(os.environ)
+    env["FLEET_COMMONS_ROOT"] = "/definitely/not/a/fleet-core-root"
+
+    completed = _run_host_gate("saga.work", receipt, env=env)
+
+    assert completed.returncode == 1
+    assert completed.stdout == ""
+    assert "install or repair fleet-core" in completed.stderr

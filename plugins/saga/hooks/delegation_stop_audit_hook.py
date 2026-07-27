@@ -21,7 +21,8 @@ Logic (KTD8 cost bounds — marker stat FIRST):
      the delegation genuinely.
 
 Loop guard (KTD2, operator-confirmed): when ``stop_hook_active`` is true and the audit
-still fails, write an audit record to ``.claude/delegation/audits/<ts>.json``, print a
+still fails, write an audit record to
+``.gemini/saga/delegation/audits/<ts>.json``, print a
 banner to stderr, and exit 0 — exactly one forced continuation, never an infinite block.
 
 FAIL-OPEN on every error path: malformed stdin, missing fleet-core shim/module, unreadable
@@ -58,9 +59,9 @@ def _find_repo_root(cwd: str | None) -> Path:
 
 
 def _write_audit_record(repo_root: Path, record: dict[str, Any]) -> str | None:
-    """Best-effort audit record under ``.claude/delegation/audits/<ts>.json``. Never raises."""
+    """Write a best-effort local Antigravity delegation audit. Never raises."""
     try:
-        audits_dir = repo_root / ".claude" / "delegation" / "audits"
+        audits_dir = repo_root / ".gemini" / "saga" / "delegation" / "audits"
         audits_dir.mkdir(parents=True, exist_ok=True)
         ts = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         path = audits_dir / f"{ts}-{record.get('session_id', 'unknown')}.json"

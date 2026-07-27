@@ -12,9 +12,9 @@ Default repo-local state:
 .gemini/multi-agent-consensus/validators/
 ```
 
-This location is valid only when `.claude/` is ignored by the target repository.
+This location is valid only when `.gemini/` is ignored by the target repository.
 
-If `.claude/` is not ignored, instruct the user to add an ignore rule or use:
+If `.gemini/` is not ignored, instruct the user to add an ignore rule or use:
 
 ```text
 ~/.gemini/multi-agent-consensus/state/<repo>/

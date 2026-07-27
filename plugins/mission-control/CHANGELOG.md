@@ -1,5 +1,14 @@
 # Changelog — mission-control
 
+## [2.7.0] — 2026-07-26
+
+### Changed
+
+- Store Antigravity user defaults beneath the injected `.gemini` state root
+  rather than an Antigravity-owned `.claude` path.
+- Keep the defaults path injectable so tests and alternate hosts do not read a
+  developer's home state.
+
 ## [1.7.0] — 2026-06-28
 
 ### Migration notes

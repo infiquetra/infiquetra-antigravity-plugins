@@ -41,7 +41,7 @@ def destination_includes_deploy(destination: str) -> bool:
     return normalize_destination(destination) == "nonprod-deploy"
 
 
-def should_offer_team_execution(
+def should_offer_consensus(
     *,
     file_count: int,
     phase_count: int,
@@ -51,13 +51,13 @@ def should_offer_team_execution(
     deployment_sensitive: bool,
     has_code_surface: bool = True,
 ) -> bool:
-    """Decide whether the loop should offer team-execution.
+    """Decide whether the loop should offer Antigravity multi-agent consensus.
 
     ``has_code_surface`` defaults True, so every existing caller is unchanged.
     Set it False for pure docs/spec/research/journal work (no code, no IaC, no
     API contract, no deployable artifact). It neutralizes the OUTPUT-BLIND
     proxies — the ones that fire on the *mention* or *volume* of risk rather than
-    a real ship/scanner surface that team-execution's gates can act on:
+    a real ship/scanner surface that consensus review can act on:
 
     * ``file_count`` / ``phase_count`` — volume and sequencing, not governance.
     * ``has_infra`` / ``has_security`` — ``parse_issue.py`` keyword regexes
@@ -81,6 +81,15 @@ def should_offer_team_execution(
         )
     )
     return (code_shaped and has_code_surface) or cross_repo
+
+
+def should_offer_team_execution(**signals: object) -> bool:
+    """Compatibility alias for the historical Claude source helper.
+
+    Active Antigravity routing calls :func:`should_offer_consensus`.
+    """
+
+    return should_offer_consensus(**signals)  # type: ignore[arg-type]
 
 
 def should_prompt_for_issue(*, has_issue: bool, is_trivial: bool, user_declined: bool) -> bool:
@@ -109,62 +118,17 @@ def recommend_execution_backend(
     broad_independent_fanout: bool = False,
     adversarial_confidence: bool = False,
     has_code_surface: bool = True,
-    workflow_available: bool = True,
+    consensus_available: bool = False,
 ) -> dict[str, object]:
-    """Recommend an execution backend, mirroring operator-choice.md section 3.
+    """Recommend one of the two active Antigravity execution backends.
 
-    Reuses ``should_offer_team_execution`` for the team-execution trigger
-    (passing all six required kwargs) and adds the ultracode branch. The
-    precedence is lean (operator-choice section 3.3): team-execution wins over
-    ultracode wins over inline.
-
-    GATED vs ADVISORY consensus (R7 keystone). A ``needs_consensus`` signal is
-    no longer an unconditional hard-force to team-execution. The governance axis
-    (operator-choice section 3.1) splits it:
-
-    * **gated** consensus (``consensus_is_gated=True``, the default) — the verdict
-      must BLOCK a merge/deploy and PERSIST as standing evidence. Only
-      team-execution offers a reviewer-CONSENSUS gate + named scanners + a guarded
-      deploy, so gated consensus is a team-execution job even when small. Default
-      True keeps every existing caller's behavior (a bare ``needs_consensus=True``
-      still recommends team-execution).
-    * **advisory** consensus (``consensus_is_gated=False``) — N throwaway
-      in-session votes the operator acts on themselves; nothing is recorded or
-      blocks. That is a dynamic-workflow judge-panel, so advisory consensus feeds
-      the existing ``adversarial_confidence`` ultracode trigger instead of forcing
-      team-execution. A contested-but-not-gated job therefore reaches the advisory
-      ultracode branch and never regresses to inline.
-
-    This stops the old unconditional ``or needs_consensus`` hard-force: only the
-    GATED branch reaches team-execution; the advisory branch is OR'd into the
-    ultracode trigger beside ``adversarial_confidence``.
-
-    ``has_code_surface`` (default True) neutralizes the code-shaped team-execution
-    proxies for pure docs/spec/research work (see ``should_offer_team_execution``).
-    It also gates the ultracode RISK SUPPRESSOR below: ``has_infra`` /
-    ``has_security`` are ``parse_issue.py`` keyword matches (mention, not touch),
-    so on a docs change they are false positives that must not block an ultracode
-    fan-out any more than they force team-execution.
-
-    ``adversarial_confidence`` (default False) is the second ultracode trigger
-    beside ``broad_independent_fanout``: prove-by-refutation / judge-panel /
-    perspective-diverse verification is an ultracode shape (deterministic
-    INDEPENDENT verification, not merely breadth). Advisory consensus rides the
-    same branch. Without either, "stress-test this from many angles" work with no
-    deploy/security signal would fall to inline.
-
-    ``alternatives`` lists every *reachable* backend (capability-gated by
-    ``workflow_available``) computed INDEPENDENTLY of which backend won
-    precedence, so an overlap job (e.g. GATED ``needs_consensus`` AND
-    ``broad_independent_fanout``) recommends ``team-execution`` yet still lists
-    ``cc-workflows-ultracode`` in ``alternatives`` — escalation stays one
-    keystroke (operator-choice section 3.3).
+    Claude ``team-execution`` and Workflow routes both map to
+    ``multi-agent-consensus``. The gated/advisory distinction remains useful to
+    that skill's review policy, but it does not select a different backend.
     """
 
-    gated_consensus = needs_consensus and consensus_is_gated
-    advisory_consensus = needs_consensus and not consensus_is_gated
-    team = (
-        should_offer_team_execution(
+    escalation = (
+        should_offer_consensus(
             file_count=file_count,
             phase_count=phase_count,
             has_security=has_security,
@@ -173,79 +137,63 @@ def recommend_execution_backend(
             deployment_sensitive=deployment_sensitive,
             has_code_surface=has_code_surface,
         )
-        or gated_consensus
+        or needs_consensus
+        or broad_independent_fanout
+        or adversarial_confidence
     )
-    # The risk suppressor only bites when there is a real code/scanner surface:
-    # has_infra / has_security are keyword matches that false-positive on docs.
-    elevated_risk = (has_security or has_infra or deployment_sensitive) and has_code_surface
-    ultracode = (
-        broad_independent_fanout or adversarial_confidence or advisory_consensus
-    ) and not elevated_risk
 
-    if team:
-        recommended = "team-execution"
-        rationale = "size/risk or consensus signal -> review consensus + gates fit"
-    elif ultracode and workflow_available:
-        recommended = "cc-workflows-ultracode"
-        rationale = (
-            "broad fan-out or adversarial-confidence pass without elevated risk"
-            " -> deterministic independent verification"
-        )
+    if escalation and consensus_available:
+        recommended = "multi-agent-consensus"
+        governance = "gated" if needs_consensus and consensus_is_gated else "advisory"
+        rationale = f"size, risk, or independent-review signal -> {governance} native consensus"
+    elif escalation:
+        recommended = "inline"
+        rationale = "consensus was indicated but its required capabilities are not proven"
     else:
         recommended = "inline"
         rationale = "no escalation signal -> the agent does the work itself"
 
-    reachable = ["inline", "team-execution", "cc-workflows-ultracode"]
-    if not workflow_available:
-        reachable.remove("cc-workflows-ultracode")
+    reachable = ["inline", "multi-agent-consensus"]
+    if not consensus_available:
+        reachable.remove("multi-agent-consensus")
     alternatives = [backend for backend in reachable if backend != recommended]
 
     return {
         "recommended": recommended,
         "rationale": rationale,
         "alternatives": alternatives,
-        "omit_ultracode": not workflow_available,
+        "omit_multi_agent_consensus": not consensus_available,
     }
 
 
-# Orchestration tiers, ordered from the most-capable (dynamic workflows, Claude Code
-# only) down to the always-runnable inline baseline. Capability-portable degradation
-# (R11) only ever recompiles DOWN this ladder — a host that cannot run dynamic
-# workflows still runs team-execution or, at the floor, the inline/serial baseline.
-# The enum strings are the frozen wire contract (mirrors saga.py ORCHESTRATION_MODES).
-ORCHESTRATION_TIERS = ("cc-workflows-ultracode", "team-execution", "inline")
-
-# Only the dynamic-workflow tier needs the Workflow tool. team-execution and inline
-# run on any host, so an off-host resume only ever downgrades AWAY from this one tier.
-_HOST_DEPENDENT_TIERS = frozenset({"cc-workflows-ultracode"})
+ORCHESTRATION_TIERS = ("multi-agent-consensus", "inline")
+_HOST_DEPENDENT_TIERS = frozenset({"multi-agent-consensus"})
 
 
 def recheck_orchestration_capability(
     *,
     orchestration_mode: str,
-    workflow_available: bool,
-    fallback_mode: str = "team-execution",
+    consensus_available: bool,
+    fallback_mode: str = "inline",
 ) -> dict[str, object]:
     """Re-check host capability on resume and recompile ONLY the orchestration tier (R11).
 
     Capability-portable degradation. Every authored plan carries a runnable inline/serial
     baseline; the dynamic-workflow layer applies only on a capable host. On an off-host
-    resume the Workflow tool is re-checked here; if the chosen tier is host-dependent
-    (``cc-workflows-ultracode``) and the host cannot run it, this recompiles ONLY the
+    resume the native consensus runtime is re-checked here; if the chosen tier is host-dependent
+    (``multi-agent-consensus``) and the host cannot run it, this recompiles ONLY the
     orchestration tier DOWN the :data:`ORCHESTRATION_TIERS` ladder. The unit specs and
     per-unit ``{model, effort}`` tiers are NOT touched here — they survive the recompile
     untouched (that preservation is the emitter's job; this function decides the new
     orchestration tier and the human-readable downgrade note).
 
-    ``fallback_mode`` is the preferred landing tier when a downgrade is needed (default
-    ``team-execution``, the next rung down — still parallel/gated, just host-portable).
-    If the caller asks for a fallback that is itself host-dependent or unknown, this floors
-    to ``inline`` — the always-runnable baseline — rather than picking another tier that
-    might also be unavailable.
+    ``inline`` is the only lower active Antigravity tier. A required independent
+    execution guarantee must be handled by the caller before this unattended
+    recovery helper is used.
 
     AE3 contract — this NEVER errors and NEVER silently runs nothing:
 
-    * **Host CAN run the chosen tier** (``workflow_available`` True, or the mode is not
+    * **Host CAN run the chosen tier** (``consensus_available`` True, or the mode is not
       host-dependent): ``downgraded=False``, ``to == orchestration_mode`` — run as authored.
     * **Host CANNOT run the chosen tier**: ``downgraded=True``, ``to`` is a runnable tier
       (never empty), and ``note`` is a one-line, surfaceable downgrade message.
@@ -259,7 +207,7 @@ def recheck_orchestration_capability(
           "from": <the mode as resumed>,       # echoed input
           "to": <the runnable orchestration tier>,   # NEVER empty
           "note": <one-line downgrade note, or ""> ,
-          "workflow_available": bool,           # echoed capability probe
+          "consensus_available": bool,          # echoed capability probe
         }
     """
 
@@ -273,10 +221,10 @@ def recheck_orchestration_capability(
             "from": resumed,
             "to": "inline",
             "note": "",
-            "workflow_available": workflow_available,
+            "consensus_available": consensus_available,
         }
 
-    host_can_run = workflow_available or resumed not in _HOST_DEPENDENT_TIERS
+    host_can_run = consensus_available or resumed not in _HOST_DEPENDENT_TIERS
     if host_can_run:
         # The authored tier is runnable here — no downgrade, run as authored.
         return {
@@ -284,7 +232,7 @@ def recheck_orchestration_capability(
             "from": resumed,
             "to": resumed,
             "note": "",
-            "workflow_available": workflow_available,
+            "consensus_available": consensus_available,
         }
 
     # Off-host: recompile the orchestration tier DOWN. Prefer the requested fallback, but
@@ -296,7 +244,7 @@ def recheck_orchestration_capability(
         target = "inline"
 
     note = (
-        f"Downgraded orchestration {resumed} -> {target}: the Workflow tool is "
+        f"Downgraded orchestration {resumed} -> {target}: the native consensus runtime is "
         f"unavailable on this host. Unit specs and per-unit tiers preserved; only "
         f"the orchestration tier recompiled."
     )
@@ -305,7 +253,7 @@ def recheck_orchestration_capability(
         "from": resumed,
         "to": target,
         "note": note,
-        "workflow_available": workflow_available,
+        "consensus_available": consensus_available,
     }
 
 
@@ -329,12 +277,16 @@ def _build_parser() -> argparse.ArgumentParser:
     backend.add_argument(
         "--advisory-consensus",
         action="store_true",
-        help="treat the consensus signal as ADVISORY (throwaway votes) -> ultracode, not gated team-execution",
+        help="mark the consensus request as advisory rather than a persistent gate",
     )
     backend.add_argument("--broad-fanout", action="store_true")
     backend.add_argument("--adversarial-confidence", action="store_true")
     backend.add_argument("--no-code-surface", action="store_true")
-    backend.add_argument("--no-workflow", action="store_true")
+    backend.add_argument(
+        "--consensus-proven",
+        action="store_true",
+        help="a separate capability gate proved the native consensus runtime",
+    )
 
     recheck = subparsers.add_parser(
         "recheck-capability",
@@ -343,17 +295,17 @@ def _build_parser() -> argparse.ArgumentParser:
     recheck.add_argument(
         "--orchestration-mode",
         default="inline",
-        help="the tier as resumed (cc-workflows-ultracode|team-execution|inline)",
+        help="the tier as resumed (multi-agent-consensus|inline)",
     )
     recheck.add_argument(
-        "--no-workflow",
+        "--consensus-proven",
         action="store_true",
-        help="the Workflow tool is unavailable on this host (off-host resume)",
+        help="a separate capability gate proved the native consensus runtime",
     )
     recheck.add_argument(
         "--fallback-mode",
-        default="team-execution",
-        help="preferred landing tier on a downgrade (default: team-execution; floors to inline)",
+        default="inline",
+        help="preferred landing tier on a downgrade (only inline is active)",
     )
 
     return parser
@@ -381,14 +333,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             broad_independent_fanout=args.broad_fanout,
             adversarial_confidence=args.adversarial_confidence,
             has_code_surface=not args.no_code_surface,
-            workflow_available=not args.no_workflow,
+            consensus_available=args.consensus_proven,
         )
         print(json.dumps(result))
         return 0
     if args.command == "recheck-capability":
         result = recheck_orchestration_capability(
             orchestration_mode=args.orchestration_mode,
-            workflow_available=not args.no_workflow,
+            consensus_available=args.consensus_proven,
             fallback_mode=args.fallback_mode,
         )
         print(json.dumps(result))

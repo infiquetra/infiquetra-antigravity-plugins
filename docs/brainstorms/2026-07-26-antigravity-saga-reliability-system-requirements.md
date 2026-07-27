@@ -121,7 +121,7 @@ R22. The doctor must distinguish required capabilities from optional enhancement
 
 R23. Active prompts, commands, skills, hooks, references, and runbooks must be checked for host-contract violations such as executable `.claude/*` paths, Claude-only interaction or workflow APIs, fixed brain roots, unproven scheduling, or isolation claims stronger than Antigravity can establish. Historical lineage and quoted source evidence must be distinguishable from active runtime instructions.
 
-R24. Capability and lint receipts must be safe to preserve. Local diagnostic receipts may retain absolute runtime roots only in ignored host-local state; promoted receipts must replace them with logical root roles or repository-relative paths and must omit usernames, hostnames, credentials, raw private transcript content, and other machine-identifying data. Deterministic validation must reject promoted evidence containing absolute home paths, credential material, or transcript content.
+R24. Capability and lint receipts must be safe to preserve. Local diagnostic receipts may retain absolute runtime roots and raw repository-relative paths only in ignored host-local state; promoted receipts must replace them with logical root roles or path digests and must omit usernames, hostnames, credentials, raw private transcript content, and other machine-identifying data. Deterministic validation must reject promoted evidence containing absolute home paths, credential material, or transcript content.
 
 ### Proof-Carrying Lifecycle Reconciliation
 

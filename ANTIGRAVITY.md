@@ -46,6 +46,34 @@ Run the read-only doctor before tuning prompts or blaming model behavior:
 uv run python scripts/validate_plugins.py
 ```
 
+The default doctor profile is deterministic: it validates the versioned
+capability catalog, sanitized promotable receipt, and active host-contract
+surface without invoking `agy`. Use `--observe-host` only when local bounded
+version, flag, and plugin observations are wanted. Gate a Saga consumer with a
+previously promoted receipt:
+
+```bash
+uv run python scripts/validate_plugins.py \
+  --capability-profile saga.work \
+  --capability-receipt /path/to/promotable-receipt.json
+```
+
+Required non-passing capabilities and unresolved active host-contract findings
+fail the command. A declared optional fallback is reported as `degraded` and
+does not hide required failures.
+
+Saga consumes the same promoted receipt without state translation:
+
+```bash
+uv run python plugins/saga/scripts/host_capability_gate.py \
+  --consumer saga.work \
+  --receipt /path/to/promotable-receipt.json \
+  --json
+```
+
+The gate authorizes only the named consumer. It does not advance Saga, write
+tracked evidence, or convert a capability result into lifecycle truth.
+
 Use `/loop` for generic task intake, `/doc-review` for serious review, and static canaries before treating prompt changes as quality improvements.
 
 ## Plugin Types

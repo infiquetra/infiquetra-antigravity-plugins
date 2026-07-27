@@ -48,9 +48,10 @@ After the task list, pick how to execute from task count and dependency structur
 | **Serial subagents** | 3+ tasks with dependencies. Each subagent gets a fresh context window focused on one unit — prevents context degradation across many tasks. Requires plan-unit metadata. |
 | **Parallel subagents** | 3+ tasks that pass the Parallel Safety Check below. Dispatch independent units simultaneously; run dependent units after their prerequisites complete. Requires plan-unit metadata. |
 
-This strategy choice (inline / serial / parallel **subagent dispatch**) is the *mechanical* "how do I run
-the units" decision and is independent of the **backend** choice below (`inline` / `team-execution` /
-`cc-workflows-ultracode`), which is the operator-choice contract for *which runtime owns the work*.
+This strategy choice (inline / serial / parallel **subagent dispatch**) is the
+mechanical "how do I run the units" decision and is independent of the backend
+choice below (`inline` / `multi-agent-consensus`), which determines whether the
+current agent or the Antigravity consensus skill owns the work.
 
 ## Parallel Safety Check (required before parallel dispatch)
 
@@ -138,19 +139,16 @@ backend, pre-select it, and surface the alternatives so escalation is one keystr
 python3 plugins/saga/scripts/lifecycle_state.py recommend-backend \
   --file-count <N> --phase-count <N> \
   [--has-security] [--has-infra] [--cross-repo] [--deployment-sensitive] \
-  [--needs-consensus] [--broad-fanout] [--no-workflow]
+  [--needs-consensus] [--broad-fanout] [--no-consensus]
 ```
 
-It returns JSON: `{recommended, rationale, alternatives, omit_ultracode}`. The recommendation reuses
-`should_offer_team_execution`'s thresholds (file_count ≥ 8, phase_count ≥ 4, security, infra, cross-repo,
-deployment-sensitive) **or** a needs-consensus signal for `team-execution`; broad-independent-fanout
-without elevated risk for `cc-workflows-ultracode`; `inline` otherwise. `alternatives` lists every
-reachable backend **independent of which one won precedence**, so an overlap job (consensus AND
-fan-out) still offers both — escalation stays one step (operator-choice §3.3).
+It returns JSON:
+`{recommended, rationale, alternatives, omit_multi_agent_consensus}`. Size,
+risk, consensus, broad fan-out, or adversarial verification recommend
+`multi-agent-consensus`; `inline` is the default.
 
-Surface the recommendation with `AskUserQuestion` (or channel-inline) pre-selecting `recommended`,
-listing `alternatives`. **Omit `cc-workflows-ultracode`** from the offer when `omit_ultracode` is true
-(pass `--no-workflow` when the Workflow tool is observably absent this session — operator-choice §4). If
-the operator picks `cc-workflows-ultracode` but it turns out unavailable, fall back to `team-execution`
-or `inline` with a one-line note. Record the operator's pick via the saga's `--orchestration-mode`
-(Phase 1.4) — that is the durable home for the choice (operator-choice §6).
+Ask one blocking question through the current session, recommend one option, and
+stop until the operator answers. Omit `multi-agent-consensus` when
+`omit_multi_agent_consensus` is true; pass `--no-consensus` when the capability
+receipt does not prove `agy.agent.execution` and requested isolation. Record the
+operator's pick via the saga's `--orchestration-mode`.

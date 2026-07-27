@@ -75,6 +75,21 @@ Machine-readable output:
 uv run python scripts/validate_plugins.py --json
 ```
 
+The default `repository-validation` profile validates the capability catalog,
+promotable receipt schema and privacy boundary, and active host contract without
+starting an `agy` subprocess. Live observations are explicit:
+
+```bash
+uv run python scripts/validate_plugins.py --observe-host
+uv run python scripts/validate_plugins.py \
+  --capability-profile saga.work \
+  --capability-receipt /path/to/promotable-receipt.json
+```
+
+Consumer profiles return nonzero when required behavior is failed, unknown, or
+unavailable. `--observe-host` runs only registered bounded observations; it
+does not start a model prompt or provide controlled behavior proof.
+
 The legacy marketplace validator path remains as a compatibility wrapper:
 
 ```bash

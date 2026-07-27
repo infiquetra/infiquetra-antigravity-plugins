@@ -1364,11 +1364,11 @@ def test_orchestration_recommended_and_choice_round_trip(saga: ModuleType) -> No
     """Both new fields survive a render→parse round-trip."""
     s = _make_saga(
         saga,
-        orchestration_recommended="cc-workflows-ultracode",
+        orchestration_recommended="multi-agent-consensus",
         orchestration_operator_choice="team-execution",
     )
     restored = saga.parse_envelope(saga.render_envelope(s))
-    assert restored.orchestration_recommended == "cc-workflows-ultracode"
+    assert restored.orchestration_recommended == "multi-agent-consensus"
     assert restored.orchestration_operator_choice == "team-execution"
 
 
@@ -1379,13 +1379,13 @@ def test_orchestration_recommended_and_choice_persist_via_save(
     _stub_no_git(saga, monkeypatch)
     s = _make_saga(
         saga,
-        orchestration_recommended="cc-workflows-ultracode",
+        orchestration_recommended="multi-agent-consensus",
         orchestration_operator_choice="inline",
     )
     saga.save(tmp_path, s, now=FIXED_NOW)
     restored = saga.restore(tmp_path, "issue-42")
     assert restored is not None
-    assert restored.orchestration_recommended == "cc-workflows-ultracode"
+    assert restored.orchestration_recommended == "multi-agent-consensus"
     assert restored.orchestration_operator_choice == "inline"
 
 
@@ -1574,19 +1574,13 @@ def test_guard_passes_when_only_preexisting_legacy_checkpoint(
 
 
 def test_orchestration_modes_enum_is_frozen(saga: ModuleType) -> None:
-    """ORCHESTRATION_MODES must be byte-for-byte unchanged — it is the wire contract.
-
-    Persisted sagas carry the raw enum string; changing value or order would silently
-    corrupt any saga that was saved before the change.  This test is the assertion
-    KTD5 mandates: no value-addition, no reorder, no rename.
-    """
-    assert saga.ORCHESTRATION_MODES == ("inline", "team-execution", "cc-workflows-ultracode")
+    """Only active Antigravity orchestration modes are writable."""
+    assert saga.ORCHESTRATION_MODES == ("inline", "multi-agent-consensus")
 
 
 def test_display_orchestration_mode_renders_labels(saga: ModuleType) -> None:
     """The display helper maps each enum value to its human-readable label."""
-    assert saga.display_orchestration_mode("cc-workflows-ultracode") == "dynamic workflows"
-    assert saga.display_orchestration_mode("team-execution") == "team execution"
+    assert saga.display_orchestration_mode("multi-agent-consensus") == "multi-agent consensus"
     assert saga.display_orchestration_mode("inline") == "inline"
 
 

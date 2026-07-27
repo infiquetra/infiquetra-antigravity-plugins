@@ -54,60 +54,61 @@ def _node(sid: str, **kw: Any) -> Any:
 
 
 def test_resolve_available_is_host_conditional() -> None:
-    assert D.resolve_available() == ("inline", "team-execution", "manual")
-    host = D.resolve_available(host_capable=True)
-    assert (
-        "fork" in host
-        and "subagent" in host
-        and "goal" in host
-        and "cc-workflows-ultracode" not in host
+    assert D.resolve_available() == ("inline", "manual")
+    assert D.resolve_available(
+        capability_states={"agy.agent.execution": "passed"},
+        profile_state="blocked",
+    ) == ("inline", "manual")
+    full = D.resolve_available(
+        capability_states={"agy.agent.execution": "passed"},
+        profile_state="passed",
     )
-    full = D.resolve_available(host_capable=True, workflow_available=True)
-    assert "cc-workflows-ultracode" in full
+    assert "fork" in full and "subagent" in full and "goal" in full
+    assert "multi-agent-consensus" in full
     # ordered by the spec's NODE_BACKENDS vocabulary (deterministic)
-    assert list(full) == [b for b in SPEC.NODE_BACKENDS if b in set(full)]
+    assert list(full) == [b for b in SPEC.ACTIVE_NODE_BACKENDS if b in set(full)]
 
 
 # --------------------------------------------------------------------------- degrade_decision (R23/AE1)
 
-_FLOOR = ("inline", "team-execution", "manual")  # cc-workflows-ultracode unavailable
+_FLOOR = ("inline", "manual")  # multi-agent-consensus unavailable
 
 
 def test_available_backend_dispatches() -> None:
     assert D.degrade_decision(
-        "team-execution",
+        "inline",
         available=_FLOOR,
         attending=True,
         guarantee_bearing=False,
         had_side_effect=False,
-    ) == ("dispatch", "team-execution", "")
+    ) == ("dispatch", "inline", "")
 
 
 def test_attending_halts_not_degrades() -> None:
     action, backend, _ = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=True,
         guarantee_bearing=False,
         had_side_effect=False,
     )
-    assert action == "halt" and backend == "cc-workflows-ultracode"
+    assert action == "halt" and backend == "multi-agent-consensus"
 
 
 def test_autonomous_away_degrades_one_rung() -> None:
     action, backend, reason = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=False,
         guarantee_bearing=False,
         had_side_effect=False,
     )
-    assert action == "degrade" and backend == "team-execution" and "R23" in reason
+    assert action == "degrade" and backend == "inline" and "R23" in reason
 
 
 def test_guarantee_bearing_halts_even_when_away() -> None:
     action, _, reason = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=False,
         guarantee_bearing=True,
@@ -118,7 +119,7 @@ def test_guarantee_bearing_halts_even_when_away() -> None:
 
 def test_side_effected_leaf_never_degrades() -> None:
     action, _, reason = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=False,
         guarantee_bearing=False,
@@ -128,7 +129,7 @@ def test_side_effected_leaf_never_degrades() -> None:
 
 
 def test_backend_not_on_the_ladder_halts() -> None:
-    # fork is not on the cc-workflows->team-execution->inline degrade ladder -> no rung -> HALT.
+    # fork is not on the multi-agent-consensus -> inline ladder.
     action, _, _ = D.degrade_decision(
         "fork", available=_FLOOR, attending=False, guarantee_bearing=False, had_side_effect=False
     )
@@ -136,9 +137,9 @@ def test_backend_not_on_the_ladder_halts() -> None:
 
 
 def test_degrade_skips_an_unavailable_intermediate_rung() -> None:
-    # cc-workflows + team-execution both unavailable -> degrade to the inline floor (first available rung).
+    # The only lower active rung is inline.
     action, backend, _ = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=("inline",),
         attending=False,
         guarantee_bearing=False,
@@ -169,15 +170,22 @@ def test_fork_is_cheap_only_when_everything_matches_within_ttl() -> None:
 
 
 def test_recommender_is_frontier_budget_aware() -> None:
-    narrow = D.recommend_outcome_backend(frontier_width=1, broad_independent_fanout=True)
+    narrow = D.recommend_outcome_backend(
+        frontier_width=1,
+        broad_independent_fanout=True,
+        consensus_available=True,
+    )
     assert (
-        narrow["recommended"] == "cc-workflows-ultracode"
+        narrow["recommended"] == "multi-agent-consensus"
     )  # a narrow frontier affords the workflow
-    wide = D.recommend_outcome_backend(frontier_width=20, broad_independent_fanout=True)
-    assert (
-        wide["recommended"] == "team-execution" and "budget_note" in wide
-    )  # wide -> budget downgrade
-    assert "cc-workflows-ultracode" in wide["alternatives"]  # escalation stays one keystroke
+    wide = D.recommend_outcome_backend(
+        frontier_width=20,
+        broad_independent_fanout=True,
+        consensus_available=True,
+    )
+    assert wide["recommended"] == "multi-agent-consensus"
+    assert "budget_note" in wide
+    assert wide["alternatives"] == ["inline"]
 
 
 def test_recommender_takes_fork_only_when_cheap() -> None:
@@ -228,7 +236,7 @@ def _approve(repo: Path, oid: str) -> None:
     DEC.approve_frontier(ENG._store(repo, oid), ENG.load_spec(repo, oid))
 
 
-def test_advance_degrades_an_autonomous_cc_workflows_leaf_and_records_a_receipt(
+def test_advance_degrades_autonomous_consensus_leaf_and_records_receipt(
     tmp_path: Path,
 ) -> None:
     repo = _repo(tmp_path)
@@ -241,24 +249,24 @@ def test_advance_degrades_an_autonomous_cc_workflows_leaf_and_records_a_receipt(
                 "subplot_id": "build",
                 "title": "B",
                 "kind": "code",
-                "backend": "cc-workflows-ultracode",
+                "backend": "multi-agent-consensus",
             }
         ],
     )
     _approve(repo, "o")
-    floor = D.resolve_available()  # cc-workflows-ultracode NOT available
+    floor = D.resolve_available()  # multi-agent-consensus NOT available
     result = ENG.advance(
         repo,
         "o",
-        dispatcher=D.make_dispatcher(available=SPEC.NODE_BACKENDS),
+        dispatcher=D.make_dispatcher(available=SPEC.ACTIVE_NODE_BACKENDS),
         available=floor,
         attending=False,  # autonomous + away
     )
     assert result.dispatched == ["build"] and result.halted == []
-    assert len(result.degraded) == 1 and result.degraded[0]["to_backend"] == "team-execution"
+    assert len(result.degraded) == 1 and result.degraded[0]["to_backend"] == "inline"
     # the degrade is surfaced in the report (R23)
     text = REP.report_markdown(repo, "o", store=ENG._store(repo, "o"))
-    assert "## Degradations" in text and "cc-workflows-ultracode → team-execution" in text
+    assert "## Degradations" in text and "multi-agent-consensus → inline" in text
 
 
 def test_advance_halts_an_attended_unavailable_leaf(tmp_path: Path) -> None:
@@ -272,7 +280,7 @@ def test_advance_halts_an_attended_unavailable_leaf(tmp_path: Path) -> None:
                 "subplot_id": "build",
                 "title": "B",
                 "kind": "code",
-                "backend": "cc-workflows-ultracode",
+                "backend": "multi-agent-consensus",
             }
         ],
     )
@@ -300,7 +308,7 @@ def test_repeated_halt_appends_one_ledger_record_not_n(tmp_path: Path) -> None:
                 "subplot_id": "build",
                 "title": "B",
                 "kind": "code",
-                "backend": "cc-workflows-ultracode",
+                "backend": "multi-agent-consensus",
             }
         ],
     )
@@ -335,7 +343,7 @@ def test_degrade_record_is_not_double_listed_after_a_crash(tmp_path: Path) -> No
                 "subplot_id": "build",
                 "title": "B",
                 "kind": "code",
-                "backend": "cc-workflows-ultracode",
+                "backend": "multi-agent-consensus",
             }
         ],
     )
@@ -354,15 +362,15 @@ def test_degrade_record_is_not_double_listed_after_a_crash(tmp_path: Path) -> No
             "kind": "degrade",
             "outcome_id": "o",
             "subplot_id": "build",
-            "from_backend": "cc-workflows-ultracode",
-            "to_backend": "team-execution",
+            "from_backend": "multi-agent-consensus",
+            "to_backend": "inline",
             "reason": "x",
         },
     )
     ENG.advance(
         repo,
         "o",
-        dispatcher=D.make_dispatcher(available=SPEC.NODE_BACKENDS),
+        dispatcher=D.make_dispatcher(available=SPEC.ACTIVE_NODE_BACKENDS),
         available=D.resolve_available(),
         attending=False,
     )
@@ -376,8 +384,7 @@ def test_degrade_record_is_not_double_listed_after_a_crash(tmp_path: Path) -> No
 
 
 def test_cli_dispatch_dry_run_still_works(capsys: Any) -> None:
-    # the U4 dry-run CLI is unchanged by the U9 menu expansion
-    assert D.main(["o", "build", "team-execution"]) == 0
+    assert D.main(["o", "build", "inline"]) == 0
     assert json.loads(capsys.readouterr().out)["status"] == "dispatched"
 
 
@@ -387,42 +394,42 @@ def test_cli_dispatch_dry_run_still_works(capsys: Any) -> None:
 def test_u2_available_backend_dispatches_via_certificate() -> None:
     # golden tuple: certificate-routed path returns identical result (R10, R11)
     assert D.degrade_decision(
-        "team-execution",
+        "inline",
         available=_FLOOR,
         attending=True,
         guarantee_bearing=False,
         had_side_effect=False,
-    ) == ("dispatch", "team-execution", "")
+    ) == ("dispatch", "inline", "")
 
 
 def test_u2_attending_halts_not_degrades_via_certificate() -> None:
     # attending branch fires BEFORE certificate — halt, not degrade (R11, R13)
     action, backend, _ = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=True,
         guarantee_bearing=False,
         had_side_effect=False,
     )
-    assert action == "halt" and backend == "cc-workflows-ultracode"
+    assert action == "halt" and backend == "multi-agent-consensus"
 
 
 def test_u2_autonomous_away_degrades_one_rung_via_certificate() -> None:
     # degrade path: certificate side_effected(False) -> False, does not block degrade (R10, R11)
     action, backend, reason = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=False,
         guarantee_bearing=False,
         had_side_effect=False,
     )
-    assert action == "degrade" and backend == "team-execution" and "R23" in reason
+    assert action == "degrade" and backend == "inline" and "R23" in reason
 
 
 def test_u2_guarantee_bearing_halts_even_when_away_via_certificate() -> None:
     # guarantee branch fires BEFORE certificate — halt (R11, R13)
     action, _, reason = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=False,
         guarantee_bearing=True,
@@ -434,7 +441,7 @@ def test_u2_guarantee_bearing_halts_even_when_away_via_certificate() -> None:
 def test_u2_side_effected_leaf_never_degrades_via_certificate() -> None:
     # certificate-routed: side_effected(True) -> True -> halt (R10, R11)
     action, _, reason = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=False,
         guarantee_bearing=False,
@@ -454,7 +461,7 @@ def test_u2_backend_not_on_the_ladder_halts_via_certificate() -> None:
 def test_u2_degrade_skips_an_unavailable_intermediate_rung_via_certificate() -> None:
     # certificate routes side_effected(False) -> False; degrades to inline floor (R10, R11)
     action, backend, _ = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=("inline",),
         attending=False,
         guarantee_bearing=False,
@@ -480,13 +487,13 @@ def test_u2_side_effected_routes_through_certificate_not_raw_bool(monkeypatch: A
 
     monkeypatch.setattr(_cert_module, "side_effected", lambda v: not v)
     action, backend, _ = D.degrade_decision(
-        "cc-workflows-ultracode",
+        "multi-agent-consensus",
         available=_FLOOR,
         attending=False,
         guarantee_bearing=False,
         had_side_effect=True,  # raw True, but certificate now returns False -> should degrade
     )
-    assert action == "degrade" and backend == "team-execution"
+    assert action == "degrade" and backend == "inline"
 
 
 def test_u2_parent_close_is_always_operator_via_certificate() -> None:

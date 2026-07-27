@@ -22,6 +22,26 @@
 
 ---
 
+## 2026-07-26
+
+### Antigravity host contract and capability doctor plan decisions (commit pending) {#antigravity-host-contract-plan}
+
+**Decision.** Establish the host contract in fleet-core as a comment-free JSON-compatible, schema-versioned YAML catalog plus a closed Python probe registry, strict `antigravity.capabilities.v1` receipt, and strict `antigravity.host-contract-lint.v1` receipt. Requiredness is consumer-scoped; raw probe outcomes are `passed`, `failed`, `unknown`, or `unavailable`, while consumer evaluation is `passed`, `blocked`, or `degraded`, and only an optional capability with a proven declared fallback may evaluate as `degraded`.
+
+Promotable receipts and ignored local diagnostics are separate contracts. The canonical doctor remains `scripts/validate_plugins.py`; its default repository profile executes no `agy` subprocess, and explicit host observation runs only passive registered probes that can prove they do not refresh credentials, access remote systems, or write durable host state. Saga consumes the fleet-core evaluator directly through its existing shim.
+
+The active-surface linter uses a versioned closed selector and adjacent JSON annotations with stable rules and narrow reasoned classifications rather than broad ignores. Issue #20 remains one capability and one PR because the doctor, remediation, privacy contract, and direct consumer form one acceptance boundary; eight atomic unit commits and focused checkpoints keep it reviewable. Fleet-core, Saga, mission-control, and multi-agent-consensus receive the next non-conflicting minor versions from rebased `origin/main` because all four ship materially changed runtime or instruction behavior.
+
+**Rejected alternatives.** Version allowlists; executable shell commands in catalog data; comments or general YAML features in the JSON-parsed catalog; a PyYAML runtime dependency in fleet-core; one permissive local/promoted receipt; global hostname regexes across every string; default host subprocess observation; implicit or broadly ignored linter surfaces; globally required capabilities; a second doctor CLI; Saga-specific state translation; and coordination-only sub-issues for schema pieces that do not independently satisfy issue #20.
+
+**Rationale.** Runtime behavior, not installed-version identity or prompt wording, is the support boundary. Keeping probe execution closed, default validation deterministic, selectors reviewable, and promotable evidence strict makes the contract safe to reuse, while consumer-scoped evaluation preserves fail-closed Saga and canary gates.
+
+**Revisit when.** Antigravity publishes a stable machine-readable capability API that can replace controlled probes, documents a no-write/no-network observation mode, fleet-core gains an explicit dependency installation contract, the active surface becomes too large for the atomic-unit review boundary, or a future receipt schema needs a breaking semantic change.
+
+**Refs.** Plan: `docs/plans/2026-07-26-antigravity-host-contract-capability-doctor-plan.md`. Requirements: `docs/brainstorms/2026-07-26-antigravity-saga-reliability-system-requirements.md`. Issue: `infiquetra/infiquetra-antigravity-plugins#20`.
+
+---
+
 ## 2026-06-27
 
 ### Antigravity harness plan decisions (commit pending) {#antigravity-harness-plan}

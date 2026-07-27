@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.0 - 2026-07-26
+
+- Add `host_capability_gate.py`, which resolves fleet-core through the vendored
+  shim and returns the shared capability evaluation unchanged for a declared
+  Saga consumer.
+- Replace active Claude workflow routing with Antigravity-native `inline` and
+  `multi-agent-consensus` modes; legacy backend names now halt with migration
+  guidance.
+- Require proven agent execution for consensus and proven sandbox isolation
+  when restrictive isolation is requested.
+- Move Saga-owned state to `.gemini`, require an injected session-discovery
+  root, and distinguish requested scheduling or isolation from observed proof.
+- Port interaction instructions to one blocking current-session question with
+  no Claude-only tool dependency.
+
 ## 1.1.0 - 2026-06-08
 
 - **Saga Document Formatting**: Imported shared formatting contract and style updates from the `infiquetra-claude-plugins` repository, defining visual rendering rules under `plugins/saga/references/formatting-style.md` (e.g. short paragraphs, comparative tables, and avoiding stacked bold labels).

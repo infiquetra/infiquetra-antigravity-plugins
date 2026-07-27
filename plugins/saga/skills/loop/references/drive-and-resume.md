@@ -41,10 +41,11 @@ work phase — `/work` owns the round-N loop, the test gates, the code-review ca
 confirmation. `/loop` does not interleave with `/work`'s internal loop; it waits for `/work` to
 complete its phase, then ticks and routes onward. There is **no competing driver** inside a phase.
 
-### When /loop authors a Workflow (router-level sweep ONLY)
+### When /loop authors a native consensus sweep (router-level sweep ONLY)
 
-`/loop` offers an execution backend and may author a Workflow **only** for a `/loop`-OWNED
-router-level offload — a broad fan-out where `/loop` itself is the driver, not a single routed command.
+`/loop` offers an execution backend and may dispatch `multi-agent-consensus` **only** for a
+`/loop`-OWNED router-level offload — a broad fan-out where `/loop` itself is the driver, not a
+single routed command.
 The canonical case is a **multi-issue sweep** (the same routing operation applied across many threads).
 In that case:
 
@@ -61,7 +62,7 @@ instruct it.
 
 ### The inline phase-walk is the cross-host fallback
 
-When no heavier backend is reachable (the Workflow tool is absent — e.g. a redis-channel session or
+When no heavier backend is reachable (the native consensus runtime is absent — e.g. a redis-channel session or
 another runner), Drive degrades cleanly to `/loop`'s own **inline agent-sequential phase-walk**. This
 is the same attempt-then-degrade pattern operator-choice §4 names: try the rich path, fall back to
 inline with a one-line note. The phase-walk always works on any host.
@@ -126,8 +127,9 @@ delegated.
 
 ### Resuming into a mid-flight /loop-owned offload
 
-If the restored saga has `orchestration_ref` set, the thread is mid-flight inside a Workflow `/loop`
-authored (a router-level offload). **REPORT** it — name the `orchestration_mode` + `orchestration_ref`
+If the restored saga has `orchestration_ref` set, the thread is mid-flight
+inside a `/loop`-owned offload. **REPORT** it — name the
+`orchestration_mode` + `orchestration_ref`
 and let the operator decide — rather than blindly re-dispatching. Read `orchestration_ref` via
 `restore` (the full envelope), not via the `scan` candidate (which carries only the orchestration
 pointer summary).

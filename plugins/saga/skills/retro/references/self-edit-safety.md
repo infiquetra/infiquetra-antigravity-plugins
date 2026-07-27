@@ -17,7 +17,7 @@ The single auto-apply case: **appending one new, self-contained entry** to `LEAR
 `DECISIONS.md`, `QUEUED.md`, or `ARCHIVE.md`. The file only grows; nothing existing is touched. This is the
 compounding sink — promotion has to be cheap or it does not happen.
 
-### Tier 2 — PROPOSE-DIFF-AND-WAIT (show the diff + `AskUserQuestion` apply / skip / modify; NEVER auto-apply)
+### Tier 2 — PROPOSE-DIFF-AND-WAIT (show the diff + a structured blocking interaction apply / skip / modify; NEVER auto-apply)
 
 Everything that deletes, modifies, or moves existing content, plus everything outside the journal:
 
@@ -25,8 +25,8 @@ Everything that deletes, modifies, or moves existing content, plus everything ou
 |---|---|
 | An **edit to an existing journal entry** (curation sweep) | modifies existing lines |
 | A **`QUEUED → ARCHIVE` move** | *deletes* from `QUEUED.md` (ARCHIVE side is an append, but the QUEUED side is a delete) — **propose, not auto** |
-| The **`.claude` auto-memory** (`MEMORY.md` + topic files) | not the journal; high-value, high-risk |
-| **Directive files** (repo `CLAUDE.md`, global `~/.claude` directives) | changes how agents behave |
+| The host's **discovered Antigravity memory surface** | not the journal; high-value, high-risk |
+| **Discovered repository or global Antigravity directive files** | changes how agents behave |
 | The **saga SKILLs** — **INCLUDING `skills/retro/SKILL.md`** | self-modification; `/retro` may *propose* a diff to its own skill but **never self-applies** one |
 
 **A move is two operations.** Even when one half is an append, if the other half deletes existing lines the
@@ -43,7 +43,7 @@ For each Tier-2 change, present:
    refine-lifecycle / refine-directives / memory-pruning).
 3. **The diff** — a real unified diff (`- ` removed lines, `+ ` added lines) so the operator sees exactly
    what changes.
-4. **The question** — `AskUserQuestion`: **apply** / **skip** / **modify** (modify lets the operator
+4. **The question** — a structured blocking interaction: **apply** / **skip** / **modify** (modify lets the operator
    redirect the edit). In a channel session, inline the choices instead (brainstorm convention).
 
 Never apply a Tier-2 change without an explicit **apply**. "Modify" loops back to a revised diff.
@@ -56,20 +56,19 @@ Directive surfaces are **NOT one bucket**. Classify before proposing:
 
 ### (a) IN-REPO
 
-The repo `CLAUDE.md` and the lifecycle SKILLs. This plugin has **no `agents/` dir** — the convention is
-**generic agents** (`Explore` / `Task`), so there is no in-repo agent file to edit. Propose with a normal
-diff and a **repo-relative** path. Affects this repo only.
+Repository Antigravity directives and the lifecycle SKILLs. Propose with a normal diff and a
+**repo-relative** path. Affects this repo only.
 
 ### (b) GLOBAL / CROSS-PROJECT
 
-`~/.gemini/CLAUDE.md`, `~/.gemini/agents/*.md`, and antigravity directives. These live **OUTSIDE this
-repo** and affect **EVERY project**. A global / cross-project proposal MUST carry an explicit warning in
-its diff header:
+Directive surfaces discovered from Antigravity's global configuration live **OUTSIDE this repo** and
+affect **EVERY project**. A global / cross-project proposal MUST carry an explicit warning in its diff
+header:
 
-> **WARNING: this changes your GLOBAL Claude config and affects ALL projects, not just this repo.**
+> **WARNING: this changes your GLOBAL Antigravity config and affects ALL projects, not just this repo.**
 
-The path here is **deliberately absolute** (`~/.gemini/...`) — the file genuinely lives outside the repo,
-so this is the one place a non-repo-relative path is correct. The warning is non-negotiable: a
+The discovered path is genuinely outside the repo, so this is the one place a non-repo-relative path is
+correct. The warning is non-negotiable: a
 cross-project edit that looks like a repo edit is the failure mode this tier exists to prevent.
 
 ---
@@ -80,7 +79,8 @@ cross-project edit that looks like a repo edit is the failure mode this tier exi
 
 - a **destructive self-edit** — no Tier-2 change applies without the operator's explicit **apply**;
 - an **execution backend** — a big multi-file refactor surfaced by a pass is **OFFERED** per
-  `../../../references/operator-choice.md` (inline / team-execution / cc-workflows-ultracode) and started
+  `../../../references/operator-choice.md` (inline /
+  multi-agent-consensus) and started
   only on the operator's pick.
 
 The engine proposes; the operator disposes. The only thing it does on its own is grow the journal.

@@ -1,0 +1,7 @@
+{
+  "schema": "antigravity.capability-diagnostic.local.v1",
+  "runtime_roots": {
+    "saga-state": "/Users/example/private/.gemini/saga"
+  },
+  "stdout": "private diagnostic output"
+}

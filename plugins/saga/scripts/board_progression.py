@@ -339,7 +339,7 @@ def _default_ledger_dir(repo_root: Path) -> Path:
     A single dir is safe: ``idempotency_key`` namespaces every entry by op_kind+repo+number+state,
     so entries never collide across issues.
     """
-    return repo_root / ".claude" / "saga" / "board-progression"
+    return repo_root / ".gemini" / "saga" / "board-progression"
 
 
 # ---------------------------------------------------------------------------

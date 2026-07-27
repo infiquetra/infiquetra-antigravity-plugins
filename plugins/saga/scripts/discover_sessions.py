@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Discover recent Claude Code session JSONL files for a repo (Tier-2 fallback).
+"""Discover recent Antigravity session JSONL files from an explicit root.
 
 This is the discovery half of the ``/resume`` heavy-forensic Tier-2 path: a
 slim, Claude-only port of CE ``ce-sessions``' ``discover-sessions.sh``. It is
@@ -8,9 +8,9 @@ reconstruction on, so the engine falls back to mining prior local sessions.
 
 Usage:
   python3 discover_sessions.py --repo <repo-folder> --days <N> \\
-      [--projects-root <path>] [--exclude <session-id>]
+      --projects-root <doctor-resolved-path> [--exclude <session-id>]
 
-It globs ``~/.gemini/antigravity-cli/brain/*/.system_generated/logs/*.jsonl`` within an mtime window, drops
+It globs the supplied root within an mtime window, drops
 ``--exclude``\\d session ids, RECENCY-ranks newest-first, and CAPS at 5.
 
 Output is ``json.dumps`` of ``{"candidates": [{"path", "session_id", "mtime"}],
@@ -49,8 +49,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--days", type=int, required=True, help="mtime window in days")
     parser.add_argument(
         "--projects-root",
-        default=str(Path.home() / ".gemini" / "antigravity-cli" / "brain"),
-        help="Override the Antigravity brain root (default ~/.gemini/antigravity-cli/brain); for testing",
+        required=True,
+        help="Doctor-resolved Antigravity session root; no home-derived fallback",
     )
     parser.add_argument(
         "--exclude",

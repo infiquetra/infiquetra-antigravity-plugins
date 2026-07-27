@@ -63,12 +63,13 @@ them, it does not file them.
 
 ## Interaction method
 
-Use `AskUserQuestion` for choices from a known set (scope when several threads match, which curation
-proposals to apply, the FAIL routing target, an execution backend for a big refactor). Call `ToolSearch`
-with `select:AskUserQuestion` first if its schema is not loaded. Free-form questions stay inline. Ask one
-question per turn; never silently skip a question.
+Ask one blocking question through the current session for choices from a known
+set (scope when several threads match, which curation proposals to apply, the
+FAIL routing target, an execution backend for a big refactor). Free-form
+questions stay inline. Ask one question per turn, stop until the operator
+answers, and never silently skip it.
 
-In a channel session (`redis-channel` active), `AskUserQuestion` **cannot** be called — inline the choices
+In a channel session (`redis-channel` active), a structured blocking interaction **cannot** be called — inline the choices
 in your reply text instead, following the canonical channel-inline convention in
 `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here).
 
@@ -88,28 +89,30 @@ presentation format; the gate itself is:
 
 - **AUTO (no confirmation):** appending one **new** entry to `LEARNINGS.md`, `DECISIONS.md`, `QUEUED.md`,
   or `ARCHIVE.md`. Nothing existing changes — the file only grows by a self-contained block.
-- **PROPOSE-DIFF-AND-WAIT (show the diff + `AskUserQuestion` apply / skip / modify; NEVER auto-apply):**
+- **PROPOSE-DIFF-AND-WAIT (show the diff + a structured blocking interaction apply / skip / modify; NEVER auto-apply):**
   - any **edit** to an existing journal entry (the curation sweeps);
   - a **QUEUED → ARCHIVE move** — it *deletes* lines from `QUEUED.md`, so it is **propose, not auto**,
     even though the ARCHIVE side is an append;
-  - the **`.claude` auto-memory** — `MEMORY.md` and its topic files;
-  - **directive files** (the repo `CLAUDE.md`, the global `~/.claude` directives);
+  - the host's **discovered Antigravity memory surface**, when one is exposed;
+  - **directive files** discovered from repository and global Antigravity configuration;
   - the **saga SKILLs themselves — INCLUDING `skills/retro/SKILL.md`**: `/retro` may
     *propose* a diff to its own skill, but it **never self-applies** one.
 
 **Directive surfaces are NOT one bucket.** Disambiguate before proposing:
 
-- **(a) IN-REPO** — the repo `CLAUDE.md` and the lifecycle SKILLs. (This plugin has **no `agents/` dir**;
-  the convention is **generic agents**, so there is no in-repo agent file to edit.) A normal
+- **(a) IN-REPO** — repository Antigravity directives and the lifecycle SKILLs. A normal
   propose-diff-and-wait, repo-relative path.
-- **(b) GLOBAL / CROSS-PROJECT** — `~/.gemini/CLAUDE.md`, `~/.gemini/agents/*.md`, and antigravity
-  directives. These live **OUTSIDE this repo and affect EVERY project.** A global/cross-project proposal
+- **(b) GLOBAL / CROSS-PROJECT** — directive surfaces discovered from Antigravity's global
+  configuration. These live **OUTSIDE this repo and affect EVERY project.** A global/cross-project proposal
   carries an **EXPLICIT warning in the diff header**:
-  > **WARNING: this changes your GLOBAL Claude config and affects ALL projects, not just this repo.**
+  > **WARNING: this changes your GLOBAL Antigravity config and affects ALL projects, not just this repo.**
 
-**Never auto-launch** a destructive self-edit or an execution backend. A backend (`team-execution` ("team execution") /
-`cc-workflows-ultracode` ("dynamic workflows")) for a big refactor is **offered** per
+**Never auto-launch** a destructive self-edit or an execution backend.
+`multi-agent-consensus` for a big refactor is **offered** per
 `../../references/operator-choice.md`, never started without the operator's pick.
+<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003","reason":"named source enum is explicitly inactive","revisit":"remove when source lineage support is retired"} -->
+Source lineage: `team-execution` and `cc-workflows-ultracode` both map to
+`multi-agent-consensus` and are not active target backends.
 
 ---
 
@@ -149,7 +152,7 @@ All evidence is read-only. See `references/retro-passes.md` for the exact querie
 fetch `origin/<default>`, read the latest commit date, and compare it against the window. Compute **today
 from the session reminder's `## currentDate`, NEVER from the `date` command** (a containerized clock can
 be hours off). If the latest commit predates `(today − window)`, **BLOCK** with an explanation and an
-`AskUserQuestion` (confirm today / re-fetch / proceed-anyway), because the window would otherwise
+a structured blocking interaction (confirm today / re-fetch / proceed-anyway), because the window would otherwise
 fabricate a narrative from near-zero commits. The graceful, **disclosed** skip paths — no remote, detached
 HEAD, offline fetch failure — proceed with the reason carried into the retro narrative
 (`references/retro-passes.md`). Thread-scoped retros skip this block and run the HEAD-freshness check
@@ -227,7 +230,7 @@ only consumes it.
 ## Phase 2 — Structured interview
 
 Interview the operator, **grounded in the Phase-1 evidence** (not generic prompts). Use **free-form for
-substance** and `AskUserQuestion` for routing / choices.
+substance** and a structured blocking interaction for routing / choices.
 
 The substance questions (free-form): what shipped · what surprised · what slowed the work · what evidence
 actually mattered · what should change. The full bank is in `references/retro-passes.md`. Anchor each
@@ -235,7 +238,7 @@ question in something Phase 1 found ("the saga shows round 3 re-opened on a test
 blocker?"), so the answers add signal the evidence cannot.
 
 Channel-session fallback: inline the choices in reply text per the brainstorm convention (cited above) —
-do not call `AskUserQuestion`.
+do not call a structured blocking interaction.
 
 ---
 
@@ -266,7 +269,7 @@ Each follows the existing journal entry format (the block-quote intros at the to
 `references/retro-report.md` carries the templates). A pure append needs no confirmation.
 
 **CURATE (PROPOSE-DIFF-AND-WAIT — the gstack-`learn` sweeps over the journal).** Run, and for each finding
-show a diff + `AskUserQuestion` (apply / skip / modify):
+show a diff + a structured blocking interaction (apply / skip / modify):
 
 - **staleness** — entries citing deleted files / merged-and-gone PRs / rewritten SHAs (Glob / `gh` check);
 - **contradiction** — conflicting entries on the same topic / key (gstack `learn`'s contradiction sweep);
@@ -288,13 +291,13 @@ The passes neither source had, all gated (`references/retro-passes.md`):
   propose a `QUEUED.md` entry or a `/handoff`.
 - **(b) refine-lifecycle** — propose diffs to the saga SKILLs when the thread exposed a
   gap or a wrong instruction (including `skills/retro/SKILL.md` — proposal only, never self-applied).
-- **(c) refine-directives** — propose diffs to the **repo `CLAUDE.md`** (in-repo) or the **global
-  `~/.claude` directives** (global carries the cross-project warning, per the contract).
-- **(d) memory pruning** — propose curation of the `.claude` auto-memory (`MEMORY.md` + topic files) per
+- **(c) refine-directives** — propose diffs to discovered repository or global Antigravity directive
+  surfaces (global carries the cross-project warning, per the contract).
+- **(d) memory pruning** — propose curation of the discovered Antigravity memory surface per
   the journal-rule + staleness + contradiction sweeps.
 
-A **big multi-file refactor** surfaced by any pass → **OFFER** a backend (`team-execution`
-("team execution") / `cc-workflows-ultracode` ("dynamic workflows")) per
+A **big multi-file refactor** surfaced by any pass → **OFFER**
+`multi-agent-consensus` per
 `../../references/operator-choice.md`. **Never auto-run** it.
 
 ---

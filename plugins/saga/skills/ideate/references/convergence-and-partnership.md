@@ -148,9 +148,10 @@ is the only destination.
 
 ## Phase 6 — Refine, co-ideate, revive, interview, or hand off
 
-Ask what should happen next. Use the platform's blocking question tool (`AskUserQuestion`; call
-`ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded). If no blocking tool
-exists or the call errors, fall back to numbered options in chat. Never silently skip the question.
+Ask what should happen next with one blocking question through the current
+session, then stop until the operator answers. Use a structured interaction
+surface only when the capability receipt proves it; otherwise use numbered
+options inline. Never silently skip the question.
 
 **Question:** "What should ideate do next?"
 

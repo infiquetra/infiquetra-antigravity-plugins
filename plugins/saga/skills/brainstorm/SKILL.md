@@ -28,8 +28,7 @@ These govern every turn of the dialogue.
 1. **One question per turn.** Even when sub-questions feel related, pick the single most useful one
    and ask it. Stacking questions dilutes the answers.
 2. **Prefer single-select multiple choice** when choosing one direction, priority, or next step. Use
-   `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema is not
-   loaded). It carries a free-text fallback, so options scaffold without confining.
+   a structured blocking interaction. It carries a free-text fallback, so options scaffold without confining.
 3. **Use multi-select rarely** — only for compatible sets (goals, constraints, non-goals, success
    criteria that can coexist). If prioritization matters, follow up on which selected item is primary.
 4. **Ask open-ended only when the question is genuinely open** — the answer is inherently narrative,
@@ -40,7 +39,7 @@ These govern every turn of the dialogue.
    someone's already done about this — paid, built a workaround, quit a tool"). Avoid "what's your
    take?", "briefly", yes/no traps, and warmth wrappers.
 
-In a channel session (`redis-channel` active), do not call `AskUserQuestion`; inline the choices in
+In a channel session (`redis-channel` active), ask the blocking question inline and the choices in
 your reply text instead ("Which? A) ... B) ... C) ...").
 
 ## Topic
@@ -330,8 +329,10 @@ Options:
    concrete requirements ask. Always available.
 7. **Done for now** — the requirements doc is saved and resumable later. Always shown.
 
-Use `AskUserQuestion` when 4 or fewer options are visible; render a numbered list ("Pick a number or
-describe what you want.") when 5 or more are visible. Never silently skip the question.
+Ask one blocking question through the current session when 4 or fewer options
+are visible; render a numbered list ("Pick a number or describe what you want.")
+when 5 or more are visible. Stop until the operator answers and never silently
+skip the question.
 
 When the run ends or hands off, close with the requirements doc's absolute path, the key decisions, and
 the recommended next step (`/plan` when ready, or `/office-hours` if it bounced back). When paused with

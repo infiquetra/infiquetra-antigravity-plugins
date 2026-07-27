@@ -17,7 +17,7 @@ import sdlc_manager  # noqa: E402
 def tmp_defaults_path(tmp_path, monkeypatch):
     """Redirect _USER_DEFAULTS_PATH into a tmp dir so tests don't write
     to the real ~/.gemini/sdlc-defaults.json."""
-    fake_path = tmp_path / ".claude" / "sdlc-defaults.json"
+    fake_path = tmp_path / ".gemini" / "mission-control" / "sdlc-defaults.json"
     monkeypatch.setattr(sdlc_manager, "_USER_DEFAULTS_PATH", fake_path)
     return fake_path
 

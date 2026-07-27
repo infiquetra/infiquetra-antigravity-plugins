@@ -72,7 +72,7 @@ Leaf work is **always** the native verbs on the leaf's own saga: `/resume <leaf-
 
 1. Load the canonical spec (branch) and open the store (git-common-dir cache).
 2. Acquire the **coordinator lease** — a second concurrent `advance` no-ops on a held lease and reclaims
-   a stale one (R13), so two ticks (a cron tick overlapping a manual one) never both mutate.
+   a stale one (R13), so an externally triggered tick overlapping a manual one never both mutate.
 3. Recompute `completed` from the store's completion events and the **ready frontier** from the spec
    (`ready_frontier`, the level-triggered read).
 4. For each ready, not-yet-dispatched, not-completed leaf: take its per-subplot dispatch lock and
@@ -80,16 +80,18 @@ Leaf work is **always** the native verbs on the leaf's own saga: `/resume <leaf-
    skipped — repeated ticks never double-dispatch (idempotent).
 5. Return the derived status. Pages only on exceptions.
 
-The execution backends a leaf can be dispatched to — inline / fork / subagent / team-execution /
-cc-workflows-ultracode / `/goal` / manual — are wired in later units; the dispatch *seam* and the
+The execution backends a leaf can be dispatched to — inline / fork / subagent /
+multi-agent-consensus / `/goal` / manual — are wired in later units; the dispatch *seam* and the
 reconcile loop are the contract.
 
 ## Interaction method
 
 Drive `/outcome` for coordination; drop to native leaf verbs for hands-on work. When several leaves block
 at once, the attention consolidator (later unit) bubbles them into one ranked prompt rather than N pages.
-Use `AskUserQuestion` only for genuine coordinator-level decisions (a gate, an unsatisfiable barrier, a
-parent-close); in a channel session, inline the choices instead.
+Ask one blocking question through the current session only for genuine
+coordinator-level decisions (a gate, an unsatisfiable barrier, a parent-close),
+then stop until the operator answers. In a channel session, inline the choices
+instead.
 
 ## What `/outcome` does NOT own
 

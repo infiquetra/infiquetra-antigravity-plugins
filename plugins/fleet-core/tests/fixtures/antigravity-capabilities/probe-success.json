@@ -1,0 +1,10 @@
+{
+  "controlled-agent-execution": {
+    "requested": true,
+    "observed": true
+  },
+  "controlled-sequential-isolation": {
+    "requested": true,
+    "observed": true
+  }
+}

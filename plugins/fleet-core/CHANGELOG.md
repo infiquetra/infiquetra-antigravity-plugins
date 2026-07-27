@@ -5,6 +5,23 @@ All notable changes to the fleet-core plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-26
+
+### Added
+
+- Add the closed Antigravity capability catalog, immutable bounded probe
+  registry, strict promotable receipt, and unchanged consumer evaluation
+  contract.
+- Add ignored local diagnostic storage with one-way sanitization into
+  promotable evidence.
+- Add the versioned active-surface selector and host-contract linter with
+  adjacent, reasoned classifications and excerpt-free lint receipts.
+
+### Changed
+
+- Move Antigravity-owned delegation state to `.gemini` and retain legacy engine
+  bundle roots only as explicit read-only foreign inputs.
+
 ## [0.8.1] - 2026-07-08
 
 ### Fixed
