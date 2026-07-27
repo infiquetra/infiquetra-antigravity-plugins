@@ -7,6 +7,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, cast
 
+import pytest
+
 from scripts import validate_plugins
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -361,6 +363,39 @@ def test_host_contract_read_error_does_not_echo_private_path(tmp_path: Path, cap
     human = capsys.readouterr().out
     assert "ghp_examplecredential" not in human
     assert private_path.as_posix() not in human
+
+
+@pytest.mark.parametrize("method", ["glob", "rglob"])
+def test_host_contract_enumeration_error_does_not_echo_private_path(
+    tmp_path: Path, capsys, monkeypatch, method: str
+) -> None:
+    selector = contract_repo(tmp_path)
+    private_path = f"/Users/alice/ghp_examplecredential-{method}"
+    original_enumeration = getattr(Path, method)
+
+    def fail_enumeration(path: Path, pattern: str):
+        target = tmp_path if method == "glob" else tmp_path / "docs"
+        if path == target:
+            raise PermissionError(13, "permission denied", private_path)
+        return original_enumeration(path, pattern)
+
+    monkeypatch.setattr(Path, method, fail_enumeration)
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        catalog=CATALOG,
+        selector=selector,
+    )
+    rendered = json.dumps(validate_plugins.asdict(result))
+
+    assert result.ok is False
+    assert result.host_contract.status == "failed"
+    assert private_path not in rendered
+    assert "ghp_examplecredential" not in rendered
+    validate_plugins.print_human(result)
+    human = capsys.readouterr().out
+    assert private_path not in human
+    assert "ghp_examplecredential" not in human
 
 
 def test_unsafe_supplied_receipt_fails_without_echoing_private_value(

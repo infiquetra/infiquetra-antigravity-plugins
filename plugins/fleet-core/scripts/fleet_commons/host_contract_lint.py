@@ -285,9 +285,14 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
         active_candidates: set[Path] = set()
         active_globs = selector.get("active_globs")
         if isinstance(active_globs, list):
-            for pattern in active_globs:
-                if _safe_relative(pattern, allow_glob=True):
-                    active_candidates.update(path for path in root.glob(pattern) if path.is_file())
+            try:
+                for pattern in active_globs:
+                    if _safe_relative(pattern, allow_glob=True):
+                        active_candidates.update(
+                            path for path in root.glob(pattern) if path.is_file()
+                        )
+            except OSError:
+                errors.append("selector.active_globs: could not enumerate repository paths")
         if isinstance(exact_paths, list):
             active_candidates.update(
                 root / value
@@ -338,8 +343,11 @@ def canonical_selector_digest() -> str:
 def selected_active_paths(repo_root: Path | str, selector: Mapping[str, Any]) -> list[Path]:
     root = Path(repo_root).resolve()
     paths: set[Path] = set()
-    for pattern in selector["active_globs"]:
-        paths.update(path for path in root.glob(pattern) if path.is_file())
+    try:
+        for pattern in selector["active_globs"]:
+            paths.update(path for path in root.glob(pattern) if path.is_file())
+    except OSError as exc:
+        raise HostContractError("could not enumerate active host-contract paths") from exc
     paths.update(root / value for value in selector["exact_paths"])
     selected: list[Path] = []
     for path in sorted(paths):
@@ -358,7 +366,11 @@ def selected_comparison_paths(repo_root: Path | str, selector: Mapping[str, Any]
     root = Path(repo_root).resolve()
     selected: list[Path] = []
     for value in selector["comparison_roots"]:
-        for path in sorted((root / value).rglob("*")):
+        try:
+            candidates = sorted((root / value).rglob("*"))
+        except OSError as exc:
+            raise HostContractError("could not enumerate comparison host-contract paths") from exc
+        for path in candidates:
             if path.is_symlink():
                 raise HostContractError("comparison host-contract path must not be a symlink")
             if not path.is_file() or path.suffix.lower() not in _COMPARISON_SUFFIXES:

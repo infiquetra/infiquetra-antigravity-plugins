@@ -619,6 +619,40 @@ def test_selector_loader_does_not_echo_private_paths(tmp_path: Path) -> None:
     assert str(tmp_path) not in str(captured.value)
 
 
+def test_selector_enumeration_error_does_not_echo_private_path(tmp_path: Path, monkeypatch) -> None:
+    private_path = "/Users/alice/private-active-glob"
+    selector = _selector()
+
+    def fail_glob(_path: Path, _pattern: str):
+        raise PermissionError(13, "permission denied", private_path)
+
+    monkeypatch.setattr(Path, "glob", fail_glob)
+
+    rendered = json.dumps(LINT.validate_selector(selector, tmp_path))
+
+    assert private_path not in rendered
+    assert "alice" not in rendered
+
+
+@pytest.mark.parametrize("method", ["glob", "rglob"])
+def test_repository_enumeration_error_does_not_echo_private_path(
+    tmp_path: Path, monkeypatch, method: str
+) -> None:
+    private_path = f"/Users/alice/private-{method}-path"
+    selector = _selector()
+
+    def fail_enumeration(_path: Path, _pattern: str):
+        raise PermissionError(13, "permission denied", private_path)
+
+    monkeypatch.setattr(Path, method, fail_enumeration)
+
+    with pytest.raises(LINT.HostContractError) as captured:
+        LINT.scan_repository(tmp_path, selector)
+
+    assert private_path not in str(captured.value)
+    assert "alice" not in str(captured.value)
+
+
 def test_repository_scan_read_error_does_not_echo_private_path(tmp_path: Path) -> None:
     private_path = tmp_path / "plugins/saga/skills/ghp_examplecredential/SKILL.md"
     private_path.parent.mkdir(parents=True)

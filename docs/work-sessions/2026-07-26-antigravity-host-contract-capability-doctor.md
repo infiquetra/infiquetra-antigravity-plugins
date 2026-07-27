@@ -457,3 +457,30 @@ Checks:
 
 Next step: commit the exceptional-path closure and rerun both immutable-SHA
 reviewers before the Saga code-review gate.
+
+## Phase 12 — traversal error non-echo closure
+
+The privacy and adversarial reviews of `584b299` accepted every prior fix but
+reproduced one adjacent exceptional path: `glob` or `rglob` permission failures
+could escape before selected-file read handling and expose their raw filename
+through doctor JSON.
+
+Selector overlap validation, active-surface enumeration, and comparison-corpus
+enumeration now catch traversal `OSError` values and return stable non-echo
+messages with chained causes. The doctor separately preserves known
+`HostContractError` messages and maps any unexpected filesystem/value failure
+to one fixed error.
+
+Checks:
+
+- Focused capability, host-contract, and doctor suites — 193 passed.
+- Full pytest — 1243 passed, one skipped.
+- Ruff lint and format checks — passed across 165 files.
+- Mypy — passed for the changed fleet-core and doctor surfaces.
+- Bandit medium/high scan excluding tests — passed.
+- Canonical doctor — capability, catalog, host contract, and receipt privacy
+  passed; 95 classified findings, zero errors, and zero unresolved findings.
+- `git diff --check` — passed.
+
+Next step: commit the traversal closure and rerun both immutable-SHA reviewers
+before the Saga code-review gate.

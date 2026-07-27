@@ -279,9 +279,12 @@ def evaluate_host_contract(
         )
         if host_status.unresolved_count:
             host_status.errors.append("active host-contract violations remain unresolved")
-    except (OSError, ValueError) as exc:
+    except host_lint.HostContractError as exc:
         host_status.status = "failed"
         host_status.errors.append(str(exc))
+    except (OSError, ValueError):
+        host_status.status = "failed"
+        host_status.errors.append("host-contract evaluation failed")
 
     return catalog_status, capability_status, privacy_status, host_status
 
