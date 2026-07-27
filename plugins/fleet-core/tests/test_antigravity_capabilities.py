@@ -44,6 +44,7 @@ def _receipt(
         "requested_facts": {
             "agent-execution": True,
             "sequential-isolation": True,
+            "model-selection": "gemini-3.1-pro",
         },
         "observed_facts": {
             "agent-execution": None
@@ -52,6 +53,7 @@ def _receipt(
             "sequential-isolation": None
             if sequential_state in {"unknown", "unavailable"}
             else sequential_state == "passed",
+            "model-selection": "gemini-3.1-pro",
         },
         "results": [
             {
@@ -71,6 +73,12 @@ def _receipt(
                     if sequential_state in {"passed", "failed"}
                     else []
                 ),
+            },
+            {
+                "id": "agy.model.selection",
+                "probe_revision": 1,
+                "state": "passed",
+                "evidence": ["model-selection-proof"],
             },
         ],
     }
@@ -115,7 +123,8 @@ def test_saga_profiles_inherit_runtime_base_capabilities() -> None:
 def test_catalog_rejects_executable_fields_before_execution() -> None:
     unsafe = json.loads((FIXTURES / "catalog-invalid-command.yaml").read_text())
     errors = CAPS.validate_catalog(unsafe)
-    assert any("unknown field 'command'" in error for error in errors)
+    assert any("unknown field" in error for error in errors)
+    assert "command" not in json.dumps(errors)
 
 
 @pytest.mark.parametrize(
@@ -123,7 +132,7 @@ def test_catalog_rejects_executable_fields_before_execution() -> None:
     [
         (lambda row: row.update({"probe_revision": 99}), "registered revision"),
         (lambda row: row.update({"probe_method": "shell-command"}), "unknown registered method"),
-        (lambda row: row.update({"state": "passed"}), "unknown field 'state'"),
+        (lambda row: row.update({"state": "passed"}), "unknown field"),
         (lambda row: row.update({"required_for": "live-canary"}), "expected a list"),
     ],
 )
@@ -214,7 +223,9 @@ def test_receipt_rejects_unknown_fields_states_and_duplicate_results() -> None:
     receipt["results"][0]["state"] = "degraded"
     receipt["results"].append(copy.deepcopy(receipt["results"][0]))
     errors = CAPS.validate_receipt(receipt, catalog)
-    assert any("unknown field 'stdout'" in error for error in errors)
+    assert any("unknown field" in error for error in errors)
+    assert "stdout" not in json.dumps(errors)
+    assert "private" not in json.dumps(errors)
     assert any("expected one of" in error for error in errors)
     assert any("duplicate result" in error for error in errors)
 
@@ -266,6 +277,9 @@ def test_receipt_rejects_credential_shaped_promotable_values_without_echo() -> N
         "gpt-xoxb-abcdefghijklmnopqrstuvwxyz",
         "gpt-AKIAABCDEFGHIJKLMNOP",
         "gpt-eyJabcdefghijk.eyJabcdefghijk.abcdefghijk",
+        "gpt-ya29.a0ARrdaMExampleCredential",
+        "gpt-jeffs-macbook-pro",
+        "gpt-5-abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz",
     ],
 )
 def test_receipt_rejects_common_credential_shapes_without_echo(
@@ -280,6 +294,41 @@ def test_receipt_rejects_common_credential_shapes_without_echo(
 
     assert errors
     assert credential_shape not in json.dumps(errors)
+
+
+def test_receipt_validation_never_echoes_unknown_values() -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    unsafe_values = {
+        "/Users/alice/private": True,
+        "ghp_examplecredential": True,
+        "jeffs-macbook-pro": True,
+        "private\nprompt": True,
+    }
+    receipt.update(unsafe_values)
+    receipt["runtime_roots"] = list(unsafe_values)
+    receipt["requested_facts"].update(unsafe_values)
+    receipt["observed_facts"].update(unsafe_values)
+    receipt["results"][0].update(unsafe_values)
+
+    rendered = json.dumps(CAPS.validate_receipt(receipt, catalog))
+
+    for unsafe in unsafe_values:
+        assert unsafe not in rendered
+
+
+def test_model_facts_require_catalog_allowlisted_values() -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    assert CAPS.validate_receipt(receipt, catalog) == []
+    assert any(
+        "require the supplied capability catalog" in error
+        for error in CAPS.validate_receipt(receipt)
+    )
+
+    receipt["requested_facts"]["model-selection"] = "gemini-3.5-flash"
+    receipt["observed_facts"]["model-selection"] = "gemini-3.5-flash"
+    assert CAPS.validate_receipt(receipt, catalog) == []
 
 
 @pytest.mark.parametrize("state", ["unknown", "unavailable"])
@@ -595,9 +644,28 @@ def test_local_diagnostic_rejects_symlink_escape(tmp_path: Path) -> None:
     outside = tmp_path.parent / f"{tmp_path.name}-outside"
     outside.mkdir()
     (tmp_path / ".gemini").symlink_to(outside, target_is_directory=True)
-    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="escapes"):
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="symlink"):
         DIAGNOSTICS.write_local_diagnostic(tmp_path, "latest", {"stdout": "raw"})
     assert list(outside.rglob("*.json")) == []
+
+
+def test_local_diagnostic_rejects_in_repository_symlink_for_write_and_purge(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "tracked"
+    destination.mkdir()
+    root_parent = tmp_path / ".gemini" / "saga"
+    root_parent.mkdir(parents=True)
+    (root_parent / "capability-doctor").symlink_to(destination, target_is_directory=True)
+    protected = destination / "protected.json"
+    protected.write_text('{"private": true}')
+
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="symlink"):
+        DIAGNOSTICS.write_local_diagnostic(tmp_path, "latest", {"stdout": "raw"})
+    with pytest.raises(DIAGNOSTICS.DiagnosticError, match="symlink"):
+        DIAGNOSTICS.purge_local_diagnostics(tmp_path)
+
+    assert protected.read_text() == '{"private": true}'
 
 
 def test_local_diagnostic_write_failure_leaves_no_partial(
@@ -618,9 +686,11 @@ def test_local_diagnostic_retention_expires_and_bounds_files(tmp_path: Path) -> 
     old = root / "old.json"
     first = root / "first.json"
     second = root / "second.json"
-    for path in (old, first, second):
+    stale_temporary = root / ".latest.crash123.tmp"
+    for path in (old, first, second, stale_temporary):
         path.write_text("{}")
     os.utime(old, (100.0, 100.0))
+    os.utime(stale_temporary, (100.0, 100.0))
     os.utime(first, (901.0, 901.0))
     os.utime(second, (902.0, 902.0))
 
@@ -635,6 +705,7 @@ def test_local_diagnostic_retention_expires_and_bounds_files(tmp_path: Path) -> 
 
     assert latest.is_file()
     assert old.exists() is False
+    assert stale_temporary.exists() is False
     assert first.exists() is False
     assert {path.name for path in root.glob("*.json")} == {"second.json", "latest.json"}
 
@@ -644,11 +715,13 @@ def test_local_diagnostic_purge_removes_only_bounded_json_files(tmp_path: Path) 
     root.mkdir(parents=True)
     (root / "one.json").write_text("{}")
     (root / "two.json").write_text("{}")
+    (root / ".latest.crash123.tmp").write_text("private")
     preserved = root / "operator-note.txt"
     preserved.write_text("keep")
 
-    assert DIAGNOSTICS.purge_local_diagnostics(tmp_path) == 2
+    assert DIAGNOSTICS.purge_local_diagnostics(tmp_path) == 3
     assert list(root.glob("*.json")) == []
+    assert list(root.glob(".*.tmp")) == []
     assert preserved.read_text() == "keep"
 
 
@@ -673,6 +746,25 @@ def test_local_diagnostic_retention_bounds_fail_closed(
             **{keyword: value},
         )
     assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_local_diagnostic_purge_failure_does_not_echo_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / ".gemini" / "saga" / "capability-doctor"
+    root.mkdir(parents=True)
+    private = root / "ghp_examplecredential.json"
+    private.write_text("private")
+
+    def deny(_path) -> None:
+        raise PermissionError(str(private))
+
+    monkeypatch.setattr(Path, "unlink", deny)
+    with pytest.raises(DIAGNOSTICS.DiagnosticError) as captured:
+        DIAGNOSTICS.purge_local_diagnostics(tmp_path)
+    assert "ghp_examplecredential" not in str(captured.value)
+    assert "private" not in str(captured.value)
 
 
 def test_sanitizer_drops_raw_and_absolute_local_evidence() -> None:
@@ -736,4 +828,4 @@ def test_promoted_unsafe_fixtures_are_rejected_without_echo(fixture_name: str) -
 
 def test_promoted_safe_fixture_accepts_dotted_values() -> None:
     receipt = json.loads((FIXTURES / "promoted-safe.json").read_text())
-    assert CAPS.validate_receipt(receipt) == []
+    assert CAPS.validate_receipt(receipt, _catalog()) == []

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
 import re
@@ -35,55 +34,52 @@ _FINDING_KEYS = frozenset(
     }
 )
 _RECEIPT_KEYS = frozenset({"schema", "selector_digest", "findings", "unresolved_count"})
+REQUIRED_ACTIVE_GLOBS = (
+    "plugins/saga/commands/**/*.md",
+    "plugins/saga/skills/**/*.md",
+    "plugins/saga/agents/**/*.md",
+    "plugins/saga/references/**/*.md",
+    "plugins/saga/hooks/**/*.py",
+    "plugins/saga/scripts/**/*.py",
+)
+REQUIRED_EXACT_PATHS = (
+    "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+    "plugins/fleet-core/scripts/fleet_commons/delegation_state.py",
+    "plugins/mission-control/scripts/sdlc_manager.py",
+    "plugins/multi-agent-consensus/skills/multi-agent-consensus/references/"
+    "validator-evidence-state.md",
+    ".agents/skills/port-claude-plugins/SKILL.md",
+)
+REQUIRED_COMPARISON_ROOTS = ("docs", "tests")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$")
 _PY_ANNOTATION_RE = re.compile(r"^\s*#\s*antigravity-host-contract:\s*(\{.*\})\s*$")
 MAX_SELECTED_FILE_BYTES = 1024 * 1024
-ALLOWED_COMPARISON_ROOTS = frozenset({"docs", "tests"})
+ALLOWED_COMPARISON_ROOTS = frozenset(REQUIRED_COMPARISON_ROOTS)
 _MUTATING_CONTEXT_RE = re.compile(
     r"(?i)\b(?:output|write|written|create|copy|delete|mkdir|move|remove|rmdir|rmtree|"
     r"unlink|rename|replace|touch|chmod|chown|symlink|archive|save|emit|append|ledger|"
     r"destination)\b|(?:write_text|write_bytes|open\([^)]*[\"'][awx+])"
 )
-_HISTORICAL_IMPERATIVE_RE = re.compile(r"(?i)^\s*(?:run|use|call|invoke|execute|launch|start)\b")
-_MUTATING_METHODS = frozenset(
-    {
-        "chmod",
-        "hardlink_to",
-        "mkdir",
-        "rename",
-        "replace",
-        "rmdir",
-        "symlink_to",
-        "touch",
-        "truncate",
-        "unlink",
-        "write",
-        "write_bytes",
-        "write_text",
-        "writelines",
-    }
+_MARKDOWN_PREFIX_RE = re.compile(r"^\s*(?:(?:>|[-+*]|\d+[.)])\s+|\[[ xX]\]\s+|[*_`]+\s*)+")
+_HISTORICAL_IMPERATIVE_RE = re.compile(
+    r"(?i)(?:"
+    r"^(?:run|use|call|invoke|execute|launch|start)\b"
+    r"|\b(?:must|should|please|then|need\s+to)\s+"
+    r"(?:run|use|call|invoke|execute|launch|start)\b"
+    r")"
 )
-_MUTATING_CALLS = frozenset(
+_FOREIGN_RUNTIME_READ_ALLOWLIST = frozenset(
     {
-        "chmod",
-        "chown",
-        "copy",
-        "copy2",
-        "copyfile",
-        "copytree",
-        "link",
-        "make_archive",
-        "move",
-        "remove",
-        "removedirs",
-        "rename",
-        "replace",
-        "rmdir",
-        "rmtree",
-        "symlink",
-        "unlink",
+        (
+            "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+            "d11d3b3f76f345fda91fbc92e9741c11ca267d04b4d519140fc8da984c6bb73d",
+        ),
+        (
+            "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+            "af73c91789685f05c5410063e3da771b02c0550e5eeb08619999bdaca2e16345",
+        ),
     }
 )
 
@@ -166,7 +162,7 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
 
     if not isinstance(selector, dict):
         return ["selector: expected an object"]
-    errors = [f"selector: unknown field {key!r}" for key in sorted(set(selector) - _SELECTOR_KEYS)]
+    errors = ["selector: unknown field" for _key in sorted(set(selector) - _SELECTOR_KEYS)]
     if selector.get("schema") != SELECTOR_SCHEMA:
         errors.append(f"selector.schema: expected {SELECTOR_SCHEMA!r}")
     for field, allow_glob in (
@@ -185,6 +181,14 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
             if not _safe_relative(value, allow_glob=allow_glob):
                 errors.append(f"selector.{field}[{index}]: unsafe repository-relative path")
 
+    for field, expected in (
+        ("active_globs", REQUIRED_ACTIVE_GLOBS),
+        ("exact_paths", REQUIRED_EXACT_PATHS),
+        ("comparison_roots", REQUIRED_COMPARISON_ROOTS),
+    ):
+        if selector.get(field) != list(expected):
+            errors.append(f"selector.{field}: does not match the canonical surface policy")
+
     if selector.get("digest_inputs") != _SELECTOR_DIGEST_INPUTS:
         errors.append(f"selector.digest_inputs: expected exactly {_SELECTOR_DIGEST_INPUTS}")
 
@@ -196,39 +200,35 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
                 continue
             candidate = root / value
             if not candidate.is_file():
-                errors.append(f"selector.exact_paths: declared file is missing: {value}")
+                errors.append("selector.exact_paths: declared file is missing")
             elif candidate.is_symlink():
-                errors.append(f"selector.exact_paths: symlinks are not allowed: {value}")
+                errors.append("selector.exact_paths: symlinks are not allowed")
             else:
                 try:
                     candidate.resolve(strict=True).relative_to(root)
                 except (FileNotFoundError, OSError, ValueError):
-                    errors.append(
-                        f"selector.exact_paths: declared file escapes repository: {value}"
-                    )
+                    errors.append("selector.exact_paths: declared file escapes repository")
     comparison_roots = selector.get("comparison_roots")
     if isinstance(comparison_roots, list):
         for value in comparison_roots:
             if not _safe_relative(value, allow_glob=False):
                 continue
             if value not in ALLOWED_COMPARISON_ROOTS:
-                errors.append(
-                    f"selector.comparison_roots: root is not in the controlled allowlist: {value}"
-                )
+                errors.append("selector.comparison_roots: root is not in the controlled allowlist")
                 continue
             candidate = root / value
             if candidate == root:
                 errors.append("selector.comparison_roots: repository root is not allowed")
             elif not candidate.is_dir():
-                errors.append(f"selector.comparison_roots: declared directory is missing: {value}")
+                errors.append("selector.comparison_roots: declared directory is missing")
             elif candidate.is_symlink():
-                errors.append(f"selector.comparison_roots: symlinks are not allowed: {value}")
+                errors.append("selector.comparison_roots: symlinks are not allowed")
             else:
                 try:
                     candidate.resolve(strict=True).relative_to(root)
                 except (FileNotFoundError, OSError, ValueError):
                     errors.append(
-                        f"selector.comparison_roots: declared directory escapes repository: {value}"
+                        "selector.comparison_roots: declared directory escapes repository"
                     )
 
         active_candidates: set[Path] = set()
@@ -249,7 +249,7 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
             comparison = root / value
             if any(path == comparison or comparison in path.parents for path in active_candidates):
                 errors.append(
-                    f"selector.comparison_roots: active selection overlaps comparison root: {value}"
+                    "selector.comparison_roots: active selection overlaps comparison root"
                 )
     return errors
 
@@ -335,135 +335,27 @@ def _validate_annotation(
     return None
 
 
-def _assigned_names(node: ast.AST) -> set[str]:
-    names: set[str] = set()
-    for child in ast.walk(node):
-        if isinstance(child, ast.Name) and isinstance(child.ctx, (ast.Store, ast.Del)):
-            names.add(child.id)
-    return names
-
-
-def _referenced_names(node: ast.AST | None) -> set[str]:
-    if node is None:
-        return set()
-    return {
-        child.id
-        for child in ast.walk(node)
-        if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load)
-    }
-
-
-def _assignment_value(node: ast.AST) -> ast.AST | None:
-    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
-        return node.value
-    return None
-
-
-def _call_name(call: ast.Call) -> str | None:
-    if isinstance(call.func, ast.Name):
-        return call.func.id
-    if isinstance(call.func, ast.Attribute):
-        return call.func.attr
-    return None
-
-
-def _write_open_references(call: ast.Call) -> set[str]:
-    if _call_name(call) != "open":
-        return set()
-    target: ast.expr | None
-    positional_mode: ast.expr | None
-    if isinstance(call.func, ast.Attribute):
-        target = call.func.value
-        positional_mode = call.args[0] if call.args else None
-    else:
-        target = call.args[0] if call.args else None
-        positional_mode = call.args[1] if len(call.args) > 1 else None
-    keyword_mode = next(
-        (keyword.value for keyword in call.keywords if keyword.arg == "mode"),
-        None,
-    )
-    mode: ast.expr | None = keyword_mode if keyword_mode is not None else positional_mode
-    if mode is None:
-        return set()
-    if (
-        isinstance(mode, ast.Constant)
-        and isinstance(mode.value, str)
-        and not any(character in mode.value for character in "awx+")
-    ):
-        return set()
-    return _referenced_names(target)
-
-
-def _python_foreign_write_lines(text: str, annotated_lines: set[int]) -> set[int]:
-    """Return annotated source lines whose foreign path can reach a mutation."""
-
-    if not annotated_lines:
-        return set()
-    try:
-        tree = ast.parse(text)
-    except SyntaxError:
-        return set(annotated_lines)
-
-    name_origins: dict[str, set[int]] = {}
-    assignments = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr))
-    ]
-    for node in assignments:
-        if node.lineno in annotated_lines:
-            for name in _assigned_names(node):
-                name_origins.setdefault(name, set()).add(node.lineno)
-
-    changed = True
-    while changed:
-        changed = False
-        for node in assignments:
-            origins: set[int] = set()
-            for name in _referenced_names(_assignment_value(node)):
-                origins.update(name_origins.get(name, set()))
-            if not origins:
-                continue
-            for name in _assigned_names(node):
-                current = name_origins.setdefault(name, set())
-                before = len(current)
-                current.update(origins)
-                changed = changed or len(current) != before
-
-    unsafe: set[int] = set()
-    for call in (node for node in ast.walk(tree) if isinstance(node, ast.Call)):
-        call_name = _call_name(call)
-        if call.lineno in annotated_lines and call_name in _MUTATING_METHODS | _MUTATING_CALLS:
-            unsafe.add(call.lineno)
-
-        referenced: set[str] = set()
-        if isinstance(call.func, ast.Attribute) and call.func.attr in _MUTATING_METHODS:
-            referenced.update(_referenced_names(call.func.value))
-        if call_name in _MUTATING_CALLS:
-            for argument in call.args:
-                referenced.update(_referenced_names(argument))
-            for keyword in call.keywords:
-                referenced.update(_referenced_names(keyword.value))
-        referenced.update(_write_open_references(call))
-        for name in referenced:
-            unsafe.update(name_origins.get(name, set()))
-    return unsafe
+def _is_historical_imperative(line: str) -> bool:
+    normalized = line
+    while True:
+        stripped = _MARKDOWN_PREFIX_RE.sub("", normalized, count=1)
+        if stripped == normalized:
+            break
+        normalized = stripped
+    return _HISTORICAL_IMPERATIVE_RE.search(normalized.strip()) is not None
 
 
 def _annotation_semantically_safe(
     payload: Mapping[str, Any],
+    path: str,
     line: str,
-    *,
-    python_write: bool = False,
 ) -> bool:
     classification = payload.get("class")
     if classification == "foreign-runtime-input":
-        return not python_write and _MUTATING_CONTEXT_RE.search(line) is None
+        line_digest = hashlib.sha256(line.encode()).hexdigest()
+        return (path, line_digest) in _FOREIGN_RUNTIME_READ_ALLOWLIST
     if classification == "historical":
-        return (
-            _MUTATING_CONTEXT_RE.search(line) is None
-            and _HISTORICAL_IMPERATIVE_RE.search(line) is None
-        )
+        return _MUTATING_CONTEXT_RE.search(line) is None and not _is_historical_imperative(line)
     return True
 
 
@@ -507,14 +399,6 @@ def scan_text(
     lines = text.splitlines()
     findings: list[dict[str, Any]] = []
     consumed_annotations: set[int] = set()
-    foreign_code_lines = {
-        index + 2
-        for index, line in enumerate(lines[:-1])
-        if (_annotation_payload(line)[0] or {}).get("class") == "foreign-runtime-input"
-    }
-    python_write_lines = (
-        _python_foreign_write_lines(text, foreign_code_lines) if path.endswith(".py") else set()
-    )
 
     for index, line in enumerate(lines):
         matched_rules = [rule for rule in RULES if rule.pattern.search(line)]
@@ -549,8 +433,8 @@ def scan_text(
                 annotation_error = _validate_annotation(annotation, rule, capabilities)
                 if annotation_error is None and not _annotation_semantically_safe(
                     annotation,
+                    path,
                     line,
-                    python_write=index + 1 in python_write_lines,
                 ):
                     annotation_error = "annotation-conflicts-with-executable-write"
             if annotation is None or annotation_error is not None:
@@ -676,9 +560,7 @@ def validate_lint_receipt(receipt: object) -> list[str]:
 
     if not isinstance(receipt, dict):
         return ["lint receipt: expected an object"]
-    errors = [
-        f"lint receipt: unknown field {key!r}" for key in sorted(set(receipt) - _RECEIPT_KEYS)
-    ]
+    errors = ["lint receipt: unknown field" for _key in sorted(set(receipt) - _RECEIPT_KEYS)]
     if receipt.get("schema") != LINT_RECEIPT_SCHEMA:
         errors.append(f"lint receipt.schema: expected {LINT_RECEIPT_SCHEMA!r}")
     digest = receipt.get("selector_digest")
@@ -694,8 +576,8 @@ def validate_lint_receipt(receipt: object) -> list[str]:
         if not isinstance(finding, dict):
             errors.append(f"{path}: expected an object")
             continue
-        for key in sorted(set(finding) - _FINDING_KEYS):
-            errors.append(f"{path}: unknown field {key!r}")
+        for _key in sorted(set(finding) - _FINDING_KEYS):
+            errors.append(f"{path}: unknown field")
         relative = finding.get("path")
         if not _safe_relative(relative, allow_glob=False):
             errors.append(f"{path}.path: expected a safe repository-relative path")

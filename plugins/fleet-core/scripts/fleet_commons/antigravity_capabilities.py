@@ -68,14 +68,19 @@ _VERSION_RE = re.compile(r"^[0-9]+(?:[.][0-9A-Za-z+-]+)*$")
 _FLAG_RE = re.compile(r"^--[a-z0-9]+(?:-[a-z0-9]+)*$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _MODEL_RE = re.compile(
-    r"^(?:gemini|claude|gpt|codex|o[0-9]+)-?[A-Za-z0-9]+"
-    r"(?:[._+-][A-Za-z0-9]+)*$"
+    r"^(?:"
+    r"gemini-[0-9]+(?:[.][0-9]+)*-(?:pro|flash)(?:-[a-z0-9]+)*"
+    r"|gpt-[0-9]+(?:[.][0-9]+)*(?:-[a-z0-9]+)*"
+    r"|claude-(?:haiku|sonnet|opus)-[0-9]+(?:[.][0-9]+)*"
+    r"|codex-[0-9]+(?:[.][0-9]+)*(?:-[a-z0-9]+)*"
+    r"|o[0-9]+(?:-[a-z0-9]+)*"
+    r")$"
 )
 _EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 _HOSTNAME_SUFFIXES = (".local", ".lan", ".home", ".internal")
 _CREDENTIAL_SHAPE_RE = re.compile(
     r"(?i)(?:api[_-]?key|access[_-]?token|auth[_-]?token|authorization|bearer[ _-]|"
-    r"password|secret|ghp_|github_pat_|glpat-|xox[baprs]-|npm_|pypi-AgEI|"
+    r"password|secret|ghp_|github_pat_|glpat-|xox[baprs]-|npm_|pypi-AgEI|ya29[.]|"
     r"sk-[A-Za-z0-9]|A(?:KI|SI)A[0-9A-Z]{8,}|"
     r"eyJ[A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,}[.][A-Za-z0-9_-]{8,})"
 )
@@ -107,6 +112,7 @@ _CAPABILITY_KEYS = frozenset(
         "id",
         "revision",
         "description",
+        "allowed_values",
         "probe_method",
         "probe_revision",
         "expected_evidence",
@@ -141,7 +147,7 @@ def _is_sequence(value: object) -> bool:
 
 
 def _extra_keys(value: Mapping[str, Any], allowed: frozenset[str], path: str) -> list[str]:
-    return [f"{path}: unknown field {key!r}" for key in sorted(set(value) - allowed)]
+    return [f"{path}: unknown field" for _key in sorted(set(value) - allowed)]
 
 
 def _validate_id(value: object, path: str, errors: list[str]) -> str | None:
@@ -242,7 +248,7 @@ def validate_catalog(catalog: object) -> list[str]:
         capability_id = _validate_id(row.get("id"), f"{path}.id", errors)
         if capability_id is not None:
             if capability_id in seen_ids:
-                errors.append(f"{path}.id: duplicate capability {capability_id!r}")
+                errors.append(f"{path}.id: duplicate capability")
             seen_ids.add(capability_id)
             rows[capability_id] = row
 
@@ -255,7 +261,7 @@ def validate_catalog(catalog: object) -> list[str]:
 
         method = row.get("probe_method")
         if method not in PROBE_METHOD_REVISIONS:
-            errors.append(f"{path}.probe_method: unknown registered method {method!r}")
+            errors.append(f"{path}.probe_method: unknown registered method")
         expected_revision = PROBE_METHOD_REVISIONS.get(method) if isinstance(method, str) else None
         if row.get("probe_revision") != expected_revision:
             errors.append(
@@ -268,6 +274,27 @@ def validate_catalog(catalog: object) -> list[str]:
         if not evidence:
             errors.append(f"{path}.expected_evidence: expected at least one evidence identifier")
         required_for = _validate_id_list(row.get("required_for"), f"{path}.required_for", errors)
+        allowed_values = row.get("allowed_values")
+        if capability_id == "agy.model.selection":
+            if not _is_sequence(allowed_values) or not allowed_values:
+                errors.append(f"{path}.allowed_values: expected a non-empty model allowlist")
+            else:
+                model_values = cast(Sequence[object], allowed_values)
+                string_models = [value for value in model_values if isinstance(value, str)]
+                if len(string_models) != len(model_values):
+                    errors.append(f"{path}.allowed_values: invalid canonical model identifier")
+                if len(string_models) != len(set(string_models)):
+                    errors.append(f"{path}.allowed_values: duplicate values are not allowed")
+                for value in model_values:
+                    if (
+                        not isinstance(value, str)
+                        or len(value) > MAX_PROMOTABLE_VALUE_LENGTH
+                        or _CREDENTIAL_SHAPE_RE.search(value) is not None
+                        or not _MODEL_RE.fullmatch(value)
+                    ):
+                        errors.append(f"{path}.allowed_values: invalid canonical model identifier")
+        elif "allowed_values" in row:
+            errors.append(f"{path}.allowed_values: unexpected for this capability")
 
         outcome_rules = row.get("outcome_rules")
         if not isinstance(outcome_rules, dict):
@@ -301,8 +328,7 @@ def validate_catalog(catalog: object) -> list[str]:
                 overlap = sorted(set(consumers) & set(required_for))
                 if overlap:
                     errors.append(
-                        f"{path}.fallback.for_consumers: required consumers cannot degrade: "
-                        f"{overlap}"
+                        f"{path}.fallback.for_consumers: required consumers cannot degrade"
                     )
                 when_states = fallback.get("when_states")
                 if not _is_sequence(when_states) or not when_states:
@@ -310,9 +336,7 @@ def validate_catalog(catalog: object) -> list[str]:
                 else:
                     invalid_states = sorted(set(when_states) - FALLBACK_STATES)
                     if invalid_states:
-                        errors.append(
-                            f"{path}.fallback.when_states: unsupported states {invalid_states}"
-                        )
+                        errors.append(f"{path}.fallback.when_states: unsupported state")
 
     for capability_id, row in rows.items():
         fallback = row.get("fallback")
@@ -320,11 +344,9 @@ def validate_catalog(catalog: object) -> list[str]:
             continue
         fallback_id = fallback.get("capability")
         if fallback_id == capability_id:
-            errors.append(f"capability {capability_id!r}: fallback cannot reference itself")
+            errors.append("catalog capability fallback cannot reference itself")
         elif fallback_id not in rows:
-            errors.append(
-                f"capability {capability_id!r}: unknown fallback capability {fallback_id!r}"
-            )
+            errors.append("catalog capability references an unknown fallback")
     return errors
 
 
@@ -344,7 +366,7 @@ def _validate_facts(value: object, path: str, errors: list[str]) -> None:
         return
     for key, fact in value.items():
         if key not in FACT_IDS:
-            errors.append(f"{path}: unknown fact {key!r}")
+            errors.append(f"{path}: unknown fact")
             continue
         if fact is None:
             continue
@@ -415,7 +437,7 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
             errors.append("receipt.runtime_roots: duplicate roles are not allowed")
         for index, role in enumerate(root_values):
             if role not in RUNTIME_ROOT_ROLES:
-                errors.append(f"receipt.runtime_roots[{index}]: unknown logical role {role!r}")
+                errors.append(f"receipt.runtime_roots[{index}]: unknown logical role")
 
     _validate_facts(receipt.get("requested_facts"), "receipt.requested_facts", errors)
     _validate_facts(receipt.get("observed_facts"), "receipt.observed_facts", errors)
@@ -442,7 +464,7 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
         result_id = _validate_id(result.get("id"), f"{path}.id", errors)
         if result_id is not None:
             if result_id in seen:
-                errors.append(f"{path}.id: duplicate result {result_id!r}")
+                errors.append(f"{path}.id: duplicate result")
             seen.add(result_id)
             if catalog_rows and result_id not in catalog_rows:
                 errors.append(f"{path}.id: capability is not present in the supplied catalog")
@@ -473,6 +495,18 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
             requested = requested_facts.get(fact_id) if isinstance(requested_facts, dict) else None
             observed = observed_facts.get(fact_id) if isinstance(observed_facts, dict) else None
             state = result.get("state")
+            if fact_id == "model-selection" and (requested is not None or observed is not None):
+                model_row = catalog_rows.get(result_id or "")
+                if model_row is None:
+                    errors.append(
+                        f"{path}.state: model facts require the supplied capability catalog"
+                    )
+                else:
+                    allowed_models = set(model_row.get("allowed_values", []))
+                    if requested not in allowed_models or (
+                        observed is not None and observed not in allowed_models
+                    ):
+                        errors.append(f"{path}.state: model fact is not in the catalog allowlist")
             if fact_id in BOOLEAN_FACT_IDS and requested is not None and requested is not True:
                 errors.append(f"{path}.state: boolean capability requests must be true")
             if state == "passed" and (

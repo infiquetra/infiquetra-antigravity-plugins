@@ -39,19 +39,21 @@ def contract_repo(root: Path, active_text: str = "# Clean\n") -> dict[str, Any]:
     active = root / "plugins/saga/skills/demo/SKILL.md"
     active.parent.mkdir(parents=True)
     active.write_text(active_text)
+    selector = cast(
+        dict[str, Any],
+        json.loads(
+            (
+                REPO_ROOT / "plugins/fleet-core/references/antigravity-host-contract-surfaces.json"
+            ).read_text()
+        ),
+    )
+    for relative in selector["exact_paths"]:
+        exact = root / relative
+        exact.parent.mkdir(parents=True, exist_ok=True)
+        exact.write_text("# Clean\n")
+    (root / "docs").mkdir()
     (root / "tests").mkdir()
-    return {
-        "schema": "antigravity.host-contract-surfaces.v1",
-        "active_globs": ["plugins/saga/skills/**/*.md"],
-        "exact_paths": ["plugins/fleet-core/plugin.json"],
-        "comparison_roots": ["tests"],
-        "digest_inputs": [
-            "schema",
-            "active_globs",
-            "exact_paths",
-            "comparison_roots",
-        ],
-    }
+    return selector
 
 
 def receipt_with_states(**states: str) -> dict[str, Any]:

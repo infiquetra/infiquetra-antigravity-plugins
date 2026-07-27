@@ -88,7 +88,8 @@ Rich local diagnostics live only under the ignored
 receipt and is rejected at every consumer gate. Ignoring the directory prevents
 normal source-control promotion; it does not make the contents non-sensitive.
 Diagnostic writers expire JSON files after seven days and retain at most 20 by
-default. Call
+default. Writer-owned temporary files left by interrupted atomic writes expire
+on the same schedule and are included in explicit purge. Call
 `antigravity_diagnostics.purge_local_diagnostics(repository_root)` for immediate
 purge. Filesystem snapshots and repository backups require their own retention
 policy.

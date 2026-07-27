@@ -23,6 +23,12 @@ requiredness is declared by profile; a required failed, unknown, or unavailable
 capability blocks that consumer. Only an optional capability with a previously
 declared and proven fallback can evaluate as degraded.
 
+Controlled model-selection facts are valid only when the requested and observed
+identifiers appear in that catalog row's closed `allowed_values` list. This
+keeps arbitrary hostnames, credentials, and high-entropy strings out of
+promotable receipts; add a reviewed canonical model to the catalog before using
+it in evidence.
+
 Promotable evidence uses the strict `antigravity.capabilities.v1` schema. Raw
 output, absolute runtime roots, transcripts, prompts, environment data, and
 credentials belong only in ignored local diagnostics under
@@ -30,9 +36,11 @@ credentials belong only in ignored local diagnostics under
 `antigravity_diagnostics.sanitize_for_promotion` to cross that boundary; do not
 copy diagnostic fields into a receipt. Ignored diagnostics can still contain
 sensitive local evidence. Writers automatically remove files older than seven
-days and keep at most 20 JSON files by default. Operators can immediately clear
-them with `antigravity_diagnostics.purge_local_diagnostics(repo_root)`. Repository
-backups and filesystem snapshots remain outside this retention boundary.
+days, including crash-left writer temporary files, and keep at most 20 completed
+JSON files by default. Operators can immediately clear every writer-owned
+artifact with `antigravity_diagnostics.purge_local_diagnostics(repo_root)`.
+Repository backups and filesystem snapshots remain outside this retention
+boundary.
 
 Consumers load `antigravity_capabilities` through the shim, validate the
 receipt against the canonical catalog, and call `evaluate_for_consumer`

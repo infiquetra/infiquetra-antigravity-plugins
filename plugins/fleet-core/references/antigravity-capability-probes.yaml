@@ -1,7 +1,7 @@
 {
   "catalog_schema": "antigravity.capability-catalog.v1",
   "receipt_schema": "antigravity.capabilities.v1",
-  "catalog_revision": 2,
+  "catalog_revision": 3,
   "capabilities": [
     {
       "id": "agy.cli.version",
@@ -187,6 +187,11 @@
       "id": "agy.model.selection",
       "revision": 1,
       "description": "Prove that requested and observed model selection agree.",
+      "allowed_values": [
+        "gemini-3.1-pro",
+        "gemini-3.5-flash",
+        "gpt-5"
+      ],
       "probe_method": "controlled-model-selection",
       "probe_revision": 1,
       "expected_evidence": [

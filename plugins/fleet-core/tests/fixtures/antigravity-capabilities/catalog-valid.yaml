@@ -49,6 +49,31 @@
         "unavailable": "controlled-fixture-unavailable"
       },
       "fallback": null
+    },
+    {
+      "id": "agy.model.selection",
+      "revision": 1,
+      "description": "Prove requested model selection.",
+      "allowed_values": [
+        "gemini-3.1-pro",
+        "gemini-3.5-flash",
+        "gpt-5"
+      ],
+      "probe_method": "controlled-model-selection",
+      "probe_revision": 1,
+      "expected_evidence": [
+        "model-selection-proof"
+      ],
+      "required_for": [
+        "live-canary"
+      ],
+      "outcome_rules": {
+        "passed": "requested-observed-match",
+        "failed": "requested-observed-mismatch",
+        "unknown": "observed-model-missing",
+        "unavailable": "controlled-fixture-unavailable"
+      },
+      "fallback": null
     }
   ]
 }

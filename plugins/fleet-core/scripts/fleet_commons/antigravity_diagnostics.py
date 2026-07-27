@@ -24,6 +24,7 @@ MAX_RETENTION_SECONDS = 30 * 24 * 60 * 60
 DEFAULT_MAX_DIAGNOSTIC_FILES = 20
 MAX_DIAGNOSTIC_FILES = 100
 _SAFE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,79}$")
+_OWNED_TEMP_RE = re.compile(r"^\.[a-z0-9][a-z0-9._-]{0,79}\.[a-z0-9_-]{6,}\.tmp$")
 
 
 class DiagnosticError(ValueError):
@@ -48,6 +49,19 @@ def _safe_name(name: str) -> str:
     return name
 
 
+def _diagnostic_root(repo_root: Path | str) -> tuple[Path, Path]:
+    repository = Path(repo_root).resolve()
+    target_root = repository / DEFAULT_DIAGNOSTIC_ROOT
+    current = repository
+    for part in DEFAULT_DIAGNOSTIC_ROOT.parts:
+        current /= part
+        if current.is_symlink():
+            raise DiagnosticError("diagnostic state root must not contain symlinks")
+    if target_root.resolve() != target_root:
+        raise DiagnosticError("diagnostic state root must resolve to its canonical path")
+    return repository, target_root
+
+
 def _diagnostic_files(target_root: Path) -> list[Path]:
     try:
         return [
@@ -57,15 +71,25 @@ def _diagnostic_files(target_root: Path) -> list[Path]:
         raise DiagnosticError("could not inspect local diagnostic retention") from exc
 
 
-def purge_local_diagnostics(repo_root: Path | str) -> int:
-    """Delete all bounded local diagnostic JSON files and return the count."""
+def _temporary_files(target_root: Path) -> list[Path]:
+    try:
+        return [
+            path
+            for path in target_root.glob(".*.tmp")
+            if path.is_file()
+            and not path.is_symlink()
+            and _OWNED_TEMP_RE.fullmatch(path.name) is not None
+        ]
+    except OSError as exc:
+        raise DiagnosticError("could not inspect local diagnostic retention") from exc
 
-    repository = Path(repo_root).resolve()
-    target_root = (repository / DEFAULT_DIAGNOSTIC_ROOT).resolve()
-    if not target_root.is_relative_to(repository):
-        raise DiagnosticError("diagnostic state root escapes the repository")
+
+def purge_local_diagnostics(repo_root: Path | str) -> int:
+    """Delete all writer-owned local diagnostic artifacts and return the count."""
+
+    _repository, target_root = _diagnostic_root(repo_root)
     removed = 0
-    for path in _diagnostic_files(target_root):
+    for path in _diagnostic_files(target_root) + _temporary_files(target_root):
         try:
             path.unlink()
         except OSError as exc:
@@ -83,6 +107,12 @@ def _prune_local_diagnostics(
 ) -> None:
     cutoff = now - retention_seconds
     retained: list[tuple[float, Path]] = []
+    for path in _temporary_files(target_root):
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink()
+        except OSError as exc:
+            raise DiagnosticError("could not enforce local diagnostic retention") from exc
     for path in _diagnostic_files(target_root):
         try:
             modified = path.stat().st_mtime
@@ -119,10 +149,7 @@ def write_local_diagnostic(
         raise DiagnosticError("diagnostic retention is outside the allowed bound")
     if max_files < 1 or max_files > MAX_DIAGNOSTIC_FILES:
         raise DiagnosticError("diagnostic file limit is outside the allowed bound")
-    repository = Path(repo_root).resolve()
-    target_root = (repository / DEFAULT_DIAGNOSTIC_ROOT).resolve()
-    if not target_root.is_relative_to(repository):
-        raise DiagnosticError("diagnostic state root escapes the repository")
+    _repository, target_root = _diagnostic_root(repo_root)
     document = dict(payload)
     document["schema"] = LOCAL_DIAGNOSTIC_SCHEMA
     try:
@@ -133,6 +160,7 @@ def write_local_diagnostic(
         raise DiagnosticError("diagnostic payload exceeds the configured byte limit")
 
     target_root.mkdir(parents=True, exist_ok=True)
+    _diagnostic_root(repo_root)
     _prune_local_diagnostics(
         target_root,
         now=now(),

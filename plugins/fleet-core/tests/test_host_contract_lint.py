@@ -80,16 +80,31 @@ def test_markdown_quote_is_active_without_lineage_annotation() -> None:
     assert findings[0]["unresolved"] is True
 
 
-def test_foreign_runtime_requires_read_only_and_does_not_hide_write() -> None:
+def test_unallowlisted_foreign_runtime_annotations_fail_closed() -> None:
     findings = LINT.scan_text(
         "plugins/saga/hooks/example.py",
         (FIXTURES / "executable-claude-path.py").read_text(),
         known_capabilities=_known_capabilities(),
     )
-    assert findings[0]["classification"] == "foreign-runtime-input"
-    assert findings[0]["unresolved"] is False
-    assert findings[1]["classification"] == "active"
-    assert findings[1]["unresolved"] is True
+    assert len(findings) == 2
+    assert all(finding["classification"] == "active" for finding in findings)
+    assert all(finding["unresolved"] for finding in findings)
+
+
+def test_exact_reviewed_foreign_runtime_reads_are_allowlisted() -> None:
+    source = (
+        REPO_ROOT / "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py"
+    ).read_text()
+    findings = LINT.scan_text(
+        "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+        source,
+        known_capabilities=_known_capabilities(),
+    )
+    foreign = [finding for finding in findings if finding["rule"] == "AGHC001"]
+
+    assert len(foreign) == 2
+    assert all(finding["classification"] == "foreign-runtime-input" for finding in foreign)
+    assert not any(finding["unresolved"] for finding in foreign)
 
 
 @pytest.mark.parametrize(
@@ -146,6 +161,67 @@ def test_foreign_runtime_annotation_tracks_assignment_aliases() -> None:
 
     assert findings[0]["unresolved"] is True
     assert findings[0]["reason"] == "annotation-conflicts-with-executable-write"
+
+
+@pytest.mark.parametrize(
+    "use",
+    [
+        "mutate_foreign_path(target)",
+        "callback(target)",
+        "os.open(target, os.O_WRONLY)",
+        "holder.path = target\nholder.path.unlink()",
+        "container = {}\ncontainer['path'] = target\ncontainer['path'].unlink()",
+        "alias = identity(target)\nalias.unlink()",
+    ],
+)
+def test_foreign_runtime_annotation_fails_closed_for_unproven_flows(
+    use: str,
+) -> None:
+    text = (
+        '# antigravity-host-contract: {"class":"foreign-runtime-input",'
+        '"rule":"AGHC001","reason":"read migration input only",'
+        '"revisit":"remove after migration window","access":"read-only"}\n'
+        'target = repo_root / ".claude" / "saga" / "state.json"\n'
+        f"{use}\n"
+    )
+
+    findings = LINT.scan_text(
+        "plugins/saga/hooks/example.py",
+        text,
+        known_capabilities=_known_capabilities(),
+    )
+
+    assert findings[0]["classification"] == "active"
+    assert findings[0]["reason"] == "annotation-conflicts-with-executable-write"
+    assert findings[0]["unresolved"] is True
+
+
+@pytest.mark.parametrize(
+    "use",
+    [
+        "target.read_text()",
+        "target.read_bytes()",
+        "target.exists()",
+        "open(target, 'r').read()",
+    ],
+)
+def test_unallowlisted_read_operations_remain_unresolved(use: str) -> None:
+    text = (
+        '# antigravity-host-contract: {"class":"foreign-runtime-input",'
+        '"rule":"AGHC001","reason":"read migration input only",'
+        '"revisit":"remove after migration window","access":"read-only"}\n'
+        'target = repo_root / ".claude" / "saga" / "state.json"\n'
+        f"{use}\n"
+    )
+
+    findings = LINT.scan_text(
+        "plugins/saga/hooks/example.py",
+        text,
+        known_capabilities=_known_capabilities(),
+    )
+
+    assert findings[0]["classification"] == "active"
+    assert findings[0]["unresolved"] is True
 
 
 def test_constructed_claude_path_is_an_active_violation() -> None:
@@ -237,6 +313,37 @@ def test_historical_annotation_cannot_hide_an_imperative_workflow() -> None:
     assert findings[0]["unresolved"] is True
 
 
+@pytest.mark.parametrize(
+    "instruction",
+    [
+        '- Run `Workflow("source")` now.',
+        '1. Run `Workflow("source")` now.',
+        '> Run `Workflow("source")` now.',
+        '- [ ] Run `Workflow("source")` now.',
+        '**Run** `Workflow("source")` now.',
+        'You must run `Workflow("source")` now.',
+        'Please execute `Workflow("source")` now.',
+    ],
+)
+def test_historical_annotation_rejects_structured_imperatives(
+    instruction: str,
+) -> None:
+    text = (
+        '<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003",'
+        '"reason":"legacy workflow example","revisit":"remove with legacy notes"} -->\n'
+        f"{instruction}"
+    )
+
+    findings = LINT.scan_text(
+        "plugins/saga/skills/example/SKILL.md",
+        text,
+        known_capabilities=_known_capabilities(),
+    )
+
+    assert findings[0]["classification"] == "active"
+    assert findings[0]["unresolved"] is True
+
+
 def test_nonadjacent_annotation_is_an_unresolved_finding() -> None:
     text = (
         '<!-- antigravity-host-contract: {"class":"historical","rule":"AGHC003",'
@@ -307,6 +414,27 @@ def test_selector_rejects_active_overlap_with_comparison_root() -> None:
     errors = LINT.validate_selector(selector, REPO_ROOT)
 
     assert any("active selection overlaps comparison root" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("active_globs", ["plugins/saga/skills/no-match/**/*.md"]),
+        ("active_globs", list(LINT.REQUIRED_ACTIVE_GLOBS[:-1])),
+        ("exact_paths", list(LINT.REQUIRED_EXACT_PATHS[:-1])),
+        ("comparison_roots", ["tests"]),
+    ],
+)
+def test_selector_rejects_narrowed_canonical_policy(
+    field: str,
+    replacement: list[str],
+) -> None:
+    selector = _selector()
+    selector[field] = replacement
+
+    errors = LINT.validate_selector(selector, REPO_ROOT)
+
+    assert any("canonical surface policy" in error for error in errors)
 
 
 def test_selector_rejects_symlinked_exact_path(tmp_path: Path) -> None:

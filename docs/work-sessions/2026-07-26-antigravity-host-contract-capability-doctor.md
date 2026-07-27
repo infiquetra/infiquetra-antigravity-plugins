@@ -288,3 +288,44 @@ Checks:
 
 Next step: commit this boundary hardening and rerun the exact privacy and
 adversarial reviewers against the resulting SHA.
+
+## Phase 8 — final policy binding and simplification
+
+The third privacy and adversarial reviews found remaining policy substitution,
+privacy, local-diagnostic, and instruction-classification paths. The remediation
+closes those paths while simplifying the foreign-runtime exception:
+
+- controlled model-selection facts must use an identifier from the catalog
+  row's closed `allowed_values` list; arbitrary hostnames, credentials, and
+  high-entropy values cannot become promotable model evidence;
+- validation errors use stable path and error codes without echoing
+  caller-controlled field names, facts, runtime roots, or result identifiers;
+- local diagnostic writes and purges reject symlinked root components,
+  including links back into the repository, and retention also removes
+  crash-left writer-owned temporary files;
+- selector active globs, exact paths, and comparison roots must equal the
+  repository's canonical policy, so a caller cannot narrow the scan;
+- Markdown bullets, numbered items, blockquotes, task lists, emphasis, and
+  prefixed imperatives remain active workflow instructions;
+- the attempted general Python alias/dataflow classifier was removed. The only
+  read-only foreign-runtime exceptions are two reviewed
+  `delegation_audit.py` source lines identified by repository-relative path and
+  line digest. Every other annotation fails closed.
+
+The catalog revision and Saga receipt fixtures were updated together so direct
+consumers remain bound to the same canonical catalog digest.
+
+Checks:
+
+- Focused capability, host-contract, doctor, and Saga host-gate tests — passed.
+- Full pytest — 1200 passed, one skipped.
+- Ruff lint and format checks — passed across 165 files.
+- Mypy — passed for the changed fleet-core and doctor surfaces.
+- Bandit medium/high scan excluding tests — passed.
+- Canonical doctor — capability, catalog, host contract, and receipt privacy
+  passed; zero errors and zero unresolved findings.
+- `git diff --check` — passed.
+
+Next step: commit the final policy binding, rerun the exact privacy and
+adversarial reviewers against the immutable SHA, and resolve any remaining
+findings before the Saga code-review gate.

@@ -28,4 +28,11 @@ non-passing capability leaves the finding unresolved.
 
 Annotations apply to one immediately following matched statement. Wildcards,
 file-wide exemptions, missing reasons, stale rule IDs, unknown capabilities,
-and non-adjacent annotations fail closed.
+and non-adjacent annotations fail closed. Python foreign-runtime reads are also
+bound to a closed path-and-line-digest allowlist in the linter. Adding or
+changing one requires an explicit code review; arbitrary annotated helpers or
+data flows remain unresolved.
+
+The active globs, exact adjacent paths, and comparison roots are independently
+bound to the canonical policy in the linter. Editing the selector cannot narrow
+the scan or reclassify active paths without updating that reviewed policy.
