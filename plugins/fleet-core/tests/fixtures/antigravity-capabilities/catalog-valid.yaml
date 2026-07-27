@@ -9,8 +9,12 @@
       "description": "Prove independent agent execution.",
       "probe_method": "controlled-agent-execution",
       "probe_revision": 1,
-      "expected_evidence": ["agent-execution-proof"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "agent-execution-proof"
+      ],
+      "required_for": [
+        "live-canary"
+      ],
       "outcome_rules": {
         "passed": "independent-execution-proven",
         "failed": "independent-execution-refuted",
@@ -19,8 +23,13 @@
       },
       "fallback": {
         "capability": "agy.sequential.isolation",
-        "for_consumers": ["saga.ideate"],
-        "when_states": ["unknown", "unavailable"]
+        "for_consumers": [
+          "saga.ideate"
+        ],
+        "when_states": [
+          "unknown",
+          "unavailable"
+        ]
       }
     },
     {
@@ -29,7 +38,9 @@
       "description": "Prove isolated sequential execution.",
       "probe_method": "controlled-sequential-isolation",
       "probe_revision": 1,
-      "expected_evidence": ["sequential-isolation-proof"],
+      "expected_evidence": [
+        "sequential-isolation-proof"
+      ],
       "required_for": [],
       "outcome_rules": {
         "passed": "sequential-isolation-proven",

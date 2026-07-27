@@ -292,20 +292,21 @@ def team_execution_artifact(execution_spec_obj: Any) -> str:
 
 
 def resolve_available(
-    *, host_capable: bool = False, consensus_available: bool = False
+    *,
+    capability_states: dict[str, str] | None = None,
+    profile_state: str = "blocked",
 ) -> tuple[str, ...]:
     """The runnable backend set for this host (R6), ordered by the spec's ``NODE_BACKENDS`` vocabulary.
 
-    ``ALWAYS_AVAILABLE`` (inline / manual) is unconditional. ``host_capable`` enables
-    the forked-context backends (``fork`` / ``subagent`` / ``goal``); ``consensus_available`` additionally
-    enables ``multi-agent-consensus``. The conservative default (both False) is the always-available
-    floor — the coordinator never claims a host-dependent backend it cannot verify.
+    ``ALWAYS_AVAILABLE`` (inline / manual) is unconditional. Host-dependent
+    backends are available only when the canonical independent-deliberation
+    profile and its agent-execution capability both passed. Missing evidence is
+    the always-available floor.
     """
     avail = set(ALWAYS_AVAILABLE)
-    if host_capable:
-        avail |= {"fork", "subagent", "goal"}
-    if host_capable and consensus_available:
-        avail.add("multi-agent-consensus")
+    states = capability_states or {}
+    if profile_state == "passed" and states.get("agy.agent.execution") == "passed":
+        avail |= HOST_DEPENDENT
     return tuple(b for b in outcome_spec.ACTIVE_NODE_BACKENDS if b in avail)
 
 

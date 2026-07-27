@@ -141,10 +141,9 @@ The passes neither source had:
 - **(b) refine-lifecycle** — propose diffs to the saga SKILLs when the thread exposed a
   gap or a wrong instruction (including `skills/retro/SKILL.md` itself — proposal only, never
   self-applied).
-- **(c) refine-directives** — propose diffs to the **repo `CLAUDE.md`** (in-repo, repo-relative) or the
-  **global `~/.claude` directives** (global / cross-project, carries the cross-project warning — see
-  `self-edit-safety.md`).
-- **(d) memory pruning** — propose curation of the `.claude` auto-memory (`MEMORY.md` + topic files) under
+- **(c) refine-directives** — propose diffs to discovered repository or global Antigravity directive
+  surfaces (global / cross-project carries the warning in `self-edit-safety.md`).
+- **(d) memory pruning** — propose curation of the discovered Antigravity memory surface under
   the same staleness / contradiction / rule-enforcement sweeps as the journal.
 
 A **big multi-file refactor** surfaced by any pass → **OFFER** a backend (operator-choice). **Never

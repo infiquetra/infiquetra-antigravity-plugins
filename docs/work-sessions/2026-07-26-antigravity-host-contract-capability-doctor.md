@@ -202,3 +202,50 @@ Checks:
 
 Next step: run the full validation ladder, independent adversarial and privacy
 reviews, and the Saga code-review gate before PR release.
+
+## Phase 6 — verified-workflow review remediation
+
+The first privacy and adversarial reviews both requested changes. Their
+deduplicated findings exposed fail-open authorization paths rather than cosmetic
+issues, so every P1/P2 finding was remediated:
+
+- optional capability alternatives now block unless the primary passes or the
+  declared fallback passes in an allowed fallback state;
+- controlled probe state is derived from typed requested and observed facts;
+  caller-submitted state is rejected;
+- Saga outcome routing accepts a bounded canonical receipt instead of boolean
+  host or consensus assertions;
+- runtime-base profiles require CLI, host, plugin link/load/validation, and
+  discovered logical-root evidence;
+- plugin links are checked by required plugin identity and exact repository
+  target;
+- the generic subprocess runner is non-executable because it cannot prove a
+  no-write/no-network boundary;
+- receipt loading, promotable values, selected lint files, symlinks, UTF-8, and
+  file sizes are bounded and fail closed;
+- host-contract linting recognizes constructed `.claude` path components,
+  rejects write-shaped read-only annotations, and binds capability annotations
+  to the rule-specific capability;
+- Saga board progression moved to `.gemini`, active office-hours and retro
+  instructions use Antigravity-native language, and the packaged legacy
+  workflow-emission CLI was removed.
+
+Negative regression coverage now exercises missing and nonpassing fallbacks,
+fact mismatches, fabricated states, incomplete/wrong plugin links, unsafe
+selector symlinks, annotation abuse, oversized receipts, disabled generic
+subprocess observation, receipt-only outcome authorization, Antigravity-owned
+ledger state, and the removed workflow emitter.
+
+Checks:
+
+- Focused capability, lint, routing, and Saga tests — 143 passed, one skipped.
+- Full pytest — 1139 passed, one skipped.
+- Ruff lint and format checks — passed across 165 files.
+- Mypy — passed across 164 source files.
+- Bandit medium/high scan excluding tests — passed.
+- Canonical doctor — passed with zero unresolved host-contract findings.
+- `git diff --check` — passed.
+
+Next step: commit the remediation, rerun the exact privacy and adversarial
+reviewers against the new SHA, and resolve any remaining findings before the
+Saga code-review gate.

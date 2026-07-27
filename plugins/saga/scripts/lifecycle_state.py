@@ -118,7 +118,7 @@ def recommend_execution_backend(
     broad_independent_fanout: bool = False,
     adversarial_confidence: bool = False,
     has_code_surface: bool = True,
-    consensus_available: bool = True,
+    consensus_available: bool = False,
 ) -> dict[str, object]:
     """Recommend one of the two active Antigravity execution backends.
 
@@ -282,7 +282,11 @@ def _build_parser() -> argparse.ArgumentParser:
     backend.add_argument("--broad-fanout", action="store_true")
     backend.add_argument("--adversarial-confidence", action="store_true")
     backend.add_argument("--no-code-surface", action="store_true")
-    backend.add_argument("--no-consensus", action="store_true")
+    backend.add_argument(
+        "--consensus-proven",
+        action="store_true",
+        help="a separate capability gate proved the native consensus runtime",
+    )
 
     recheck = subparsers.add_parser(
         "recheck-capability",
@@ -294,9 +298,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="the tier as resumed (multi-agent-consensus|inline)",
     )
     recheck.add_argument(
-        "--no-consensus",
+        "--consensus-proven",
         action="store_true",
-        help="the native consensus runtime is unavailable on this host (off-host resume)",
+        help="a separate capability gate proved the native consensus runtime",
     )
     recheck.add_argument(
         "--fallback-mode",
@@ -329,14 +333,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             broad_independent_fanout=args.broad_fanout,
             adversarial_confidence=args.adversarial_confidence,
             has_code_surface=not args.no_code_surface,
-            consensus_available=not args.no_consensus,
+            consensus_available=args.consensus_proven,
         )
         print(json.dumps(result))
         return 0
     if args.command == "recheck-capability":
         result = recheck_orchestration_capability(
             orchestration_mode=args.orchestration_mode,
-            consensus_available=not args.no_consensus,
+            consensus_available=args.consensus_proven,
             fallback_mode=args.fallback_mode,
         )
         print(json.dumps(result))

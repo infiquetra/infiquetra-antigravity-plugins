@@ -1,7 +1,7 @@
 {
   "catalog_schema": "antigravity.capability-catalog.v1",
   "receipt_schema": "antigravity.capabilities.v1",
-  "catalog_revision": 1,
+  "catalog_revision": 2,
   "capabilities": [
     {
       "id": "agy.cli.version",
@@ -9,8 +9,19 @@
       "description": "Observe the installed agy CLI version separately from the host version.",
       "probe_method": "agy-version",
       "probe_revision": 1,
-      "expected_evidence": ["agy-cli-version"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "agy-cli-version"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.ideate",
+        "saga.independent-deliberation",
+        "saga.isolated-work",
+        "saga.plan",
+        "saga.resume",
+        "saga.runtime-base",
+        "saga.work"
+      ],
       "outcome_rules": {
         "passed": "normalized-version-observed",
         "failed": "malformed-version-output",
@@ -25,7 +36,9 @@
       "description": "Observe supported command flags without treating them as behavior proof.",
       "probe_method": "agy-help-flags",
       "probe_revision": 1,
-      "expected_evidence": ["supported-flags"],
+      "expected_evidence": [
+        "supported-flags"
+      ],
       "required_for": [],
       "outcome_rules": {
         "passed": "normalized-flags-observed",
@@ -41,8 +54,19 @@
       "description": "Observe the Antigravity application version separately from agy.",
       "probe_method": "antigravity-host-version",
       "probe_revision": 1,
-      "expected_evidence": ["antigravity-host-version"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "antigravity-host-version"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.ideate",
+        "saga.independent-deliberation",
+        "saga.isolated-work",
+        "saga.plan",
+        "saga.resume",
+        "saga.runtime-base",
+        "saga.work"
+      ],
       "outcome_rules": {
         "passed": "normalized-version-observed",
         "failed": "malformed-version-metadata",
@@ -57,8 +81,19 @@
       "description": "Observe installed plugin link state using logical roots.",
       "probe_method": "plugin-links",
       "probe_revision": 1,
-      "expected_evidence": ["plugin-link-state"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "plugin-link-state"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.ideate",
+        "saga.independent-deliberation",
+        "saga.isolated-work",
+        "saga.plan",
+        "saga.resume",
+        "saga.runtime-base",
+        "saga.work"
+      ],
       "outcome_rules": {
         "passed": "required-links-resolve",
         "failed": "required-link-broken",
@@ -73,8 +108,19 @@
       "description": "Observe plugin loading only through a no-write registered probe.",
       "probe_method": "plugin-load",
       "probe_revision": 1,
-      "expected_evidence": ["plugin-load-state"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "plugin-load-state"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.ideate",
+        "saga.independent-deliberation",
+        "saga.isolated-work",
+        "saga.plan",
+        "saga.resume",
+        "saga.runtime-base",
+        "saga.work"
+      ],
       "outcome_rules": {
         "passed": "required-plugins-loaded",
         "failed": "required-plugin-not-loaded",
@@ -89,8 +135,19 @@
       "description": "Observe plugin validation only through a no-write registered probe.",
       "probe_method": "plugin-validation",
       "probe_revision": 1,
-      "expected_evidence": ["plugin-validation-state"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "plugin-validation-state"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.ideate",
+        "saga.independent-deliberation",
+        "saga.isolated-work",
+        "saga.plan",
+        "saga.resume",
+        "saga.runtime-base",
+        "saga.work"
+      ],
       "outcome_rules": {
         "passed": "required-plugins-valid",
         "failed": "required-plugin-invalid",
@@ -100,13 +157,45 @@
       "fallback": null
     },
     {
+      "id": "antigravity.runtime.roots",
+      "revision": 1,
+      "description": "Prove required Antigravity runtime roots were discovered by logical role.",
+      "probe_method": "runtime-root-discovery",
+      "probe_revision": 1,
+      "expected_evidence": [
+        "runtime-root-roles"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.ideate",
+        "saga.independent-deliberation",
+        "saga.isolated-work",
+        "saga.plan",
+        "saga.resume",
+        "saga.runtime-base",
+        "saga.work"
+      ],
+      "outcome_rules": {
+        "passed": "logical-runtime-roots-discovered",
+        "failed": "logical-runtime-roots-invalid",
+        "unknown": "logical-runtime-roots-incomplete",
+        "unavailable": "runtime-root-discovery-unavailable"
+      },
+      "fallback": null
+    },
+    {
       "id": "agy.model.selection",
       "revision": 1,
       "description": "Prove that requested and observed model selection agree.",
       "probe_method": "controlled-model-selection",
       "probe_revision": 1,
-      "expected_evidence": ["model-selection-proof"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "model-selection-proof"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.independent-deliberation"
+      ],
       "outcome_rules": {
         "passed": "requested-observed-match",
         "failed": "requested-observed-mismatch",
@@ -121,8 +210,12 @@
       "description": "Prove that requested and observed effort selection agree.",
       "probe_method": "controlled-effort-selection",
       "probe_revision": 1,
-      "expected_evidence": ["effort-selection-proof"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "effort-selection-proof"
+      ],
+      "required_for": [
+        "live-canary"
+      ],
       "outcome_rules": {
         "passed": "requested-observed-match",
         "failed": "requested-observed-mismatch",
@@ -137,8 +230,13 @@
       "description": "Prove independent agent execution rather than flag availability.",
       "probe_method": "controlled-agent-execution",
       "probe_revision": 1,
-      "expected_evidence": ["agent-execution-proof"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "agent-execution-proof"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.independent-deliberation"
+      ],
       "outcome_rules": {
         "passed": "independent-execution-proven",
         "failed": "independent-execution-refuted",
@@ -147,8 +245,14 @@
       },
       "fallback": {
         "capability": "agy.sequential.isolation",
-        "for_consumers": ["saga.ideate", "saga.work"],
-        "when_states": ["unknown", "unavailable"]
+        "for_consumers": [
+          "saga.ideate",
+          "saga.work"
+        ],
+        "when_states": [
+          "unknown",
+          "unavailable"
+        ]
       }
     },
     {
@@ -157,8 +261,13 @@
       "description": "Prove conversation resume preserves the expected execution context.",
       "probe_method": "controlled-resume",
       "probe_revision": 1,
-      "expected_evidence": ["resume-proof"],
-      "required_for": ["live-canary", "saga.resume"],
+      "expected_evidence": [
+        "resume-proof"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.resume"
+      ],
       "outcome_rules": {
         "passed": "resume-context-preserved",
         "failed": "resume-context-diverged",
@@ -173,8 +282,13 @@
       "description": "Prove plan mode enforces its expected write boundary.",
       "probe_method": "controlled-plan-mode",
       "probe_revision": 1,
-      "expected_evidence": ["plan-mode-proof"],
-      "required_for": ["live-canary", "saga.plan"],
+      "expected_evidence": [
+        "plan-mode-proof"
+      ],
+      "required_for": [
+        "live-canary",
+        "saga.plan"
+      ],
       "outcome_rules": {
         "passed": "plan-write-boundary-proven",
         "failed": "plan-write-boundary-broken",
@@ -189,8 +303,12 @@
       "description": "Prove the sandbox boundary actually enforced for the selected run.",
       "probe_method": "controlled-sandbox",
       "probe_revision": 1,
-      "expected_evidence": ["sandbox-proof"],
-      "required_for": ["live-canary"],
+      "expected_evidence": [
+        "sandbox-proof"
+      ],
+      "required_for": [
+        "live-canary"
+      ],
       "outcome_rules": {
         "passed": "sandbox-boundary-proven",
         "failed": "sandbox-boundary-broken",
@@ -205,7 +323,9 @@
       "description": "Prove isolated sequential execution as an optional agent fallback.",
       "probe_method": "controlled-sequential-isolation",
       "probe_revision": 1,
-      "expected_evidence": ["sequential-isolation-proof"],
+      "expected_evidence": [
+        "sequential-isolation-proof"
+      ],
       "required_for": [],
       "outcome_rules": {
         "passed": "sequential-isolation-proven",

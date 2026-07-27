@@ -17,6 +17,8 @@ from typing import Any, cast
 CATALOG_SCHEMA = "antigravity.capability-catalog.v1"
 RECEIPT_SCHEMA = "antigravity.capabilities.v1"
 EVALUATION_SCHEMA = "antigravity.capability-evaluation.v1"
+MAX_RECEIPT_BYTES = 256 * 1024
+MAX_PROMOTABLE_VALUE_LENGTH = 128
 
 RAW_STATES = frozenset({"passed", "failed", "unknown", "unavailable"})
 EVALUATION_STATES = frozenset({"passed", "blocked", "degraded"})
@@ -36,6 +38,7 @@ PROBE_METHOD_REVISIONS: dict[str, int] = {
     "controlled-plan-mode": 1,
     "controlled-sandbox": 1,
     "controlled-sequential-isolation": 1,
+    "runtime-root-discovery": 1,
 }
 
 RUNTIME_ROOT_ROLES = frozenset(
@@ -70,6 +73,18 @@ _MODEL_RE = re.compile(
 )
 _EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 _HOSTNAME_SUFFIXES = (".local", ".lan", ".home", ".internal")
+_CREDENTIAL_SHAPE_RE = re.compile(
+    r"(?i)(?:api[_-]?key|access[_-]?token|auth[_-]?token|bearer[ _-]|password|secret)"
+)
+CAPABILITY_FACT_IDS = {
+    "agy.model.selection": "model-selection",
+    "agy.effort.selection": "effort-selection",
+    "agy.agent.execution": "agent-execution",
+    "agy.conversation.resume": "conversation-resume",
+    "agy.plan.mode": "plan-mode",
+    "agy.sandbox.isolation": "sandbox-isolation",
+    "agy.sequential.isolation": "sequential-isolation",
+}
 
 _CATALOG_KEYS = frozenset({"catalog_schema", "receipt_schema", "catalog_revision", "capabilities"})
 _CAPABILITY_KEYS = frozenset(
@@ -153,6 +168,31 @@ def load_catalog(path: Path | str) -> dict[str, Any]:
     errors = validate_catalog(parsed)
     if errors:
         raise CapabilityContractError("invalid capability catalog: " + "; ".join(errors))
+    return cast(dict[str, Any], parsed)
+
+
+def load_receipt(
+    path: Path | str,
+    catalog: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Load one bounded JSON receipt and validate it before returning it."""
+
+    source = Path(path)
+    try:
+        if source.stat().st_size > MAX_RECEIPT_BYTES:
+            raise CapabilityContractError("capability receipt exceeds the size limit")
+        raw = source.read_bytes()
+    except OSError as exc:
+        raise CapabilityContractError("capability receipt could not be read") from exc
+    if len(raw) > MAX_RECEIPT_BYTES:
+        raise CapabilityContractError("capability receipt exceeds the size limit")
+    try:
+        parsed = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CapabilityContractError("capability receipt is not valid UTF-8 JSON") from exc
+    errors = validate_receipt(parsed, catalog)
+    if errors:
+        raise CapabilityContractError("capability receipt failed strict validation")
     return cast(dict[str, Any], parsed)
 
 
@@ -274,7 +314,12 @@ def validate_catalog(catalog: object) -> list[str]:
 
 
 def _validate_version(value: object, path: str, errors: list[str]) -> None:
-    if value is not None and (not isinstance(value, str) or not _VERSION_RE.fullmatch(value)):
+    if value is not None and (
+        not isinstance(value, str)
+        or len(value) > MAX_PROMOTABLE_VALUE_LENGTH
+        or _CREDENTIAL_SHAPE_RE.search(value) is not None
+        or not _VERSION_RE.fullmatch(value)
+    ):
         errors.append(f"{path}: expected a normalized version string or null")
 
 
@@ -291,6 +336,8 @@ def _validate_facts(value: object, path: str, errors: list[str]) -> None:
         if key == "model-selection":
             if (
                 not isinstance(fact, str)
+                or len(fact) > MAX_PROMOTABLE_VALUE_LENGTH
+                or _CREDENTIAL_SHAPE_RE.search(fact) is not None
                 or not _MODEL_RE.fullmatch(fact)
                 or fact.lower().endswith(_HOSTNAME_SUFFIXES)
             ):
@@ -336,7 +383,12 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
         if len(flag_values) != len(set(flag_values)):
             errors.append("receipt.supported_flags: duplicate flags are not allowed")
         for index, flag in enumerate(flag_values):
-            if not isinstance(flag, str) or not _FLAG_RE.fullmatch(flag):
+            if (
+                not isinstance(flag, str)
+                or len(flag) > MAX_PROMOTABLE_VALUE_LENGTH
+                or _CREDENTIAL_SHAPE_RE.search(flag) is not None
+                or not _FLAG_RE.fullmatch(flag)
+            ):
                 errors.append(f"receipt.supported_flags[{index}]: invalid normalized flag")
 
     runtime_roots = receipt.get("runtime_roots")
@@ -398,6 +450,26 @@ def validate_receipt(receipt: object, catalog: Mapping[str, Any] | None = None) 
                 errors.append(f"{path}.evidence: contains identifiers not declared by catalog")
             if result.get("state") == "passed" and set(evidence) != allowed_evidence:
                 errors.append(f"{path}.evidence: passed result must contain all declared evidence")
+
+        fact_id = CAPABILITY_FACT_IDS.get(result_id or "")
+        if fact_id is not None:
+            requested_facts = receipt.get("requested_facts")
+            observed_facts = receipt.get("observed_facts")
+            requested = requested_facts.get(fact_id) if isinstance(requested_facts, dict) else None
+            observed = observed_facts.get(fact_id) if isinstance(observed_facts, dict) else None
+            state = result.get("state")
+            if state == "passed" and (requested is None or requested != observed):
+                errors.append(
+                    f"{path}.state: passed result requires matching requested and observed facts"
+                )
+            elif state == "failed" and (
+                requested is None or observed is None or requested == observed
+            ):
+                errors.append(
+                    f"{path}.state: failed result requires differing requested and observed facts"
+                )
+            elif state in FALLBACK_STATES and evidence:
+                errors.append(f"{path}.evidence: non-observed result must not claim evidence")
     return errors
 
 
@@ -436,13 +508,19 @@ def evaluate_for_consumer(
         fallback = row["fallback"]
         if not isinstance(fallback, dict):
             continue
-        if consumer not in fallback["for_consumers"] or state not in fallback["when_states"]:
+        if consumer not in fallback["for_consumers"]:
             continue
         fallback_id = fallback["capability"]
         fallback_result = result_by_id.get(fallback_id)
-        if fallback_result is not None and fallback_result["state"] == "passed":
+        if (
+            state in fallback["when_states"]
+            and fallback_result is not None
+            and fallback_result["state"] == "passed"
+        ):
             degraded.append(capability_id)
             fallbacks[capability_id] = fallback_id
+        else:
+            blocking.append(capability_id)
 
     evaluation_state = "blocked" if blocking else "degraded" if degraded else "passed"
     return {

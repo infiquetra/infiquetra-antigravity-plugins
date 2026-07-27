@@ -1,10 +1,16 @@
 {
   "schema": "antigravity.capabilities.v1",
-  "catalog_digest": "98d5a898dd27f08eb17a550c89b4f675ff9a4d2d919c1696d05c659fe587138a",
-  "agy_cli_version": null,
-  "antigravity_host_version": null,
+  "catalog_digest": "abc1d90a0248e0d223826179ab2cdbcd3dafbb3b4f557683c16a515d7fa782d4",
+  "agy_cli_version": "1.0.0",
+  "antigravity_host_version": "1.0.0",
   "supported_flags": [],
-  "runtime_roots": [],
+  "runtime_roots": [
+    "brain-artifacts",
+    "conversation-artifacts",
+    "plugin-install",
+    "repository",
+    "saga-state"
+  ],
   "requested_facts": {
     "agent-execution": true,
     "sequential-isolation": true
@@ -14,19 +20,13 @@
     "sequential-isolation": true
   },
   "results": [
-    {
-      "id": "agy.agent.execution",
-      "probe_revision": 1,
-      "state": "unavailable",
-      "evidence": []
-    },
-    {
-      "id": "agy.sequential.isolation",
-      "probe_revision": 1,
-      "state": "passed",
-      "evidence": [
-        "sequential-isolation-proof"
-      ]
-    }
+    {"id": "agy.cli.version", "probe_revision": 1, "state": "passed", "evidence": ["agy-cli-version"]},
+    {"id": "antigravity.host.version", "probe_revision": 1, "state": "passed", "evidence": ["antigravity-host-version"]},
+    {"id": "antigravity.plugin.links", "probe_revision": 1, "state": "passed", "evidence": ["plugin-link-state"]},
+    {"id": "antigravity.plugin.load", "probe_revision": 1, "state": "passed", "evidence": ["plugin-load-state"]},
+    {"id": "antigravity.plugin.validation", "probe_revision": 1, "state": "passed", "evidence": ["plugin-validation-state"]},
+    {"id": "antigravity.runtime.roots", "probe_revision": 1, "state": "passed", "evidence": ["runtime-root-roles"]},
+    {"id": "agy.agent.execution", "probe_revision": 1, "state": "unavailable", "evidence": []},
+    {"id": "agy.sequential.isolation", "probe_revision": 1, "state": "passed", "evidence": ["sequential-isolation-proof"]}
   ]
 }

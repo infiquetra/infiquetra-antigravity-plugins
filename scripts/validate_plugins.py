@@ -35,6 +35,7 @@ HOST_CONTRACT_SELECTOR_PATH = Path(
 
 
 class ProbeRunner(Protocol):
+    safe_for_passive_observation: bool
     safe_for_stateful_observation: bool
 
     def run(self, argv: list[str] | tuple[str, ...], *, timeout_s: float) -> Any: ...
@@ -133,16 +134,6 @@ def _known_profiles(catalog: dict[str, Any]) -> set[str]:
     return profiles
 
 
-def _read_receipt(path: Path) -> dict[str, Any]:
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ValueError("capability receipt could not be read as JSON") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("capability receipt must contain a JSON object")
-    return payload
-
-
 def evaluate_host_contract(
     repo_root: Path,
     install_root: Path,
@@ -206,18 +197,29 @@ def evaluate_host_contract(
             receipt = dict(receipt_override)
             source = "injected"
         elif capability_receipt is not None:
-            receipt = _read_receipt(capability_receipt)
+            receipt = capabilities.load_receipt(capability_receipt, catalog)
             source = "supplied"
         else:
             effective_runner = runner
             if observe_host and effective_runner is None:
                 effective_runner = probes.SubprocessProbeRunner()
+            expected_plugin_roots = {
+                manifest.parent.name: manifest.parent
+                for manifest in sorted((repo_root / "plugins").glob("*/plugin.json"))
+            }
+            runtime_roots = ["repository"]
+            if install_root.is_dir():
+                runtime_roots.append("plugin-install")
+            if (repo_root / ".gemini" / "saga").is_dir():
+                runtime_roots.append("saga-state")
             receipt = probes.probe_catalog(
                 catalog,
                 observe_host=observe_host,
                 runner=effective_runner,
                 host_version_reader=host_version_reader,
                 plugin_root=install_root if observe_host else None,
+                expected_plugin_roots=expected_plugin_roots if observe_host else None,
+                runtime_roots=runtime_roots if observe_host else None,
             )
             source = "observed" if observe_host else "deterministic"
         receipt_errors = capabilities.validate_receipt(receipt, catalog)

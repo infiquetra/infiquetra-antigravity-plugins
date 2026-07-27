@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Any, cast
@@ -18,14 +17,25 @@ class GateError(ValueError):
     """The shared capability evidence could not authorize this consumer."""
 
 
-def _read_receipt(path: Path) -> dict[str, Any]:
+def load_capability_evidence(
+    receipt_path: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
+    """Load the canonical catalog and a validated, bounded capability receipt."""
+
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise GateError("receipt could not be read as JSON") from exc
-    if not isinstance(payload, dict):
-        raise GateError("receipt must contain a JSON object")
-    return cast(dict[str, Any], payload)
+        fleet_root, _rung = fleet_commons_shim.resolve_root()
+        capabilities = fleet_commons_shim.load("antigravity_capabilities")
+        catalog = capabilities.load_catalog(fleet_root / CATALOG_RELATIVE_PATH)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise GateError(
+            "fleet-core capability contract is unavailable; install or repair fleet-core"
+        ) from exc
+    try:
+        receipt = capabilities.load_receipt(receipt_path, catalog)
+    except (OSError, ValueError) as exc:
+        raise GateError("receipt failed strict schema and privacy validation") from exc
+    states = {result["id"]: result["state"] for result in receipt["results"]}
+    return catalog, receipt, states
 
 
 def _known_consumers(catalog: dict[str, Any]) -> set[str]:
@@ -41,20 +51,20 @@ def _known_consumers(catalog: dict[str, Any]) -> set[str]:
 def evaluate_gate(consumer: str, receipt_path: Path) -> dict[str, Any]:
     """Return fleet-core's unchanged consumer evaluation or reject the evidence."""
 
-    try:
-        fleet_root, _rung = fleet_commons_shim.resolve_root()
-        capabilities = fleet_commons_shim.load("antigravity_capabilities")
-        catalog = capabilities.load_catalog(fleet_root / CATALOG_RELATIVE_PATH)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise GateError(
-            "fleet-core capability contract is unavailable; install or repair fleet-core"
-        ) from exc
+    catalog, receipt, _states = load_capability_evidence(receipt_path)
+    return evaluate_loaded_evidence(consumer, catalog, receipt)
+
+
+def evaluate_loaded_evidence(
+    consumer: str,
+    catalog: dict[str, Any],
+    receipt: dict[str, Any],
+) -> dict[str, Any]:
+    """Evaluate already validated evidence for one declared consumer."""
+
+    capabilities = fleet_commons_shim.load("antigravity_capabilities")
     if consumer not in _known_consumers(catalog):
         raise GateError("consumer is not declared by the capability catalog")
-
-    receipt = _read_receipt(receipt_path)
-    if capabilities.validate_receipt(receipt, catalog):
-        raise GateError("receipt failed strict schema and privacy validation")
     try:
         return cast(
             dict[str, Any],
@@ -94,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Saga host capability gate failed: {exc}", file=sys.stderr)
         return 1
     if args.json_output:
+        import json
+
         print(json.dumps(evaluation, indent=2, sort_keys=True))
     else:
         print_human(evaluation)

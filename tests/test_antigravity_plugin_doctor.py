@@ -64,11 +64,31 @@ def receipt_with_states(**states: str) -> dict[str, Any]:
         result["evidence"] = (
             list(rows[result["id"]]["expected_evidence"]) if state in {"passed", "failed"} else []
         )
+        fact_id = capabilities.CAPABILITY_FACT_IDS.get(result["id"])
+        if fact_id is None:
+            continue
+        requested: Any
+        observed: Any
+        if fact_id == "model-selection":
+            requested, observed = "gemini-3.1-pro", "gemini-3.1-pro"
+            if state == "failed":
+                observed = "gpt-5"
+        elif fact_id == "effort-selection":
+            requested, observed = "high", "high"
+            if state == "failed":
+                observed = "low"
+        else:
+            requested, observed = True, state == "passed"
+        if state in {"unknown", "unavailable"}:
+            observed = None
+        receipt["requested_facts"][fact_id] = requested
+        receipt["observed_facts"][fact_id] = observed
     assert capabilities.validate_receipt(receipt, CATALOG) == []
     return receipt
 
 
 class RecordingRunner:
+    safe_for_passive_observation = True
     safe_for_stateful_observation = False
 
     def __init__(self) -> None:
@@ -234,9 +254,9 @@ def test_observe_host_runs_only_registered_passive_vectors(tmp_path: Path) -> No
 
 def test_required_profile_failure_blocks_with_exact_capability(tmp_path: Path) -> None:
     selector = contract_repo(tmp_path)
-    receipt = receipt_with_states(**{row["id"]: "passed" for row in CATALOG["capabilities"]})
-    target = next(result for result in receipt["results"] if result["id"] == "agy.agent.execution")
-    target["state"] = "failed"
+    states = {row["id"]: "passed" for row in CATALOG["capabilities"]}
+    states["agy.agent.execution"] = "failed"
+    receipt = receipt_with_states(**states)
 
     result = validate_plugins.run_doctor(
         tmp_path,
@@ -257,7 +277,12 @@ def test_optional_proven_fallback_reports_degraded_without_failure(
     tmp_path: Path,
 ) -> None:
     selector = contract_repo(tmp_path)
-    receipt = receipt_with_states(**{"agy.sequential.isolation": "passed"})
+    states = {
+        row["id"]: "passed" for row in CATALOG["capabilities"] if "saga.work" in row["required_for"]
+    }
+    states["agy.agent.execution"] = "unavailable"
+    states["agy.sequential.isolation"] = "passed"
+    receipt = receipt_with_states(**states)
 
     result = validate_plugins.run_doctor(
         tmp_path,

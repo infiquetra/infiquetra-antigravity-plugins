@@ -1,11 +1,9 @@
 {
   "controlled-agent-execution": {
-    "state": "failed",
     "requested": true,
     "observed": false
   },
   "controlled-sequential-isolation": {
-    "state": "passed",
     "requested": true,
     "observed": true
   }

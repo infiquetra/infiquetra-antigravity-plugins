@@ -59,9 +59,10 @@ job of the commands it routes to.
 
 ## Interaction method
 
-Use the platform's blocking question tool: a structured blocking interaction in Claude Code. When you present options, **pre-select the
-recommended one** — take a position, then let the operator override. Fall back to numbered options in
-chat only when no blocking tool exists or the call errors. In a channel session, inline the choices in
+Use Antigravity's current-session blocking question capability when it is available. When you present
+options, **pre-select the recommended one** — take a position, then let the operator override. Fall
+back to numbered options in chat when the host does not expose that capability or the call errors.
+In a channel session, inline the choices in
 the reply text rather than calling a structured blocking interaction — follow the redis-channel convention documented
 in `saga/skills/brainstorm/SKILL.md` (do not duplicate its wording here). Ask one
 question at a time and never silently skip a gate question.

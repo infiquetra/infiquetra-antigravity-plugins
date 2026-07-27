@@ -55,14 +55,15 @@ def _node(sid: str, **kw: Any) -> Any:
 
 def test_resolve_available_is_host_conditional() -> None:
     assert D.resolve_available() == ("inline", "manual")
-    host = D.resolve_available(host_capable=True)
-    assert (
-        "fork" in host
-        and "subagent" in host
-        and "goal" in host
-        and "multi-agent-consensus" not in host
+    assert D.resolve_available(
+        capability_states={"agy.agent.execution": "passed"},
+        profile_state="blocked",
+    ) == ("inline", "manual")
+    full = D.resolve_available(
+        capability_states={"agy.agent.execution": "passed"},
+        profile_state="passed",
     )
-    full = D.resolve_available(host_capable=True, consensus_available=True)
+    assert "fork" in full and "subagent" in full and "goal" in full
     assert "multi-agent-consensus" in full
     # ordered by the spec's NODE_BACKENDS vocabulary (deterministic)
     assert list(full) == [b for b in SPEC.ACTIVE_NODE_BACKENDS if b in set(full)]
@@ -169,11 +170,19 @@ def test_fork_is_cheap_only_when_everything_matches_within_ttl() -> None:
 
 
 def test_recommender_is_frontier_budget_aware() -> None:
-    narrow = D.recommend_outcome_backend(frontier_width=1, broad_independent_fanout=True)
+    narrow = D.recommend_outcome_backend(
+        frontier_width=1,
+        broad_independent_fanout=True,
+        consensus_available=True,
+    )
     assert (
         narrow["recommended"] == "multi-agent-consensus"
     )  # a narrow frontier affords the workflow
-    wide = D.recommend_outcome_backend(frontier_width=20, broad_independent_fanout=True)
+    wide = D.recommend_outcome_backend(
+        frontier_width=20,
+        broad_independent_fanout=True,
+        consensus_available=True,
+    )
     assert wide["recommended"] == "multi-agent-consensus"
     assert "budget_note" in wide
     assert wide["alternatives"] == ["inline"]

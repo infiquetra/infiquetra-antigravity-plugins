@@ -41,20 +41,36 @@ def _receipt(
         "antigravity_host_version": "10.2.0",
         "supported_flags": ["--agent", "--effort", "--model"],
         "runtime_roots": ["plugin-install", "saga-state"],
-        "requested_facts": {"agent-execution": True},
-        "observed_facts": {"agent-execution": agent_state == "passed"},
+        "requested_facts": {
+            "agent-execution": True,
+            "sequential-isolation": True,
+        },
+        "observed_facts": {
+            "agent-execution": None
+            if agent_state in {"unknown", "unavailable"}
+            else agent_state == "passed",
+            "sequential-isolation": None
+            if sequential_state in {"unknown", "unavailable"}
+            else sequential_state == "passed",
+        },
         "results": [
             {
                 "id": "agy.agent.execution",
                 "probe_revision": 1,
                 "state": agent_state,
-                "evidence": ["agent-execution-proof"],
+                "evidence": (
+                    ["agent-execution-proof"] if agent_state in {"passed", "failed"} else []
+                ),
             },
             {
                 "id": "agy.sequential.isolation",
                 "probe_revision": 1,
                 "state": sequential_state,
-                "evidence": ["sequential-isolation-proof"],
+                "evidence": (
+                    ["sequential-isolation-proof"]
+                    if sequential_state in {"passed", "failed"}
+                    else []
+                ),
             },
         ],
     }
@@ -70,6 +86,30 @@ def test_repository_catalog_is_valid() -> None:
     catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
     assert len(catalog["capabilities"]) >= 10
     assert CAPS.validate_catalog(catalog) == []
+
+
+def test_saga_profiles_inherit_runtime_base_capabilities() -> None:
+    catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
+    required_profiles = {
+        "saga.runtime-base",
+        "saga.resume",
+        "saga.plan",
+        "saga.isolated-work",
+        "saga.independent-deliberation",
+        "saga.work",
+        "saga.ideate",
+    }
+    runtime_base_ids = {
+        "agy.cli.version",
+        "antigravity.host.version",
+        "antigravity.plugin.links",
+        "antigravity.plugin.load",
+        "antigravity.plugin.validation",
+        "antigravity.runtime.roots",
+    }
+    rows = {row["id"]: row for row in catalog["capabilities"]}
+    for capability_id in runtime_base_ids:
+        assert required_profiles <= set(rows[capability_id]["required_for"])
 
 
 def test_catalog_rejects_executable_fields_before_execution() -> None:
@@ -127,6 +167,33 @@ def test_optional_fallback_is_explicitly_degraded() -> None:
     }
 
 
+@pytest.mark.parametrize("agent_state", ["failed", "unknown", "unavailable"])
+@pytest.mark.parametrize("sequential_state", ["failed", "unknown", "unavailable"])
+def test_optional_fallback_blocks_when_neither_alternative_is_proven(
+    agent_state: str,
+    sequential_state: str,
+) -> None:
+    catalog = _catalog()
+    receipt = _receipt(
+        catalog,
+        agent_state=agent_state,
+        sequential_state=sequential_state,
+    )
+    evaluation = CAPS.evaluate_for_consumer(receipt, catalog, "saga.ideate")
+    assert evaluation["state"] == "blocked"
+    assert evaluation["blocking_capabilities"] == ["agy.agent.execution"]
+
+
+def test_optional_fallback_blocks_when_fallback_result_is_absent() -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog, agent_state="unavailable")
+    receipt["results"] = [
+        result for result in receipt["results"] if result["id"] != "agy.sequential.isolation"
+    ]
+    evaluation = CAPS.evaluate_for_consumer(receipt, catalog, "saga.ideate")
+    assert evaluation["state"] == "blocked"
+
+
 def test_optional_fallback_does_not_hide_required_failure() -> None:
     catalog = _catalog()
     catalog["capabilities"][0]["required_for"].append("saga.ideate")
@@ -178,6 +245,23 @@ def test_dotted_safe_values_are_accepted() -> None:
     assert CAPS.validate_receipt(receipt, catalog) == []
 
 
+def test_receipt_rejects_credential_shaped_promotable_values_without_echo() -> None:
+    catalog = _catalog()
+    receipt = _receipt(catalog)
+    receipt["requested_facts"]["model-selection"] = "gpt-secret-key"
+    receipt["observed_facts"]["model-selection"] = "gpt-secret-key"
+    errors = CAPS.validate_receipt(receipt, catalog)
+    assert errors
+    assert "gpt-secret-key" not in json.dumps(errors)
+
+
+def test_bounded_receipt_loader_rejects_oversized_input(tmp_path: Path) -> None:
+    path = tmp_path / "receipt.json"
+    path.write_bytes(b"x" * (CAPS.MAX_RECEIPT_BYTES + 1))
+    with pytest.raises(CAPS.CapabilityContractError, match="size limit"):
+        CAPS.load_receipt(path)
+
+
 class FakeRunner:
     def __init__(
         self,
@@ -186,6 +270,7 @@ class FakeRunner:
         oversized: bool = False,
         fail: bool = False,
     ) -> None:
+        self.safe_for_passive_observation = True
         self.safe_for_stateful_observation = safe_for_stateful_observation
         self.oversized = oversized
         self.fail = fail
@@ -239,13 +324,15 @@ def test_observe_host_uses_only_registered_bounded_vectors(tmp_path: Path) -> No
         runner=runner,
         host_version_reader=lambda: "11.4.0",
         plugin_root=plugin_root,
+        expected_plugin_roots={"saga": plugin_target},
+        runtime_roots=sorted(PROBES.REQUIRED_RUNTIME_ROOT_ROLES),
         controlled_evidence=controlled,
     )
 
     assert receipt["agy_cli_version"] == "42.7.1"
     assert receipt["antigravity_host_version"] == "11.4.0"
     assert receipt["supported_flags"] == ["--agent", "--effort", "--model"]
-    assert receipt["runtime_roots"] == ["plugin-install"]
+    assert receipt["runtime_roots"] == sorted(PROBES.REQUIRED_RUNTIME_ROOT_ROLES)
     assert all(isinstance(argv, tuple) for argv, _timeout in runner.calls)
     assert all(timeout <= 5 for _argv, timeout in runner.calls)
     assert CAPS.validate_receipt(receipt, catalog) == []
@@ -257,6 +344,13 @@ def test_stateful_observations_fail_closed_without_runner_safety_proof() -> None
     validation = PROBES.execute_probe("plugin-validation", observe_host=True, runner=runner)
     assert load.state == validation.state == "unavailable"
     assert runner.calls == []
+
+
+def test_default_subprocess_runner_cannot_promote_passive_observations() -> None:
+    runner = PROBES.SubprocessProbeRunner()
+    assert (
+        PROBES.execute_probe("agy-version", observe_host=True, runner=runner).state == "unavailable"
+    )
 
 
 @pytest.mark.parametrize(
@@ -285,6 +379,78 @@ def test_controlled_evidence_does_not_start_a_runner() -> None:
     assert outcome.state == "failed"
     assert outcome.evidence == ("agent-execution-proof",)
     assert runner.calls == []
+
+
+def test_controlled_evidence_derives_state_and_rejects_submitted_state() -> None:
+    mismatch = PROBES.execute_probe(
+        "controlled-model-selection",
+        observe_host=True,
+        controlled_evidence={
+            "controlled-model-selection": {
+                "requested": "gemini-3.1-pro",
+                "observed": "gpt-5",
+            }
+        },
+    )
+    fabricated = PROBES.execute_probe(
+        "controlled-model-selection",
+        observe_host=True,
+        controlled_evidence={
+            "controlled-model-selection": {
+                "state": "passed",
+                "requested": "gemini-3.1-pro",
+                "observed": "gpt-5",
+            }
+        },
+    )
+    assert mismatch.state == "failed"
+    assert fabricated.state == "unknown"
+
+
+def test_plugin_link_probe_requires_every_expected_identity_and_target(
+    tmp_path: Path,
+) -> None:
+    install_root = tmp_path / "installed"
+    install_root.mkdir()
+    saga_source = tmp_path / "saga-source"
+    fleet_source = tmp_path / "fleet-source"
+    wrong_source = tmp_path / "wrong-source"
+    for path in (saga_source, fleet_source, wrong_source):
+        path.mkdir()
+    expected = {"saga": saga_source, "fleet-core": fleet_source}
+
+    (install_root / "unrelated").symlink_to(saga_source, target_is_directory=True)
+    assert (
+        PROBES.execute_probe(
+            "plugin-links",
+            observe_host=True,
+            plugin_root=install_root,
+            expected_plugin_roots=expected,
+        ).state
+        == "failed"
+    )
+    (install_root / "saga").symlink_to(saga_source, target_is_directory=True)
+    (install_root / "fleet-core").symlink_to(wrong_source, target_is_directory=True)
+    assert (
+        PROBES.execute_probe(
+            "plugin-links",
+            observe_host=True,
+            plugin_root=install_root,
+            expected_plugin_roots=expected,
+        ).state
+        == "failed"
+    )
+    (install_root / "fleet-core").unlink()
+    (install_root / "fleet-core").symlink_to(fleet_source, target_is_directory=True)
+    assert (
+        PROBES.execute_probe(
+            "plugin-links",
+            observe_host=True,
+            plugin_root=install_root,
+            expected_plugin_roots=expected,
+        ).state
+        == "passed"
+    )
 
 
 def test_unknown_probe_method_is_rejected_before_runner_call() -> None:

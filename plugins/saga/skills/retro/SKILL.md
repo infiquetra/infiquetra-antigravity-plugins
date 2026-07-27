@@ -93,20 +93,19 @@ presentation format; the gate itself is:
   - any **edit** to an existing journal entry (the curation sweeps);
   - a **QUEUED → ARCHIVE move** — it *deletes* lines from `QUEUED.md`, so it is **propose, not auto**,
     even though the ARCHIVE side is an append;
-  - the **`.claude` auto-memory** — `MEMORY.md` and its topic files;
-  - **directive files** (the repo `CLAUDE.md`, the global `~/.claude` directives);
+  - the host's **discovered Antigravity memory surface**, when one is exposed;
+  - **directive files** discovered from repository and global Antigravity configuration;
   - the **saga SKILLs themselves — INCLUDING `skills/retro/SKILL.md`**: `/retro` may
     *propose* a diff to its own skill, but it **never self-applies** one.
 
 **Directive surfaces are NOT one bucket.** Disambiguate before proposing:
 
-- **(a) IN-REPO** — the repo `CLAUDE.md` and the lifecycle SKILLs. (This plugin has **no `agents/` dir**;
-  the convention is **generic agents**, so there is no in-repo agent file to edit.) A normal
+- **(a) IN-REPO** — repository Antigravity directives and the lifecycle SKILLs. A normal
   propose-diff-and-wait, repo-relative path.
-- **(b) GLOBAL / CROSS-PROJECT** — `~/.gemini/CLAUDE.md`, `~/.gemini/agents/*.md`, and antigravity
-  directives. These live **OUTSIDE this repo and affect EVERY project.** A global/cross-project proposal
+- **(b) GLOBAL / CROSS-PROJECT** — directive surfaces discovered from Antigravity's global
+  configuration. These live **OUTSIDE this repo and affect EVERY project.** A global/cross-project proposal
   carries an **EXPLICIT warning in the diff header**:
-  > **WARNING: this changes your GLOBAL Claude config and affects ALL projects, not just this repo.**
+  > **WARNING: this changes your GLOBAL Antigravity config and affects ALL projects, not just this repo.**
 
 **Never auto-launch** a destructive self-edit or an execution backend.
 `multi-agent-consensus` for a big refactor is **offered** per
@@ -292,9 +291,9 @@ The passes neither source had, all gated (`references/retro-passes.md`):
   propose a `QUEUED.md` entry or a `/handoff`.
 - **(b) refine-lifecycle** — propose diffs to the saga SKILLs when the thread exposed a
   gap or a wrong instruction (including `skills/retro/SKILL.md` — proposal only, never self-applied).
-- **(c) refine-directives** — propose diffs to the **repo `CLAUDE.md`** (in-repo) or the **global
-  `~/.claude` directives** (global carries the cross-project warning, per the contract).
-- **(d) memory pruning** — propose curation of the `.claude` auto-memory (`MEMORY.md` + topic files) per
+- **(c) refine-directives** — propose diffs to discovered repository or global Antigravity directive
+  surfaces (global carries the cross-project warning, per the contract).
+- **(d) memory pruning** — propose curation of the discovered Antigravity memory surface per
   the journal-rule + staleness + contradiction sweeps.
 
 A **big multi-file refactor** surfaced by any pass → **OFFER**

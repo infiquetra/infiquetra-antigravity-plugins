@@ -2474,21 +2474,10 @@ def _load_spec(path: Path) -> ExecutionSpec:
     return ExecutionSpec.from_dict(json.loads(path.read_text()))
 
 
-def _read_session_ceiling(root: Path | None = None) -> Tier | None:
-    """Read the #365 session-override ceiling, or None when absent.
-
-    Lazy import keeps this module's "no I/O at import" property intact.
-    """
-    import tier_session
-
-    ceiling = tier_session.read_session_override(root).get("ceiling")
-    if ceiling is None:
-        return None
-    return Tier(model=str(ceiling["model"]), effort=str(ceiling["effort"]))
-
-
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Execution-spec validator + workflow emitter.")
+    parser = argparse.ArgumentParser(
+        description="Execution-spec validator + inline baseline emitter."
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_val = sub.add_parser("validate", help="validate a spec JSON (R3/R10 invariants)")
@@ -2497,16 +2486,6 @@ def main(argv: list[str] | None = None) -> int:
         "--require-receipts",
         action="store_true",
         help="also enforce the #367 premium-tier worth-it hard-block (the /plan authoring gate)",
-    )
-
-    p_emit = sub.add_parser("emit", help="emit a workflow script from a spec JSON")
-    p_emit.add_argument("spec", type=Path)
-    p_emit.add_argument("-o", "--out", type=Path, help="write the script here (default: stdout)")
-    p_emit.add_argument(
-        "--unattended",
-        action="store_true",
-        help="operator is away (#364 KTD3): escalate_on_signal refutes climb one rung "
-        "in-script instead of throwing the attended ask-gate proposal",
     )
 
     p_base = sub.add_parser(
@@ -2599,14 +2578,7 @@ def main(argv: list[str] | None = None) -> int:
                 else "spend_envelope: unset"
             )
             return 0
-        if args.cmd == "baseline":
-            script = emit_inline_baseline(spec)
-        else:
-            script = emit_workflow_script(
-                spec,
-                session_ceiling=_read_session_ceiling(),
-                unattended=bool(getattr(args, "unattended", False)),
-            )
+        script = emit_inline_baseline(spec)
     except (SpecError, _cost_weights.CostWeightsError) as exc:
         print(f"SPEC ERROR: {exc}", file=sys.stderr)
         return 2

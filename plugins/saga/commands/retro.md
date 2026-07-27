@@ -11,7 +11,7 @@ Single command. An optional **pass arg** scopes the run to one pass — `intervi
 
 **The tiered self-edit gate (non-negotiable):** AUTO-APPLY is ONLY a pure additive append of a NEW journal
 entry (LEARNINGS / DECISIONS / QUEUED / ARCHIVE); ANY delete / modify / move of existing lines — curation,
-the `.claude` auto-memory, directive files, the lifecycle SKILLs (including retro's own SKILL) — is
+the discovered Antigravity memory and directive surfaces, the lifecycle SKILLs (including retro's own SKILL) — is
 propose-diff-and-wait (show the diff, ask apply / skip / modify). A global / cross-project directive edit
 carries the cross-project warning. See `skills/retro/references/self-edit-safety.md`.
 

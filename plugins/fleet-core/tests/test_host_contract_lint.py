@@ -92,6 +92,17 @@ def test_foreign_runtime_requires_read_only_and_does_not_hide_write() -> None:
     assert findings[1]["unresolved"] is True
 
 
+def test_constructed_claude_path_is_an_active_violation() -> None:
+    findings = LINT.scan_text(
+        "plugins/saga/scripts/example.py",
+        'ledger = repo_root / ".claude" / "saga" / "ledger"',
+        known_capabilities=_known_capabilities(),
+    )
+    assert len(findings) == 1
+    assert findings[0]["rule"] == "AGHC001"
+    assert findings[0]["unresolved"] is True
+
+
 @pytest.mark.parametrize(("state", "unresolved"), [("passed", False), ("unknown", True)])
 def test_capability_gate_requires_passing_evidence(state: str, unresolved: bool) -> None:
     text = (
@@ -109,6 +120,24 @@ def test_capability_gate_requires_passing_evidence(state: str, unresolved: bool)
     )
     assert findings[0]["classification"] == "capability-gated"
     assert findings[0]["unresolved"] is unresolved
+
+
+def test_capability_annotation_must_use_the_rule_specific_capability() -> None:
+    text = (
+        '<!-- antigravity-host-contract: {"class":"capability-gated",'
+        '"rule":"AGHC006","reason":"runtime isolation is required",'
+        '"revisit":"remove when host contract changes",'
+        '"capability":"agy.cli.flags"} -->\n'
+        "The host guarantees isolated worktree execution."
+    )
+    findings = LINT.scan_text(
+        "plugins/saga/skills/work/SKILL.md",
+        text,
+        known_capabilities=_known_capabilities(),
+        capability_states={"agy.cli.flags": "passed"},
+    )
+    assert findings[0]["unresolved"] is True
+    assert findings[0]["reason"] == "annotation-unknown-capability"
 
 
 @pytest.mark.parametrize(
@@ -186,6 +215,23 @@ def test_selector_abuse_fails_before_scanning(mutation) -> None:
     selector = _selector()
     mutation(selector)
     assert LINT.validate_selector(selector, REPO_ROOT)
+
+
+def test_selector_rejects_symlinked_exact_path(tmp_path: Path) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.md"
+    outside.write_text("outside")
+    linked = tmp_path / "linked.md"
+    linked.symlink_to(outside)
+    (tmp_path / "comparison").mkdir()
+    selector = {
+        "schema": LINT.SELECTOR_SCHEMA,
+        "active_globs": ["*.md"],
+        "exact_paths": ["linked.md"],
+        "comparison_roots": ["comparison"],
+        "digest_inputs": list(LINT._SELECTOR_DIGEST_INPUTS),
+    }
+    errors = LINT.validate_selector(selector, tmp_path)
+    assert any("symlinks are not allowed" in error for error in errors)
 
 
 def test_lint_receipt_is_strict_excerpt_free_and_digest_bound() -> None:

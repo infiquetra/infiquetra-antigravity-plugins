@@ -38,6 +38,11 @@ _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$")
 _PY_ANNOTATION_RE = re.compile(r"^\s*#\s*antigravity-host-contract:\s*(\{.*\})\s*$")
+MAX_SELECTED_FILE_BYTES = 1024 * 1024
+_MUTATING_CONTEXT_RE = re.compile(
+    r"(?i)\b(?:output|write|written|create|mkdir|unlink|rename|replace|touch|save|emit|"
+    r"append|ledger|destination)\b|(?:write_text|write_bytes|open\([^)]*[\"'][awx+])"
+)
 
 
 @dataclass(frozen=True)
@@ -49,7 +54,12 @@ class Rule:
 
 
 RULES = (
-    Rule("AGHC001", re.compile(r"(?:^|[^A-Za-z0-9_])[.~]?\.claude/"), None, "use-gemini-state"),
+    Rule(
+        "AGHC001",
+        re.compile(r"(?:^|[^A-Za-z0-9_])[.~]?\.claude(?:/|[\"'])"),
+        None,
+        "use-gemini-state",
+    ),
     Rule(
         "AGHC002",
         re.compile(r"\b(?:AskUserQuestion|ToolSearch)\b"),
@@ -139,8 +149,20 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
     exact_paths = selector.get("exact_paths")
     if isinstance(exact_paths, list):
         for value in exact_paths:
-            if _safe_relative(value, allow_glob=False) and not (root / value).is_file():
+            if not _safe_relative(value, allow_glob=False):
+                continue
+            candidate = root / value
+            if not candidate.is_file():
                 errors.append(f"selector.exact_paths: declared file is missing: {value}")
+            elif candidate.is_symlink():
+                errors.append(f"selector.exact_paths: symlinks are not allowed: {value}")
+            else:
+                try:
+                    candidate.resolve(strict=True).relative_to(root)
+                except (FileNotFoundError, OSError, ValueError):
+                    errors.append(
+                        f"selector.exact_paths: declared file escapes repository: {value}"
+                    )
     comparison_roots = selector.get("comparison_roots")
     if isinstance(comparison_roots, list):
         for value in comparison_roots:
@@ -172,7 +194,17 @@ def selected_active_paths(repo_root: Path | str, selector: Mapping[str, Any]) ->
     for pattern in selector["active_globs"]:
         paths.update(path for path in root.glob(pattern) if path.is_file())
     paths.update(root / value for value in selector["exact_paths"])
-    return sorted(paths)
+    selected: list[Path] = []
+    for path in sorted(paths):
+        if path.is_symlink():
+            raise HostContractError("selected host-contract path must not be a symlink")
+        try:
+            resolved = path.resolve(strict=True)
+            resolved.relative_to(root)
+        except (FileNotFoundError, OSError, ValueError) as exc:
+            raise HostContractError("selected host-contract path escapes the repository") from exc
+        selected.append(resolved)
+    return selected
 
 
 def _annotation_payload(line: str) -> tuple[dict[str, Any] | None, str | None]:
@@ -211,13 +243,23 @@ def _validate_annotation(
             return "annotation-unexpected-capability"
     elif classification == "capability-gated":
         capability = payload.get("capability")
-        if capability not in known_capabilities:
+        if capability not in known_capabilities or capability != rule.capability:
             return "annotation-unknown-capability"
         if "access" in payload:
             return "annotation-unexpected-access"
     elif "capability" in payload or "access" in payload:
         return "annotation-unexpected-field"
     return None
+
+
+def _annotation_semantically_safe(
+    payload: Mapping[str, Any],
+    line: str,
+) -> bool:
+    classification = payload.get("class")
+    if classification == "foreign-runtime-input":
+        return _MUTATING_CONTEXT_RE.search(line) is None
+    return not (classification == "historical" and _MUTATING_CONTEXT_RE.search(line) is not None)
 
 
 def _finding(
@@ -292,6 +334,8 @@ def scan_text(
             annotation_error = parse_error
             if annotation is not None:
                 annotation_error = _validate_annotation(annotation, rule, capabilities)
+                if annotation_error is None and not _annotation_semantically_safe(annotation, line):
+                    annotation_error = "annotation-conflicts-with-executable-write"
             if annotation is None or annotation_error is not None:
                 findings.append(
                     _finding(
@@ -372,7 +416,14 @@ def scan_repository(
     for path in selected_active_paths(root, selector):
         relative = path.relative_to(root).as_posix()
         try:
-            text = path.read_text(encoding="utf-8")
+            if path.stat().st_size > MAX_SELECTED_FILE_BYTES:
+                raise HostContractError("selected host-contract path exceeds the size limit")
+            raw = path.read_bytes()
+            if len(raw) > MAX_SELECTED_FILE_BYTES:
+                raise HostContractError("selected host-contract path exceeds the size limit")
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise HostContractError(f"selected path is not valid UTF-8: {relative}") from exc
         except OSError as exc:
             raise HostContractError(f"could not read selected path {relative}") from exc
         default = "historical" if _is_comparison_path(relative, selector) else "active"

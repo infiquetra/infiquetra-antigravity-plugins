@@ -2433,23 +2433,27 @@ def test_recommend_execution_backend_precedence_and_overlap() -> None:
     """Every escalation signal maps to the native Antigravity consensus skill."""
     lifecycle = _load_module("lifecycle_state.py")
 
-    risky_by_size = lifecycle.recommend_execution_backend(file_count=9)
+    risky_by_size = lifecycle.recommend_execution_backend(file_count=9, consensus_available=True)
     assert risky_by_size["recommended"] == "multi-agent-consensus"
-    risky_by_security = lifecycle.recommend_execution_backend(has_security=True)
+    risky_by_security = lifecycle.recommend_execution_backend(
+        has_security=True, consensus_available=True
+    )
     assert risky_by_security["recommended"] == "multi-agent-consensus"
 
     assert (
-        lifecycle.recommend_execution_backend(file_count=8)["recommended"]
+        lifecycle.recommend_execution_backend(file_count=8, consensus_available=True)["recommended"]
         == "multi-agent-consensus"
     )
     assert lifecycle.recommend_execution_backend(file_count=7)["recommended"] == "inline"
 
     # Precedence: broad independent fan-out without elevated risk -> multi-agent-consensus.
-    fanout = lifecycle.recommend_execution_backend(broad_independent_fanout=True)
+    fanout = lifecycle.recommend_execution_backend(
+        broad_independent_fanout=True, consensus_available=True
+    )
     assert fanout["recommended"] == "multi-agent-consensus"
 
     risky_fanout = lifecycle.recommend_execution_backend(
-        broad_independent_fanout=True, has_infra=True
+        broad_independent_fanout=True, has_infra=True, consensus_available=True
     )
     assert risky_fanout["recommended"] == "multi-agent-consensus"
 
@@ -2457,7 +2461,7 @@ def test_recommend_execution_backend_precedence_and_overlap() -> None:
     assert lifecycle.recommend_execution_backend()["recommended"] == "inline"
 
     overlap = lifecycle.recommend_execution_backend(
-        broad_independent_fanout=True, needs_consensus=True
+        broad_independent_fanout=True, needs_consensus=True, consensus_available=True
     )
     assert overlap["recommended"] == "multi-agent-consensus"
     assert overlap["alternatives"] == ["inline"]
@@ -2476,7 +2480,12 @@ def test_recommend_execution_backend_precedence_and_overlap() -> None:
         )["recommended"]
         == "inline"
     )
-    assert lifecycle.recommend_execution_backend()["omit_multi_agent_consensus"] is False
+    assert (
+        lifecycle.recommend_execution_backend(consensus_available=True)[
+            "omit_multi_agent_consensus"
+        ]
+        is False
+    )
 
 
 def test_lifecycle_state_cli_subcommands(capsys: pytest.CaptureFixture[str]) -> None:
@@ -2490,18 +2499,28 @@ def test_lifecycle_state_cli_subcommands(capsys: pytest.CaptureFixture[str]) -> 
     lifecycle = _load_module("lifecycle_state.py")
 
     # recommend-backend subcommand -> JSON on stdout, parsed and asserted.
-    assert lifecycle.main(["recommend-backend", "--file-count", "9"]) == 0
+    assert lifecycle.main(["recommend-backend", "--file-count", "9", "--consensus-proven"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["recommended"] == "multi-agent-consensus"
 
     # The overlap escalation survives the CLI surface end-to-end.
-    assert lifecycle.main(["recommend-backend", "--broad-fanout", "--needs-consensus"]) == 0
+    assert (
+        lifecycle.main(
+            [
+                "recommend-backend",
+                "--broad-fanout",
+                "--needs-consensus",
+                "--consensus-proven",
+            ]
+        )
+        == 0
+    )
     overlap = json.loads(capsys.readouterr().out)
     assert overlap["recommended"] == "multi-agent-consensus"
     assert overlap["alternatives"] == ["inline"]
 
-    # --no-consensus flows through to omit_multi_agent_consensus via the CLI.
-    assert lifecycle.main(["recommend-backend", "--broad-fanout", "--no-consensus"]) == 0
+    # Missing proof omits multi-agent consensus by default.
+    assert lifecycle.main(["recommend-backend", "--broad-fanout"]) == 0
     unavailable = json.loads(capsys.readouterr().out)
     assert unavailable["omit_multi_agent_consensus"] is True
 
@@ -2522,10 +2541,17 @@ def test_recommend_execution_backend_adversarial_confidence() -> None:
     rec = lifecycle.recommend_execution_backend
 
     # adversarial_confidence alone, no risk -> multi-agent-consensus.
-    assert rec(adversarial_confidence=True)["recommended"] == "multi-agent-consensus"
+    assert (
+        rec(adversarial_confidence=True, consensus_available=True)["recommended"]
+        == "multi-agent-consensus"
+    )
 
     assert (
-        rec(adversarial_confidence=True, has_security=True)["recommended"]
+        rec(
+            adversarial_confidence=True,
+            has_security=True,
+            consensus_available=True,
+        )["recommended"]
         == "multi-agent-consensus"
     )
 
@@ -2534,7 +2560,11 @@ def test_recommend_execution_backend_adversarial_confidence() -> None:
     assert gated["recommended"] == "inline"
     assert gated["omit_multi_agent_consensus"] is True
 
-    overlap = rec(adversarial_confidence=True, needs_consensus=True)
+    overlap = rec(
+        adversarial_confidence=True,
+        needs_consensus=True,
+        consensus_available=True,
+    )
     assert overlap["recommended"] == "multi-agent-consensus"
     assert overlap["alternatives"] == ["inline"]
 
@@ -2544,12 +2574,16 @@ def test_recommend_execution_backend_gated_vs_advisory_consensus() -> None:
     lifecycle = _load_module("lifecycle_state.py")
     rec = lifecycle.recommend_execution_backend
 
-    gated = rec(needs_consensus=True)
+    gated = rec(needs_consensus=True, consensus_available=True)
     assert gated["recommended"] == "multi-agent-consensus"
     assert "gated" in gated["rationale"]
 
     # Advisory consensus uses the same native backend with advisory governance.
-    advisory = rec(needs_consensus=True, consensus_is_gated=False)
+    advisory = rec(
+        needs_consensus=True,
+        consensus_is_gated=False,
+        consensus_available=True,
+    )
     assert advisory["recommended"] == "multi-agent-consensus"
 
     assert "advisory" in advisory["rationale"]
@@ -2561,7 +2595,12 @@ def test_recommend_execution_backend_gated_vs_advisory_consensus() -> None:
     assert rec(consensus_is_gated=True)["recommended"] == "inline"
 
     assert (
-        rec(needs_consensus=True, consensus_is_gated=False, has_security=True)["recommended"]
+        rec(
+            needs_consensus=True,
+            consensus_is_gated=False,
+            has_security=True,
+            consensus_available=True,
+        )["recommended"]
         == "multi-agent-consensus"
     )
 
@@ -2574,15 +2613,30 @@ def test_recommend_execution_backend_gated_vs_advisory_consensus() -> None:
     assert unavailable["omit_multi_agent_consensus"] is True
     assert "multi-agent-consensus" not in unavailable["alternatives"]
 
-    overlap = rec(needs_consensus=True, consensus_is_gated=True, broad_independent_fanout=True)
+    overlap = rec(
+        needs_consensus=True,
+        consensus_is_gated=True,
+        broad_independent_fanout=True,
+        consensus_available=True,
+    )
     assert overlap["recommended"] == "multi-agent-consensus"
     assert overlap["alternatives"] == ["inline"]
 
     # Consensus remains a governance signal on pure documentation.
-    docs_advisory = rec(needs_consensus=True, consensus_is_gated=False, has_code_surface=False)
+    docs_advisory = rec(
+        needs_consensus=True,
+        consensus_is_gated=False,
+        has_code_surface=False,
+        consensus_available=True,
+    )
     assert docs_advisory["recommended"] == "multi-agent-consensus"
     # GATED consensus survives the docs neutralizer (it is governance, not code).
-    docs_gated = rec(needs_consensus=True, consensus_is_gated=True, has_code_surface=False)
+    docs_gated = rec(
+        needs_consensus=True,
+        consensus_is_gated=True,
+        has_code_surface=False,
+        consensus_available=True,
+    )
     assert docs_gated["recommended"] == "multi-agent-consensus"
 
 
@@ -2596,12 +2650,22 @@ def test_recommend_backend_cli_advisory_consensus(capsys: pytest.CaptureFixture[
     lifecycle = _load_module("lifecycle_state.py")
 
     # Default and advisory both route to the same native backend.
-    assert lifecycle.main(["recommend-backend", "--needs-consensus"]) == 0
+    assert lifecycle.main(["recommend-backend", "--needs-consensus", "--consensus-proven"]) == 0
     gated = json.loads(capsys.readouterr().out)
     assert gated["recommended"] == "multi-agent-consensus"
 
     # --advisory-consensus changes the recorded governance.
-    assert lifecycle.main(["recommend-backend", "--needs-consensus", "--advisory-consensus"]) == 0
+    assert (
+        lifecycle.main(
+            [
+                "recommend-backend",
+                "--needs-consensus",
+                "--advisory-consensus",
+                "--consensus-proven",
+            ]
+        )
+        == 0
+    )
     advisory = json.loads(capsys.readouterr().out)
     assert advisory["recommended"] == "multi-agent-consensus"
     assert advisory["alternatives"] == ["inline"]
@@ -2612,7 +2676,7 @@ def test_recommend_execution_backend_docs_no_code_surface() -> None:
     lifecycle = _load_module("lifecycle_state.py")
     rec = lifecycle.recommend_execution_backend
 
-    assert rec(file_count=12)["recommended"] == "multi-agent-consensus"
+    assert rec(file_count=12, consensus_available=True)["recommended"] == "multi-agent-consensus"
 
     # Docs: the size/sequencing proxies are voided -> inline.
     assert rec(file_count=12, has_code_surface=False)["recommended"] == "inline"
@@ -2626,24 +2690,40 @@ def test_recommend_execution_backend_docs_no_code_surface() -> None:
 
     # Explicit fan-out remains an independent execution signal.
     assert (
-        rec(file_count=12, broad_independent_fanout=True, has_code_surface=False)["recommended"]
+        rec(
+            file_count=12,
+            broad_independent_fanout=True,
+            has_code_surface=False,
+            consensus_available=True,
+        )["recommended"]
         == "multi-agent-consensus"
     )
     assert (
-        rec(has_infra=True, broad_independent_fanout=True, has_code_surface=False)["recommended"]
+        rec(
+            has_infra=True,
+            broad_independent_fanout=True,
+            has_code_surface=False,
+            consensus_available=True,
+        )["recommended"]
         == "multi-agent-consensus"
     )
 
-    assert rec(cross_repo=True, has_code_surface=False)["recommended"] == "multi-agent-consensus"
     assert (
-        rec(needs_consensus=True, has_code_surface=False)["recommended"] == "multi-agent-consensus"
+        rec(cross_repo=True, has_code_surface=False, consensus_available=True)["recommended"]
+        == "multi-agent-consensus"
     )
+    assert rec(
+        needs_consensus=True,
+        has_code_surface=False,
+        consensus_available=True,
+    )["recommended"]
 
     overlap = rec(
         file_count=12,
         broad_independent_fanout=True,
         needs_consensus=True,
         has_code_surface=False,
+        consensus_available=True,
     )
     assert overlap["recommended"] == "multi-agent-consensus"
     assert overlap["alternatives"] == ["inline"]
@@ -2658,7 +2738,9 @@ def test_recommend_backend_cli_new_flags(capsys: pytest.CaptureFixture[str]) -> 
     lifecycle = _load_module("lifecycle_state.py")
 
     # --adversarial-confidence -> multi-agent-consensus.
-    assert lifecycle.main(["recommend-backend", "--adversarial-confidence"]) == 0
+    assert (
+        lifecycle.main(["recommend-backend", "--adversarial-confidence", "--consensus-proven"]) == 0
+    )
     adv = json.loads(capsys.readouterr().out)
     assert adv["recommended"] == "multi-agent-consensus"
 
@@ -2668,7 +2750,17 @@ def test_recommend_backend_cli_new_flags(capsys: pytest.CaptureFixture[str]) -> 
     assert docs["recommended"] == "inline"
 
     # --no-code-surface keeps cross_repo live (the ownership-boundary signal).
-    assert lifecycle.main(["recommend-backend", "--cross-repo", "--no-code-surface"]) == 0
+    assert (
+        lifecycle.main(
+            [
+                "recommend-backend",
+                "--cross-repo",
+                "--no-code-surface",
+                "--consensus-proven",
+            ]
+        )
+        == 0
+    )
     cross = json.loads(capsys.readouterr().out)
     assert cross["recommended"] == "multi-agent-consensus"
 
@@ -2969,6 +3061,45 @@ def _run_host_gate(
         capture_output=True,
         text=True,
         env=env,
+    )
+
+
+def test_outcome_cli_accepts_only_receipt_based_host_authorization() -> None:
+    completed = subprocess.run(
+        [sys.executable, str(PLUGIN_ROOT / "scripts/outcome.py"), "advance", "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+    assert "--capability-receipt" in completed.stdout
+    assert "--host-capable" not in completed.stdout
+    assert "--consensus-available" not in completed.stdout
+
+
+def test_execution_spec_cli_rejects_legacy_workflow_emission(tmp_path: Path) -> None:
+    output = tmp_path / "legacy-workflow.py"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(PLUGIN_ROOT / "scripts/execution_spec.py"),
+            "emit",
+            "missing.json",
+            "--out",
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert not output.exists()
+
+
+def test_board_progression_ledger_is_antigravity_owned(tmp_path: Path) -> None:
+    progression = _load_module("board_progression.py")
+    assert progression._default_ledger_dir(tmp_path) == (
+        tmp_path / ".gemini" / "saga" / "board-progression"
     )
 
 

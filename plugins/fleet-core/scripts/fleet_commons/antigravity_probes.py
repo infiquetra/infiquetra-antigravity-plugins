@@ -19,6 +19,15 @@ from typing import Any, Protocol
 
 MAX_OUTPUT_BYTES = 64 * 1024
 DEFAULT_TIMEOUT_S = 5.0
+REQUIRED_RUNTIME_ROOT_ROLES = frozenset(
+    {
+        "repository",
+        "plugin-install",
+        "saga-state",
+        "conversation-artifacts",
+        "brain-artifacts",
+    }
+)
 
 _VERSION_RE = re.compile(r"(?<![0-9])([0-9]+(?:[.][0-9A-Za-z+-]+)+)")
 _FLAG_RE = re.compile(r"(?<![A-Za-z0-9])(--[a-z0-9]+(?:-[a-z0-9]+)*)")
@@ -35,6 +44,7 @@ class CommandResult:
 class ProbeRunner(Protocol):
     """Execution seam used by registered command probes."""
 
+    safe_for_passive_observation: bool
     safe_for_stateful_observation: bool
 
     def run(self, argv: Sequence[str], *, timeout_s: float) -> CommandResult: ...
@@ -58,20 +68,20 @@ class ProbeOutcome:
 
 
 class SubprocessProbeRunner:
-    """Runtime runner for the fixed passive vectors in this module."""
+    """Disabled-by-default subprocess runner.
 
+    A caller must inject a runner that proves its passive-observation boundary.
+    The generic process environment cannot provide that proof.
+    """
+
+    safe_for_passive_observation = False
     safe_for_stateful_observation = False
 
     def run(self, argv: Sequence[str], *, timeout_s: float) -> CommandResult:
-        completed = subprocess.run(
-            list(argv),
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-            shell=False,
+        del argv, timeout_s
+        raise PermissionError(
+            "generic subprocess observation cannot prove a no-write, no-network boundary"
         )
-        return CommandResult(returncode=completed.returncode, stdout=completed.stdout)
 
 
 def _definition(
@@ -109,6 +119,9 @@ PROBE_REGISTRY: dict[str, ProbeDefinition] = {
         "passive-conditional",
         "plugin-validation-state",
         ("agy", "plugin", "validate", "--json"),
+    ),
+    "runtime-root-discovery": _definition(
+        "runtime-root-discovery", "filesystem", "runtime-root-roles"
     ),
     "controlled-model-selection": _definition(
         "controlled-model-selection", "controlled", "model-selection-proof"
@@ -224,27 +237,47 @@ def _host_version_outcome(
     return ProbeOutcome("passed", (evidence_id,), value)
 
 
-def _plugin_links_outcome(plugin_root: Path | None, evidence_id: str) -> ProbeOutcome:
-    if plugin_root is None:
+def _plugin_links_outcome(
+    plugin_root: Path | None,
+    expected_plugin_roots: Mapping[str, Path] | None,
+    evidence_id: str,
+) -> ProbeOutcome:
+    if plugin_root is None or not expected_plugin_roots:
         return ProbeOutcome("unavailable")
     try:
-        entries = list(plugin_root.iterdir())
+        plugin_root.resolve(strict=True)
     except (FileNotFoundError, NotADirectoryError, PermissionError, OSError):
         return ProbeOutcome("unavailable")
-    if not entries:
-        return ProbeOutcome("unknown")
-    links = [entry for entry in entries if entry.is_symlink()]
-    if not links:
-        return ProbeOutcome("unknown")
+
+    link_states: dict[str, bool] = {}
     try:
-        all_resolve = all(link.resolve(strict=True).exists() for link in links)
+        for name, expected_root in sorted(expected_plugin_roots.items()):
+            link = plugin_root / name
+            link_states[name] = link.is_symlink() and link.resolve(
+                strict=True
+            ) == expected_root.resolve(strict=True)
     except (FileNotFoundError, PermissionError, OSError):
-        all_resolve = False
+        return ProbeOutcome("failed", (evidence_id,), False)
+    all_resolve = bool(link_states) and all(link_states.values())
     return ProbeOutcome(
         "passed" if all_resolve else "failed",
         (evidence_id,),
         all_resolve,
     )
+
+
+def _runtime_roots_outcome(
+    runtime_roots: Sequence[str] | None,
+    evidence_id: str,
+) -> ProbeOutcome:
+    if runtime_roots is None:
+        return ProbeOutcome("unavailable")
+    roots = sorted(set(runtime_roots))
+    if not roots:
+        return ProbeOutcome("unknown")
+    if not REQUIRED_RUNTIME_ROOT_ROLES.issubset(roots):
+        return ProbeOutcome("unknown", value=roots)
+    return ProbeOutcome("passed", (evidence_id,), roots)
 
 
 def _controlled_outcome(
@@ -255,13 +288,23 @@ def _controlled_outcome(
     evidence = controlled_evidence.get(method)
     if evidence is None:
         return ProbeOutcome("unavailable")
-    state = evidence.get("state")
-    if state not in {"passed", "failed", "unknown", "unavailable"}:
+    if set(evidence) != {"requested", "observed"}:
         return ProbeOutcome("unknown")
+    requested = evidence.get("requested")
+    observed = evidence.get("observed")
+    if requested is None or observed is None:
+        return ProbeOutcome("unknown", value={"requested": requested, "observed": observed})
+    if method in {"controlled-model-selection", "controlled-effort-selection"}:
+        valid_types = isinstance(requested, str) and isinstance(observed, str)
+    else:
+        valid_types = isinstance(requested, bool) and isinstance(observed, bool)
+    if not valid_types:
+        return ProbeOutcome("unknown", value={"requested": requested, "observed": observed})
+    state = "passed" if requested == observed else "failed"
     return ProbeOutcome(
         state,
-        (evidence_id,) if state in {"passed", "failed"} else (),
-        evidence,
+        (evidence_id,),
+        {"requested": requested, "observed": observed},
     )
 
 
@@ -272,6 +315,8 @@ def execute_probe(
     runner: ProbeRunner | None = None,
     host_version_reader: Callable[[], str | None] | None = None,
     plugin_root: Path | None = None,
+    expected_plugin_roots: Mapping[str, Path] | None = None,
+    runtime_roots: Sequence[str] | None = None,
     controlled_evidence: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> ProbeOutcome:
     """Execute one immutable registered method or fail closed."""
@@ -289,9 +334,17 @@ def execute_probe(
     if definition.execution_class == "metadata":
         return _host_version_outcome(host_version_reader, definition.evidence_id)
     if definition.execution_class == "filesystem":
-        return _plugin_links_outcome(plugin_root, definition.evidence_id)
+        if method == "plugin-links":
+            return _plugin_links_outcome(
+                plugin_root,
+                expected_plugin_roots,
+                definition.evidence_id,
+            )
+        return _runtime_roots_outcome(runtime_roots, definition.evidence_id)
+    if runner is None or not getattr(runner, "safe_for_passive_observation", False):
+        return ProbeOutcome("unavailable")
     if definition.execution_class == "passive-conditional" and (
-        runner is None or not runner.safe_for_stateful_observation
+        not getattr(runner, "safe_for_stateful_observation", False)
     ):
         return ProbeOutcome("unavailable")
 
@@ -315,6 +368,8 @@ def probe_catalog(
     runner: ProbeRunner | None = None,
     host_version_reader: Callable[[], str | None] | None = None,
     plugin_root: Path | None = None,
+    expected_plugin_roots: Mapping[str, Path] | None = None,
+    runtime_roots: Sequence[str] | None = None,
     controlled_evidence: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Evaluate catalog rows into a strict promotable receipt."""
@@ -334,6 +389,8 @@ def probe_catalog(
             runner=runner,
             host_version_reader=host_version_reader,
             plugin_root=plugin_root,
+            expected_plugin_roots=expected_plugin_roots,
+            runtime_roots=runtime_roots,
             controlled_evidence=controlled_evidence,
         )
         results.append(
@@ -350,12 +407,14 @@ def probe_catalog(
             antigravity_host_version = outcome.value
         elif method == "agy-help-flags" and isinstance(outcome.value, list):
             supported_flags = list(outcome.value)
+        elif method == "runtime-root-discovery" and isinstance(outcome.value, list):
+            runtime_roots = list(outcome.value)
         elif method in _METHOD_FACT_IDS and isinstance(outcome.value, Mapping):
             fact_id = _METHOD_FACT_IDS[method]
             requested_facts[fact_id] = outcome.value.get("requested")
             observed_facts[fact_id] = outcome.value.get("observed")
 
-    roots = ["plugin-install"] if plugin_root is not None else []
+    roots = sorted(set(runtime_roots or []))
     return {
         "schema": "antigravity.capabilities.v1",
         "catalog_digest": _catalog_digest(catalog),
