@@ -36,7 +36,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 # Current on-disk schema version. Bumped only on a breaking spec-shape change so an old
@@ -220,6 +220,11 @@ class Node:
     # reconcile loop recurses. Distinct from ``leaf_saga_id`` and from saga's single-saga
     # ``orchestration_ref`` — never overload the latter (the rejected type-unsafe alternative).
     child_spec_ref: str = ""
+    # Additive proof-carrying lifecycle links (issue #21).  The contract and
+    # receipts are canonical repository artifacts; routing integration consumes
+    # them later.  Absent values emit no keys so existing specs stay stable.
+    obligation_contract_ref: str = ""
+    transition_receipt_refs: list[str] = field(default_factory=list)
     github: dict[str, Any] = field(default_factory=dict)
     worktree: dict[str, Any] = field(default_factory=dict)
     evidence: dict[str, Any] = field(default_factory=dict)
@@ -284,6 +289,20 @@ class Node:
                 raise OutcomeSpecError(
                     f"node {sid}: child_spec_ref equals the node's own subplot_id"
                 )
+        if self.obligation_contract_ref:
+            _repository_ref(
+                self.obligation_contract_ref,
+                where=f"node {sid}",
+                field_name="obligation_contract_ref",
+            )
+        if len(self.transition_receipt_refs) != len(set(self.transition_receipt_refs)):
+            raise OutcomeSpecError(f"node {sid}: transition_receipt_refs contains duplicates")
+        for reference in self.transition_receipt_refs:
+            _repository_ref(
+                reference,
+                where=f"node {sid}",
+                field_name="transition_receipt_refs",
+            )
         if self.sandbox is not None:
             self.sandbox.validate(f"node {sid}")
 
@@ -311,6 +330,16 @@ class Node:
             depends_on=_str_list(data.get("depends_on"), where=where, field_name="depends_on"),
             leaf_saga_id=str(data.get("leaf_saga_id", "")),
             child_spec_ref=str(data.get("child_spec_ref", "")),
+            obligation_contract_ref=_optional_repository_ref(
+                data.get("obligation_contract_ref"),
+                where=where,
+                field_name="obligation_contract_ref",
+            ),
+            transition_receipt_refs=_repository_ref_list(
+                data.get("transition_receipt_refs"),
+                where=where,
+                field_name="transition_receipt_refs",
+            ),
             # deepcopy the open pass-through maps so the Node owns a detached snapshot — a
             # caller that later mutates the source ``data`` cannot reach in and corrupt the
             # node's nested structures (and vice-versa for ``to_dict``).
@@ -349,6 +378,10 @@ class Node:
         # profile-authored sandbox emits its expanded axes (canonical form, KTD1).
         if self.sandbox is not None:
             out["sandbox"] = self.sandbox.to_dict()
+        if self.obligation_contract_ref:
+            out["obligation_contract_ref"] = self.obligation_contract_ref
+        if self.transition_receipt_refs:
+            out["transition_receipt_refs"] = list(self.transition_receipt_refs)
         return out
 
 
@@ -554,6 +587,55 @@ def _str_list(value: Any, *, where: str, field_name: str) -> list[str]:
             f"{where}: {field_name} must be a list, got {type(value).__name__} {value!r}"
         )
     return [str(v) for v in value]
+
+
+def _optional_repository_ref(value: Any, *, where: str, field_name: str) -> str:
+    """Parse an optional repository-relative artifact reference."""
+
+    if value is None or value == "":
+        return ""
+    if not isinstance(value, str):
+        raise OutcomeSpecError(
+            f"{where}: {field_name} must be a repository-relative path string"
+        )
+    return _repository_ref(value, where=where, field_name=field_name)
+
+
+def _repository_ref_list(value: Any, *, where: str, field_name: str) -> list[str]:
+    """Parse a unique list of repository-relative artifact references."""
+
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise OutcomeSpecError(f"{where}: {field_name} must be a list")
+    if any(not isinstance(item, str) for item in value):
+        raise OutcomeSpecError(f"{where}: {field_name} must contain only strings")
+    references = [
+        _repository_ref(item, where=where, field_name=field_name) for item in value
+    ]
+    if len(references) != len(set(references)):
+        raise OutcomeSpecError(f"{where}: {field_name} contains duplicates")
+    return references
+
+
+def _repository_ref(value: str, *, where: str, field_name: str) -> str:
+    """Validate a normalized repository-relative POSIX artifact path."""
+
+    if "\\" in value or "\x00" in value:
+        raise OutcomeSpecError(
+            f"{where}: {field_name} must be a normalized repository-relative path"
+        )
+    path = PurePosixPath(value)
+    if (
+        not value
+        or path.is_absolute()
+        or any(part in {"", ".", ".."} for part in path.parts)
+        or path.as_posix() != value
+    ):
+        raise OutcomeSpecError(
+            f"{where}: {field_name} must be a normalized repository-relative path"
+        )
+    return value
 
 
 def _positive_int(value: Any, *, field_name: str) -> int:

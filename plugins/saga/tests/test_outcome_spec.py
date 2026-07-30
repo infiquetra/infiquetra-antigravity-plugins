@@ -124,6 +124,30 @@ def test_node_property_helpers() -> None:
     assert build.is_terminal
 
 
+def test_node_round_trips_lifecycle_contract_and_receipt_references() -> None:
+    data = _valid_spec_dict()
+    data["nodes"][1]["obligation_contract_ref"] = (
+        "docs/outcomes/ship-feature-x/lifecycle-obligations.json"
+    )
+    data["nodes"][1]["transition_receipt_refs"] = [
+        "docs/outcomes/ship-feature-x/receipts/tr-one.json",
+        "docs/outcomes/ship-feature-x/receipts/tr-two.json",
+    ]
+    spec = _spec(data)
+    spec.validate()
+    build = spec.node_by_id("build")
+    assert build is not None
+    assert build.obligation_contract_ref.endswith("lifecycle-obligations.json")
+    assert len(build.transition_receipt_refs) == 2
+    assert M.OutcomeSpec.from_json(spec.to_json()).to_dict() == spec.to_dict()
+
+
+def test_absent_lifecycle_references_emit_no_keys() -> None:
+    node = _spec(_valid_spec_dict()).nodes[0]
+    assert "obligation_contract_ref" not in node.to_dict()
+    assert "transition_receipt_refs" not in node.to_dict()
+
+
 # --------------------------------------------------------------------------- edge cases
 
 
@@ -233,6 +257,28 @@ def test_missing_dependency_fails() -> None:
     data["nodes"][1]["depends_on"] = ["ghost"]
     with pytest.raises(M.OutcomeSpecError, match="not a declared node"):
         _spec(data).validate()
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("obligation_contract_ref", "/tmp/contract.json"),
+        ("obligation_contract_ref", "../contract.json"),
+        ("obligation_contract_ref", 42),
+        ("transition_receipt_refs", "docs/receipt.json"),
+        ("transition_receipt_refs", ["/tmp/receipt.json"]),
+        ("transition_receipt_refs", ["docs/receipt.json", "docs/receipt.json"]),
+        ("transition_receipt_refs", [42]),
+    ],
+)
+def test_lifecycle_artifact_references_reject_unsafe_or_malformed_values(
+    field: str,
+    value: Any,
+) -> None:
+    data = _valid_spec_dict()
+    data["nodes"][0][field] = value
+    with pytest.raises(M.OutcomeSpecError, match=field):
+        _spec(data)
 
 
 def test_pipeline_plus_independent_node_is_valid() -> None:
