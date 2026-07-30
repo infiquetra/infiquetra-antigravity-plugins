@@ -41,12 +41,10 @@ def pending_ledger() -> dict[str, Any]:
         candidate["decision"] = {
             "state": "pending",
             "rationale": (
-                "The maintainer recommendation is evidence for review, not an "
-                "operator decision."
+                "The maintainer recommendation is evidence for review, not an operator decision."
             ),
             "revisit_trigger": (
-                "Reassess when the source contract or Antigravity capability "
-                "evidence changes."
+                "Reassess when the source contract or Antigravity capability evidence changes."
             ),
             "operator": None,
             "decided_at": None,
@@ -110,20 +108,12 @@ def promotable_receipt() -> dict[str, Any]:
 
 
 def campaign_output(repositories: dict[str, Path]) -> Path:
-    return (
-        repositories["antigravity"]
-        / "docs"
-        / "ports"
-        / "2026-07-30-fixture"
-        / "ledger.yaml"
-    )
+    return repositories["antigravity"] / "docs" / "ports" / "2026-07-30-fixture" / "ledger.yaml"
 
 
 def attach_decided_candidate(ledger: dict[str, Any]) -> None:
     packet_ids = [packet["id"] for packet in ledger["campaign"]["edit_packets"]]
-    packet_by_id = {
-        packet["id"]: packet for packet in ledger["campaign"]["edit_packets"]
-    }
+    packet_by_id = {packet["id"]: packet for packet in ledger["campaign"]["edit_packets"]}
     ledger["candidates"] = [
         {
             "id": "stable-capability",
@@ -269,9 +259,7 @@ def test_duplicate_candidate_ownership_fails() -> None:
     candidate["provenance"].append(
         {"host": packet["host"], "commit": packet["commit"], "path": packet["path"]}
     )
-    assert any(
-        mutation["expected_error"] in error for error in inventory_errors(ledger)
-    )
+    assert any(mutation["expected_error"] in error for error in inventory_errors(ledger))
 
 
 def test_unclassified_packet_blocks_inventory_validation() -> None:
@@ -311,8 +299,7 @@ def test_pending_decision_requires_review_rationale_and_revisit_trigger() -> Non
     errors = inventory_errors(ledger)
     assert any(".decision.rationale: expected a non-empty string" in error for error in errors)
     assert any(
-        ".decision.revisit_trigger: expected a non-empty string" in error
-        for error in errors
+        ".decision.revisit_trigger: expected a non-empty string" in error for error in errors
     )
 
 
@@ -427,9 +414,7 @@ def test_first_campaign_owns_every_packet_and_records_exact_decisions() -> None:
     assert len(candidates) == 80
     assert ledger["campaign"]["unmatched_edit_packet_ids"] == []
     assert inventory_errors(ledger) == []
-    assert Counter(
-        candidate["decision"]["state"] for candidate in candidates
-    ) == Counter(
+    assert Counter(candidate["decision"]["state"] for candidate in candidates) == Counter(
         {
             "approved-survivor": 51,
             "blocked": 19,
@@ -438,9 +423,7 @@ def test_first_campaign_owns_every_packet_and_records_exact_decisions() -> None:
             "superseded": 1,
         }
     )
-    assert sum(
-        len(candidate["edit_packet_ids"]) for candidate in candidates
-    ) == len(packets)
+    assert sum(len(candidate["edit_packet_ids"]) for candidate in candidates) == len(packets)
     assert set(ledger["campaign"]["host_receipt"]) == {
         "schema",
         "catalog_digest",
@@ -462,19 +445,14 @@ def test_release_drift_must_match_exact_unowned_packet_set() -> None:
 
 def test_antigravity_snapshot_allows_feature_head_but_binds_origin_main() -> None:
     ledger = load_fixture()
-    snapshot = next(
-        row
-        for row in ledger["campaign"]["snapshots"]
-        if row["host"] == "antigravity"
-    )
+    snapshot = next(row for row in ledger["campaign"]["snapshots"] if row["host"] == "antigravity")
     snapshot["head_commit"] = "f" * 40
     assert inventory_errors(ledger) == []
 
     snapshot["inventory_commit"] = "f" * 40
     errors = inventory_errors(ledger)
     assert any(
-        "Antigravity inventory_commit must equal local origin/main" in error
-        for error in errors
+        "Antigravity inventory_commit must equal local origin/main" in error for error in errors
     )
 
 
@@ -507,9 +485,7 @@ def test_receipt_binding_retains_only_digest_and_sanitized_states() -> None:
     receipt = promotable_receipt()
     binding = port_ledger._sanitize_receipt_binding(receipt)
     assert set(binding) == {"schema", "catalog_digest", "receipt_sha256", "states"}
-    assert binding["states"] == [
-        {"capability": "agy.agent.execution", "state": "passed"}
-    ]
+    assert binding["states"] == [{"capability": "agy.agent.execution", "state": "passed"}]
     assert "runtime_roots" not in binding
     assert len(binding["receipt_sha256"]) == 64
 
@@ -584,12 +560,7 @@ def test_discovery_rejects_symlinked_nested_parent_before_repository_commands(
     repositories = make_repositories(tmp_path)
     outside = tmp_path / "outside"
     outside.mkdir()
-    campaign = (
-        repositories["antigravity"]
-        / "docs"
-        / "ports"
-        / "2026-07-30-fixture"
-    )
+    campaign = repositories["antigravity"] / "docs" / "ports" / "2026-07-30-fixture"
     campaign.mkdir(parents=True)
     nested = campaign / "nested"
     nested.symlink_to(outside, target_is_directory=True)
@@ -613,17 +584,9 @@ def test_discovery_rejects_symlinked_nested_parent_before_repository_commands(
 
 
 @pytest.mark.parametrize("host", ["claude", "codex"])
-def test_source_discovery_stops_on_local_head_origin_divergence(
-    tmp_path: Path, host: str
-) -> None:
+def test_source_discovery_stops_on_local_head_origin_divergence(tmp_path: Path, host: str) -> None:
     repositories = make_repositories(tmp_path)
-    output = (
-        repositories["antigravity"]
-        / "docs"
-        / "ports"
-        / "2026-07-30-fixture"
-        / "ledger.yaml"
-    )
+    output = repositories["antigravity"] / "docs" / "ports" / "2026-07-30-fixture" / "ledger.yaml"
     runner = FakeGitRunner(divergent_host=host)
     with pytest.raises(port_ledger.LedgerError, match="HEAD differs"):
         port_ledger.discover(
@@ -643,13 +606,7 @@ def test_antigravity_feature_head_is_recorded_but_origin_main_is_inventoried(
     tmp_path: Path,
 ) -> None:
     repositories = make_repositories(tmp_path)
-    output = (
-        repositories["antigravity"]
-        / "docs"
-        / "ports"
-        / "2026-07-30-fixture"
-        / "ledger.yaml"
-    )
+    output = repositories["antigravity"] / "docs" / "ports" / "2026-07-30-fixture" / "ledger.yaml"
     ledger = port_ledger.discover(
         campaign_id="2026-07-30-fixture",
         output=output,
@@ -661,20 +618,14 @@ def test_antigravity_feature_head_is_recorded_but_origin_main_is_inventoried(
         checked_at="2026-07-30T12:00:00Z",
     )
 
-    snapshot = next(
-        row
-        for row in ledger["campaign"]["snapshots"]
-        if row["host"] == "antigravity"
-    )
+    snapshot = next(row for row in ledger["campaign"]["snapshots"] if row["host"] == "antigravity")
     drift = next(
         row
         for row in ledger["campaign"]["release_drift"]["snapshots"]
         if row["host"] == "antigravity"
     )
     antigravity_packets = [
-        packet
-        for packet in ledger["campaign"]["edit_packets"]
-        if packet["host"] == "antigravity"
+        packet for packet in ledger["campaign"]["edit_packets"] if packet["host"] == "antigravity"
     ]
 
     assert snapshot == {
@@ -691,9 +642,7 @@ def test_antigravity_feature_head_is_recorded_but_origin_main_is_inventoried(
         "current_commit": COMMITS["antigravity"],
     }
     assert antigravity_packets
-    assert {
-        packet["commit"] for packet in antigravity_packets
-    } == {COMMITS["antigravity"]}
+    assert {packet["commit"] for packet in antigravity_packets} == {COMMITS["antigravity"]}
 
 
 def test_discovery_is_read_only_except_for_explicit_campaign_output(
@@ -709,13 +658,7 @@ def test_discovery_is_read_only_except_for_explicit_campaign_output(
         host: hashlib.sha256((repository / "sentinel.txt").read_bytes()).hexdigest()
         for host, repository in repositories.items()
     }
-    output = (
-        repositories["antigravity"]
-        / "docs"
-        / "ports"
-        / "2026-07-30-fixture"
-        / "ledger.yaml"
-    )
+    output = repositories["antigravity"] / "docs" / "ports" / "2026-07-30-fixture" / "ledger.yaml"
     runner = FakeGitRunner()
     ledger = port_ledger.discover(
         campaign_id="2026-07-30-fixture",
@@ -734,9 +677,7 @@ def test_discovery_is_read_only_except_for_explicit_campaign_output(
     assert before == after
     assert output.is_file()
     assert len(ledger["campaign"]["edit_packets"]) == 4
-    assert all(
-        call[1][0] in {"rev-parse", "diff", "ls-tree", "show"} for call in runner.calls
-    )
+    assert all(call[1][0] in {"rev-parse", "diff", "ls-tree", "show"} for call in runner.calls)
 
 
 def test_discovery_cannot_reach_legacy_copy_or_delete_functions(
@@ -750,13 +691,7 @@ def test_discovery_cannot_reach_legacy_copy_or_delete_functions(
     monkeypatch.setattr(shutil, "copytree", forbidden)
     monkeypatch.setattr(shutil, "rmtree", forbidden)
     repositories = make_repositories(tmp_path)
-    output = (
-        repositories["antigravity"]
-        / "docs"
-        / "ports"
-        / "2026-07-30-fixture"
-        / "ledger.yaml"
-    )
+    output = repositories["antigravity"] / "docs" / "ports" / "2026-07-30-fixture" / "ledger.yaml"
 
     port_ledger.discover(
         campaign_id="2026-07-30-fixture",
@@ -783,13 +718,7 @@ def test_stale_or_absent_history_delta_still_emits_complete_tree_packets(
             return super().run(repository, arguments)
 
     repositories = make_repositories(tmp_path)
-    output = (
-        repositories["antigravity"]
-        / "docs"
-        / "ports"
-        / "2026-07-30-fixture"
-        / "ledger.yaml"
-    )
+    output = repositories["antigravity"] / "docs" / "ports" / "2026-07-30-fixture" / "ledger.yaml"
     ledger = port_ledger.discover(
         campaign_id="2026-07-30-fixture",
         output=output,
@@ -822,9 +751,7 @@ def test_discovery_refresh_preserves_stable_candidate_ownership(tmp_path: Path) 
         checked_at="2026-07-30T12:00:00Z",
     )
     packet_ids = [packet["id"] for packet in first["campaign"]["edit_packets"]]
-    packet_by_id = {
-        packet["id"]: packet for packet in first["campaign"]["edit_packets"]
-    }
+    packet_by_id = {packet["id"]: packet for packet in first["campaign"]["edit_packets"]}
     first["candidates"] = [
         {
             "id": "stable-capability",
@@ -965,12 +892,8 @@ def test_changed_refresh_evidence_invalidates_decision_authority(
 
 
 def test_packet_identity_is_stable_across_content_refresh() -> None:
-    first = port_ledger._packet_id(
-        "claude", "history", "plugins/saga/README.md", "modified"
-    )
-    second = port_ledger._packet_id(
-        "claude", "history", "plugins/saga/README.md", "modified"
-    )
+    first = port_ledger._packet_id("claude", "history", "plugins/saga/README.md", "modified")
+    second = port_ledger._packet_id("claude", "history", "plugins/saga/README.md", "modified")
     assert first == second
 
 
@@ -979,8 +902,7 @@ def test_strict_loader_rejects_duplicate_top_level_key_with_location(
 ) -> None:
     ledger_path = tmp_path / "duplicate-top-level.yaml"
     ledger_path.write_text(
-        "schema: antigravity.semantic-port-ledger.v1\n"
-        "schema: antigravity.semantic-port-ledger.v1\n"
+        "schema: antigravity.semantic-port-ledger.v1\nschema: antigravity.semantic-port-ledger.v1\n"
     )
     with pytest.raises(
         port_ledger.LedgerError,
@@ -1037,8 +959,5 @@ def test_duplicate_candidate_decision_key_preserves_ledger_bytes(
     )
 
     assert result == 1
-    assert (
-        "duplicate YAML key 'planning-contract' at line 5, column 1"
-        in capsys.readouterr().err
-    )
+    assert "duplicate YAML key 'planning-contract' at line 5, column 1" in capsys.readouterr().err
     assert ledger_path.read_bytes() == before

@@ -66,12 +66,8 @@ SURFACE_KEYS = frozenset({"host", "repository", "paths"})
 SEED_KEYS = frozenset({"host", "commit"})
 HOST_RECEIPT_KEYS = frozenset({"schema", "catalog_digest", "receipt_sha256", "states"})
 CAPABILITY_STATE_KEYS = frozenset({"capability", "state"})
-PACKET_KEYS = frozenset(
-    {"id", "host", "commit", "path", "change", "content_sha256", "source"}
-)
-RELEASE_DRIFT_KEYS = frozenset(
-    {"checked_at", "status", "snapshots", "unmatched_edit_packet_ids"}
-)
+PACKET_KEYS = frozenset({"id", "host", "commit", "path", "change", "content_sha256", "source"})
+RELEASE_DRIFT_KEYS = frozenset({"checked_at", "status", "snapshots", "unmatched_edit_packet_ids"})
 DRIFT_SNAPSHOT_KEYS = frozenset({"host", "inventory_commit", "current_commit"})
 CANDIDATE_KEYS = frozenset(
     {
@@ -93,9 +89,7 @@ PROVENANCE_KEYS = frozenset({"host", "commit", "path"})
 RANKING_KEYS = frozenset(
     {"operator_value", "antigravity_fit", "proof_feasibility", "maintenance_cost"}
 )
-DECISION_KEYS = frozenset(
-    {"state", "rationale", "revisit_trigger", "operator", "decided_at"}
-)
+DECISION_KEYS = frozenset({"state", "rationale", "revisit_trigger", "operator", "decided_at"})
 DECISION_INPUT_KEYS = frozenset({"state", "rationale", "revisit_trigger"})
 
 DEFAULT_SURFACES: dict[str, tuple[str, ...]] = {
@@ -202,10 +196,15 @@ def _validate_git_arguments(arguments: Sequence[str]) -> None:
         raise LedgerError("unsafe Git argument")
     command = arguments[0]
     if command == "rev-parse":
-        if len(arguments) != 2 or arguments[1] not in {
-            "HEAD",
-            "refs/remotes/origin/main",
-        } and not arguments[1].endswith("^{commit}"):
+        if (
+            len(arguments) != 2
+            or arguments[1]
+            not in {
+                "HEAD",
+                "refs/remotes/origin/main",
+            }
+            and not arguments[1].endswith("^{commit}")
+        ):
             raise LedgerError("rev-parse form is not permitted")
     elif command == "diff":
         if len(arguments) < 5 or arguments[1:3] != ("--name-status", "-z"):
@@ -247,7 +246,9 @@ def _sequence(value: object, path: str, errors: list[str]) -> Sequence[Any] | No
     return cast(Sequence[Any], value)
 
 
-def _closed(value: Mapping[str, Any], allowed: frozenset[str], path: str, errors: list[str]) -> None:
+def _closed(
+    value: Mapping[str, Any], allowed: frozenset[str], path: str, errors: list[str]
+) -> None:
     for key in sorted(set(value) - allowed):
         errors.append(f"{path}: unknown field {key!r}")
     for key in sorted(allowed - set(value)):
@@ -427,9 +428,7 @@ def validate_ledger(ledger: object, *, inventory_only: bool = False) -> list[str
     return errors
 
 
-def _validate_snapshots(
-    value: object, errors: list[str]
-) -> dict[str, Mapping[str, Any]]:
+def _validate_snapshots(value: object, errors: list[str]) -> dict[str, Mapping[str, Any]]:
     rows = _sequence(value, "ledger.campaign.snapshots", errors)
     if rows is None:
         return {}
@@ -459,9 +458,7 @@ def _validate_snapshots(
             _sha(row.get(field), f"{path}.{field}", errors, SHA40_RE)
         if host == "antigravity":
             if row.get("inventory_commit") != row.get("origin_main_commit"):
-                errors.append(
-                    f"{path}: Antigravity inventory_commit must equal local origin/main"
-                )
+                errors.append(f"{path}: Antigravity inventory_commit must equal local origin/main")
         else:
             if row.get("inventory_commit") != row.get("head_commit"):
                 errors.append(f"{path}: inventory_commit must equal head_commit")
@@ -472,9 +469,7 @@ def _validate_snapshots(
     return snapshots
 
 
-def _validate_surfaces(
-    value: object, errors: list[str]
-) -> dict[str, Mapping[str, Any]]:
+def _validate_surfaces(value: object, errors: list[str]) -> dict[str, Mapping[str, Any]]:
     rows = _sequence(value, "ledger.campaign.selected_surfaces", errors)
     if rows is None:
         return {}
@@ -624,18 +619,13 @@ def _validate_packets(
                 and commit is not None
                 and commit != snapshot.get("inventory_commit")
             ):
-                errors.append(
-                    f"{path}.commit: must match the {host} inventory snapshot"
-                )
+                errors.append(f"{path}.commit: must match the {host} inventory snapshot")
             surface = surfaces.get(host)
             surface_paths = (
-                cast(Sequence[Any], surface.get("paths", []))
-                if surface is not None
-                else ()
+                cast(Sequence[Any], surface.get("paths", [])) if surface is not None else ()
             )
             if packet_path is not None and not any(
-                isinstance(surface_path, str)
-                and _path_is_within_surface(packet_path, surface_path)
+                isinstance(surface_path, str) and _path_is_within_surface(packet_path, surface_path)
                 for surface_path in surface_paths
             ):
                 errors.append(
@@ -651,9 +641,7 @@ def _validate_packets(
         ):
             expected_id = _packet_id(host, cast(str, source), packet_path, cast(str, change))
             if packet_id != expected_id:
-                errors.append(
-                    f"{path}.id: must equal deterministic packet ID {expected_id!r}"
-                )
+                errors.append(f"{path}.id: must equal deterministic packet ID {expected_id!r}")
         identity = (
             row.get("host"),
             row.get("commit"),
@@ -670,7 +658,9 @@ def _validate_packets(
             else:
                 packets[packet_id] = row
     if tree_hosts != HOSTS:
-        errors.append("ledger.campaign.edit_packets: complete current-tree packets require all hosts")
+        errors.append(
+            "ledger.campaign.edit_packets: complete current-tree packets require all hosts"
+        )
     if "claude" not in history_hosts:
         errors.append("ledger.campaign.edit_packets: Claude history-delta packets are required")
     return packets
@@ -723,13 +713,9 @@ def _validate_release_drift(
             snapshot = snapshots.get(cast(str, host))
             if snapshot is not None:
                 if row.get("inventory_commit") != snapshot.get("inventory_commit"):
-                    errors.append(
-                        f"{row_path}.inventory_commit: must match the campaign inventory"
-                    )
+                    errors.append(f"{row_path}.inventory_commit: must match the campaign inventory")
                 if row.get("current_commit") != snapshot.get("origin_main_commit"):
-                    errors.append(
-                        f"{row_path}.current_commit: must match local origin/main"
-                    )
+                    errors.append(f"{row_path}.current_commit: must match local origin/main")
     if seen != HOSTS:
         errors.append(f"{path}.snapshots: must disclose every host")
     drift_unmatched = _string_list(
@@ -787,9 +773,7 @@ def _validate_candidates(
         if provenance != expected_provenance:
             errors.append(f"{path}.provenance: must exactly bind every owned edit packet")
         _required_string(row.get("semantic_contract"), f"{path}.semantic_contract", errors)
-        _string_list(
-            row.get("adjacent_dependencies"), f"{path}.adjacent_dependencies", errors
-        )
+        _string_list(row.get("adjacent_dependencies"), f"{path}.adjacent_dependencies", errors)
         required_capabilities = _string_list(
             row.get("required_host_capabilities"),
             f"{path}.required_host_capabilities",
@@ -813,9 +797,7 @@ def _validate_candidates(
             for capability in required_capabilities
             if host_states.get(capability) in {"failed", "unknown", "unavailable"}
         ]
-        if blocked_caps and (
-            antigravity_state != "blocked-by-host" or proposed != "blocked"
-        ):
+        if blocked_caps and (antigravity_state != "blocked-by-host" or proposed != "blocked"):
             errors.append(
                 f"{path}: required non-passing host capabilities require "
                 "blocked-by-host and blocked disposition"
@@ -879,9 +861,7 @@ def _validate_decision(value: object, candidate_path: str, errors: list[str]) ->
     state = decision.get("state")
     if state not in DECISION_STATES:
         errors.append(f"{path}.state: expected one of {sorted(DECISION_STATES)}")
-    rationale = _required_string(
-        decision.get("rationale"), f"{path}.rationale", errors
-    )
+    rationale = _required_string(decision.get("rationale"), f"{path}.rationale", errors)
     revisit = _required_string(
         decision.get("revisit_trigger"),
         f"{path}.revisit_trigger",
@@ -909,9 +889,7 @@ def _packet_id(host: str, source: str, path: str, change: str) -> str:
     return f"edit-{host}-{digest}"
 
 
-def _content_at(
-    runner: GitRunner, repository: Path, commit: str, path: str
-) -> bytes:
+def _content_at(runner: GitRunner, repository: Path, commit: str, path: str) -> bytes:
     return runner.run(repository, ("show", "--no-ext-diff", f"{commit}:{path}"))
 
 
@@ -1038,13 +1016,8 @@ def _safe_output(target_repository: Path, campaign_id: str, output: Path) -> Pat
         raise LedgerError(f"antigravity repository does not exist: {lexical_target}")
     lexical_campaign = lexical_target / "docs" / "ports" / campaign_id
     lexical_output = _absolute_path(output)
-    if (
-        lexical_output != lexical_campaign
-        and lexical_campaign not in lexical_output.parents
-    ):
-        raise LedgerError(
-            f"discovery output must remain beneath docs/ports/{campaign_id}/"
-        )
+    if lexical_output != lexical_campaign and lexical_campaign not in lexical_output.parents:
+        raise LedgerError(f"discovery output must remain beneath docs/ports/{campaign_id}/")
     _reject_existing_symlink_components(lexical_target, lexical_output.parent)
     if lexical_output.is_symlink():
         raise LedgerError("discovery output may not be a symbolic link")
@@ -1086,9 +1059,7 @@ def discover(
     for host in sorted(HOSTS):
         repository = resolved_repositories[host]
         head = _resolve_commit(effective_runner, repository, "HEAD")
-        origin_main = _resolve_commit(
-            effective_runner, repository, "refs/remotes/origin/main"
-        )
+        origin_main = _resolve_commit(effective_runner, repository, "refs/remotes/origin/main")
         if host != "antigravity" and head != origin_main:
             raise LedgerError(f"{host} HEAD differs from local origin/main; discovery stopped")
         inventory_commit = origin_main if host == "antigravity" else head
@@ -1132,15 +1103,11 @@ def discover(
     existing = _load_existing_for_refresh(safe_output, campaign_id)
     candidates = cast(list[dict[str, Any]], existing.get("candidates", [])) if existing else []
     packet_by_id = {packet["id"]: packet for packet in packets}
-    old_campaign = (
-        cast(Mapping[str, Any], existing["campaign"]) if existing is not None else None
-    )
+    old_campaign = cast(Mapping[str, Any], existing["campaign"]) if existing is not None else None
     new_surfaces = [
         {
             "host": host,
-            "repository": _display_repository(
-                target_repository, resolved_repositories[host]
-            ),
+            "repository": _display_repository(target_repository, resolved_repositories[host]),
             "paths": list(DEFAULT_SURFACES[host]),
         }
         for host in sorted(HOSTS)
@@ -1148,22 +1115,15 @@ def discover(
     binding = _sanitize_receipt_binding(host_receipt)
     for candidate in candidates:
         original_packet_ids = list(cast(list[str], candidate["edit_packet_ids"]))
-        retained = [
-            packet_id
-            for packet_id in original_packet_ids
-            if packet_id in packet_by_id
-        ]
-        evidence_changed = (
-            old_campaign is not None
-            and _candidate_refresh_inputs_changed(
-                candidate,
-                old_campaign=old_campaign,
-                new_snapshots=snapshots,
-                new_surfaces=new_surfaces,
-                new_packets=packet_by_id,
-                new_receipt=binding,
-                retained_packet_ids=retained,
-            )
+        retained = [packet_id for packet_id in original_packet_ids if packet_id in packet_by_id]
+        evidence_changed = old_campaign is not None and _candidate_refresh_inputs_changed(
+            candidate,
+            old_campaign=old_campaign,
+            new_snapshots=snapshots,
+            new_surfaces=new_surfaces,
+            new_packets=packet_by_id,
+            new_receipt=binding,
+            retained_packet_ids=retained,
         )
         candidate["edit_packet_ids"] = retained
         candidate["provenance"] = _provenance_for(retained, packet_by_id)
@@ -1259,9 +1219,7 @@ def _candidate_refresh_inputs_changed(
     ):
         return True
 
-    required_capabilities = cast(
-        Sequence[str], candidate.get("required_host_capabilities", [])
-    )
+    required_capabilities = cast(Sequence[str], candidate.get("required_host_capabilities", []))
     if required_capabilities:
         old_receipt = cast(Mapping[str, Any], old_campaign.get("host_receipt", {}))
         if old_receipt != new_receipt:
@@ -1361,10 +1319,7 @@ def _provenance_for(
         )
         for packet_id in packet_ids
     }
-    return [
-        {"host": host, "commit": commit, "path": path}
-        for host, commit, path in sorted(unique)
-    ]
+    return [{"host": host, "commit": commit, "path": path} for host, commit, path in sorted(unique)]
 
 
 def _plain_data(value: Any) -> Any:
@@ -1471,12 +1426,7 @@ def render_report(ledger: Mapping[str, Any]) -> str:
                 f"  Antigravity state: {candidate['antigravity_state']}",
                 f"  semantic contract: {candidate['semantic_contract']}",
                 "  required host capabilities: "
-                + (
-                    ", ".join(
-                        cast(list[str], candidate["required_host_capabilities"])
-                    )
-                    or "none"
-                ),
+                + (", ".join(cast(list[str], candidate["required_host_capabilities"])) or "none"),
                 f"  actual decision: {decision['state']}",
                 f"  rationale: {decision['rationale']}",
                 f"  revisit trigger: {decision['revisit_trigger']}",
@@ -1508,7 +1458,9 @@ def record_decisions(
     root = _mapping(decision_input, "decisions", [])
     if root is None:
         raise LedgerError("decisions: expected an object keyed by every candidate ID")
-    expected_ids = {candidate["id"] for candidate in cast(list[dict[str, Any]], ledger["candidates"])}
+    expected_ids = {
+        candidate["id"] for candidate in cast(list[dict[str, Any]], ledger["candidates"])
+    }
     provided_ids = set(root)
     if provided_ids != expected_ids:
         missing = sorted(expected_ids - provided_ids)
@@ -1518,7 +1470,9 @@ def record_decisions(
             details.append("missing " + ", ".join(cast(list[str], missing)))
         if extra:
             details.append("extra/stale " + ", ".join(extra))
-        raise LedgerError("decision mapping must exactly match candidate IDs: " + "; ".join(details))
+        raise LedgerError(
+            "decision mapping must exactly match candidate IDs: " + "; ".join(details)
+        )
     if not operator.strip():
         raise LedgerError("operator identity must be non-empty")
     try:
