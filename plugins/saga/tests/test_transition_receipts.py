@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator, ValidationError
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -149,11 +150,40 @@ def test_receipt_binds_every_category_and_round_trips(tmp_path: Path) -> None:
     )
 
 
+def test_reference_schemas_validate_current_contract_and_receipt(tmp_path: Path) -> None:
+    contract_schema = json.loads(
+        (ROOT / "references" / "lifecycle-obligation-schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    receipt_schema = json.loads(
+        (ROOT / "references" / "transition-receipt-schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator.check_schema(contract_schema)
+    Draft202012Validator.check_schema(receipt_schema)
+    Draft202012Validator(contract_schema).validate(_contract().to_dict())
+    Draft202012Validator(receipt_schema).validate(_receipt(tmp_path).to_dict())
+
+    invalid = _contract().to_dict()
+    invalid["contract_id"] = "."
+    with pytest.raises(ValidationError):
+        Draft202012Validator(contract_schema).validate(invalid)
+
+
 def test_receipt_identity_is_stable_for_unchanged_inputs(tmp_path: Path) -> None:
     first = _receipt(tmp_path)
     second = _receipt(tmp_path)
     assert first.receipt_id == second.receipt_id
     assert first.to_json() == second.to_json()
+
+
+def test_deserialized_receipt_identity_cannot_be_forged(tmp_path: Path) -> None:
+    data = _receipt(tmp_path).to_dict()
+    data["receipt_id"] = "tr-forged"
+    with pytest.raises(M.TransitionReceiptError, match="identity mismatch"):
+        M.TransitionReceipt.from_dict(data)
 
 
 def test_claimed_success_cannot_override_computed_settlement(tmp_path: Path) -> None:
@@ -169,6 +199,40 @@ def test_claimed_success_cannot_override_computed_settlement(tmp_path: Path) -> 
     assert receipt.claimed_settlement is O.SettlementState.SATISFIED
     assert receipt.settlement_state is O.SettlementState.CONFLICTING
     assert "disagrees with computed settlement" in receipt.settlement_reasons[-1]
+
+
+def test_missing_or_unknown_input_identity_prevents_satisfied_receipt(
+    tmp_path: Path,
+) -> None:
+    input_evidence = _repository_evidence(tmp_path, "input", "input", "planner")
+    (tmp_path / input_evidence.reference).unlink()
+    missing = M.build_transition_receipt(
+        contract=_contract(),
+        transition_id="github-transition",
+        obligation_id="github-closed",
+        attempt=1,
+        input_refs=[input_evidence],
+        external_facts=[_github_fact()],
+        claimed_settlement="satisfied",
+        repo_root=tmp_path,
+    )
+    assert missing.settlement_state is O.SettlementState.CONFLICTING
+    assert "missing repository evidence" in missing.settlement_reasons[0]
+
+    unknown_input = replace(
+        input_evidence,
+        verification_state=O.VerificationState.UNKNOWN,
+    )
+    unavailable = M.build_transition_receipt(
+        contract=_contract(),
+        transition_id="github-transition",
+        obligation_id="github-closed",
+        attempt=1,
+        input_refs=[unknown_input],
+        external_facts=[_github_fact()],
+        repo_root=tmp_path,
+    )
+    assert unavailable.settlement_state is O.SettlementState.UNAVAILABLE
 
 
 def test_serialized_receipt_is_recomputed_against_contract(tmp_path: Path) -> None:
@@ -205,6 +269,12 @@ def test_write_rejects_different_content_at_the_same_identity(tmp_path: Path) ->
             )
         )
     ) == receipt
+
+
+def test_direct_receipt_object_cannot_bypass_schema_validation(tmp_path: Path) -> None:
+    receipt = replace(_receipt(tmp_path), schema="saga.transition-receipt.v2")
+    with pytest.raises(M.TransitionReceiptError, match="unsupported transition receipt schema"):
+        M.write_transition_receipt(tmp_path, "outcome-21", receipt)
 
 
 @pytest.mark.parametrize("schema", [None, "saga.transition-receipt.v2"])

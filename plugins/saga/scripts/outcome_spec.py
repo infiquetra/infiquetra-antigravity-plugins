@@ -220,11 +220,6 @@ class Node:
     # reconcile loop recurses. Distinct from ``leaf_saga_id`` and from saga's single-saga
     # ``orchestration_ref`` — never overload the latter (the rejected type-unsafe alternative).
     child_spec_ref: str = ""
-    # Additive proof-carrying lifecycle links (issue #21).  The contract and
-    # receipts are canonical repository artifacts; routing integration consumes
-    # them later.  Absent values emit no keys so existing specs stay stable.
-    obligation_contract_ref: str = ""
-    transition_receipt_refs: list[str] = field(default_factory=list)
     github: dict[str, Any] = field(default_factory=dict)
     worktree: dict[str, Any] = field(default_factory=dict)
     evidence: dict[str, Any] = field(default_factory=dict)
@@ -232,6 +227,11 @@ class Node:
     # Sandbox capability envelope (#287 U1). Absent => ambient x read-write; consumed by the
     # outcome_dispatcher enforceability probe (U3). Absent field emits no key (round-trip stable).
     sandbox: Sandbox | None = None
+    # Additive proof-carrying lifecycle links (issue #21). Keep these after all
+    # existing fields so positional Node construction remains backward compatible.
+    # Absent values emit no keys; routing integration consumes them later.
+    obligation_contract_ref: str = ""
+    transition_receipt_refs: list[str] = field(default_factory=list)
 
     @property
     def is_terminal(self) -> bool:
@@ -621,7 +621,7 @@ def _repository_ref_list(value: Any, *, where: str, field_name: str) -> list[str
 def _repository_ref(value: str, *, where: str, field_name: str) -> str:
     """Validate a normalized repository-relative POSIX artifact path."""
 
-    if "\\" in value or "\x00" in value:
+    if not isinstance(value, str) or "\\" in value or "\x00" in value:
         raise OutcomeSpecError(
             f"{where}: {field_name} must be a normalized repository-relative path"
         )

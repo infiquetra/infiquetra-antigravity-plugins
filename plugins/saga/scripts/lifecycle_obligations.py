@@ -142,7 +142,23 @@ class EvidenceRule:
             raise ObligationError("evidence rule independent must be a boolean")
         if kind in INDEPENDENT_EVIDENCE_KINDS and not independent:
             raise ObligationError(f"{kind.value} evidence must be declared independent")
-        return cls(kind=kind, minimum_count=count, independent=independent)
+        rule = cls(kind=kind, minimum_count=count, independent=independent)
+        rule.validate()
+        return rule
+
+    def validate(self) -> None:
+        if not isinstance(self.kind, EvidenceKind):
+            raise ObligationError("evidence rule kind must be an EvidenceKind")
+        if (
+            isinstance(self.minimum_count, bool)
+            or not isinstance(self.minimum_count, int)
+            or self.minimum_count < 1
+        ):
+            raise ObligationError("evidence rule minimum_count must be a positive integer")
+        if not isinstance(self.independent, bool):
+            raise ObligationError("evidence rule independent must be a boolean")
+        if self.kind in INDEPENDENT_EVIDENCE_KINDS and not self.independent:
+            raise ObligationError(f"{self.kind.value} evidence must be declared independent")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -171,7 +187,19 @@ class DegradedFallback:
         evidence = _rules(data.get("evidence"), "fallback.evidence")
         if not evidence:
             raise ObligationError("fallback.evidence must declare at least one evidence rule")
-        return cls(evidence=evidence, state=state)
+        fallback = cls(evidence=evidence, state=state)
+        fallback.validate()
+        return fallback
+
+    def validate(self) -> None:
+        if self.state is not SettlementState.DEGRADED:
+            raise ObligationError("an optional fallback state must be 'degraded'")
+        if not self.evidence:
+            raise ObligationError("fallback.evidence must declare at least one evidence rule")
+        for rule in self.evidence:
+            if not isinstance(rule, EvidenceRule):
+                raise ObligationError("fallback.evidence must contain EvidenceRule values")
+            rule.validate()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -239,14 +267,41 @@ class Obligation:
         return obligation
 
     def validate(self) -> None:
+        _validate_slug(self.obligation_id, "obligation.obligation_id")
+        if not isinstance(self.kind, ObligationKind):
+            raise ObligationError(
+                f"obligation {self.obligation_id} kind must be an ObligationKind"
+            )
+        if not isinstance(self.requirement, RequirementLevel):
+            raise ObligationError(
+                f"obligation {self.obligation_id} requirement must be a RequirementLevel"
+            )
+        for field_name, value in (("subject", self.subject), ("producer", self.producer)):
+            if not isinstance(value, str) or not value.strip():
+                raise ObligationError(
+                    f"obligation {self.obligation_id} requires non-empty {field_name}"
+                )
         if not self.required_evidence:
             raise ObligationError(
                 f"obligation {self.obligation_id} must declare required_evidence"
             )
+        for rule in self.required_evidence:
+            if not isinstance(rule, EvidenceRule):
+                raise ObligationError(
+                    f"obligation {self.obligation_id} required_evidence must contain "
+                    "EvidenceRule values"
+                )
+            rule.validate()
         if self.requirement is RequirementLevel.REQUIRED and self.fallback is not None:
             raise ObligationError(
                 f"required obligation {self.obligation_id} cannot declare a degraded fallback"
             )
+        if self.fallback is not None:
+            if not isinstance(self.fallback, DegradedFallback):
+                raise ObligationError(
+                    f"obligation {self.obligation_id} fallback must be a DegradedFallback"
+                )
+            self.fallback.validate()
         if self.kind is ObligationKind.STORED_PHASE:
             if self.phase not in STORED_LIFECYCLE_PHASES or self.command:
                 raise ObligationError(
@@ -349,6 +404,34 @@ class ObligationContract:
         return contract
 
     def validate(self) -> None:
+        if self.schema != SCHEMA_VERSION:
+            raise ObligationError(
+                f"unsupported lifecycle obligation schema {self.schema!r}; "
+                f"expected {SCHEMA_VERSION!r}"
+            )
+        _validate_slug(self.contract_id, "obligation contract.contract_id")
+        _validate_slug(self.workstream_id, "obligation contract.workstream_id")
+        if (
+            len(self.stored_lifecycle_phases) != len(set(self.stored_lifecycle_phases))
+            or any(phase not in STORED_LIFECYCLE_PHASES for phase in self.stored_lifecycle_phases)
+        ):
+            raise ObligationError(
+                "stored_lifecycle_phases must contain unique supported phase values"
+            )
+        if (
+            len(self.off_chain_obligations) != len(set(self.off_chain_obligations))
+            or any(command not in OFF_CHAIN_OBLIGATIONS for command in self.off_chain_obligations)
+        ):
+            raise ObligationError(
+                "off_chain_obligations must contain unique supported command values"
+            )
+        if not self.obligations:
+            raise ObligationError("obligation contract requires at least one obligation")
+        if any(not isinstance(obligation, Obligation) for obligation in self.obligations):
+            raise ObligationError("obligation contract obligations must contain Obligation values")
+        ids = [obligation.obligation_id for obligation in self.obligations]
+        if len(ids) != len(set(ids)):
+            raise ObligationError("obligation contract contains duplicate obligation_id values")
         for obligation in self.obligations:
             obligation.validate()
             if obligation.phase and obligation.phase not in self.stored_lifecycle_phases:
@@ -426,7 +509,7 @@ class Evidence:
         reference = _required_str(data, "reference", f"evidence {evidence_id}")
         if kind in REPOSITORY_EVIDENCE_KINDS:
             _repository_reference(reference, f"evidence {evidence_id}.reference")
-        return cls(
+        evidence = cls(
             evidence_id=evidence_id,
             kind=kind,
             subject=_required_str(data, "subject", f"evidence {evidence_id}"),
@@ -436,6 +519,38 @@ class Evidence:
             verification_state=state,
             assertion=_optional_str(data, "assertion", f"evidence {evidence_id}"),
         )
+        evidence.validate()
+        return evidence
+
+    def validate(self) -> None:
+        _validate_slug(self.evidence_id, "evidence.evidence_id")
+        if not isinstance(self.kind, EvidenceKind):
+            raise ObligationError(f"evidence {self.evidence_id} kind must be an EvidenceKind")
+        if not isinstance(self.verification_state, VerificationState):
+            raise ObligationError(
+                f"evidence {self.evidence_id} verification_state must be a VerificationState"
+            )
+        for field_name, value in (
+            ("subject", self.subject),
+            ("producer", self.producer),
+            ("reference", self.reference),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ObligationError(
+                    f"evidence {self.evidence_id} requires non-empty {field_name}"
+                )
+        if not isinstance(self.digest, str) or not _DIGEST.fullmatch(self.digest):
+            raise ObligationError(
+                f"evidence {self.evidence_id} digest must be 'sha256:' plus "
+                "64 lowercase hex characters"
+            )
+        if not isinstance(self.assertion, str):
+            raise ObligationError(f"evidence {self.evidence_id}.assertion must be a string")
+        if self.kind in REPOSITORY_EVIDENCE_KINDS:
+            _repository_reference(
+                self.reference,
+                f"evidence {self.evidence_id}.reference",
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -472,6 +587,10 @@ def evaluate_obligation(
     contract.validate()
     obligation = contract.obligation(obligation_id)
     records = tuple(evidence)
+    for record in records:
+        if not isinstance(record, Evidence):
+            raise ObligationError("evidence must contain Evidence values")
+        record.validate()
     duplicate_ids = _duplicates(record.evidence_id for record in records)
     if duplicate_ids:
         return SettlementResult(
@@ -666,8 +785,17 @@ def _optional_str(data: Mapping[str, Any], field_name: str, where: str) -> str:
 
 def _slug_value(data: Mapping[str, Any], field_name: str, where: str) -> str:
     value = _required_str(data, field_name, where)
-    if value in {".", ".."} or not _SLUG.fullmatch(value):
-        raise ObligationError(f"{where}.{field_name} must be a slug")
+    _validate_slug(value, f"{where}.{field_name}")
+    return value
+
+
+def _validate_slug(value: Any, where: str) -> str:
+    if (
+        not isinstance(value, str)
+        or value in {".", ".."}
+        or not _SLUG.fullmatch(value)
+    ):
+        raise ObligationError(f"{where} must be a slug")
     return value
 
 

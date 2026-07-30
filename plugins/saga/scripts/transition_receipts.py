@@ -19,13 +19,16 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lifecycle_obligations import (  # noqa: E402
+    REPOSITORY_EVIDENCE_KINDS,
     Evidence,
     EvidenceKind,
     ObligationContract,
     ObligationError,
     SettlementResult,
     SettlementState,
+    VerificationState,
     evaluate_obligation,
+    verify_repository_evidence,
 )
 
 SCHEMA_VERSION = "saga.transition-receipt.v1"
@@ -157,8 +160,51 @@ class TransitionReceipt:
         return receipt
 
     def validate_shape(self) -> None:
+        if self.schema != SCHEMA_VERSION:
+            raise TransitionReceiptError(
+                f"unsupported transition receipt schema {self.schema!r}; "
+                f"expected {SCHEMA_VERSION!r}"
+            )
+        for field_name, value in (
+            ("receipt_id", self.receipt_id),
+            ("contract_id", self.contract_id),
+            ("workstream_id", self.workstream_id),
+            ("transition_id", self.transition_id),
+            ("obligation_id", self.obligation_id),
+        ):
+            _validate_slug(value, f"transition receipt.{field_name}")
+        if isinstance(self.attempt, bool) or not isinstance(self.attempt, int) or self.attempt < 1:
+            raise TransitionReceiptError(
+                "transition receipt attempt must be a positive integer"
+            )
+        if not isinstance(self.claimed_settlement, SettlementState):
+            raise TransitionReceiptError(
+                "transition receipt claimed_settlement must be a SettlementState"
+            )
+        if not isinstance(self.settlement_state, SettlementState):
+            raise TransitionReceiptError(
+                "transition receipt settlement_state must be a SettlementState"
+            )
+        if (
+            not isinstance(self.settlement_reasons, tuple)
+            or any(
+                not isinstance(reason, str) or not reason
+                for reason in self.settlement_reasons
+            )
+        ):
+            raise TransitionReceiptError(
+                "transition receipt settlement_reasons must contain non-empty strings"
+            )
         for category, allowed in _CATEGORY_KINDS.items():
-            for item in getattr(self, category):
+            items = getattr(self, category)
+            if not isinstance(items, tuple):
+                raise TransitionReceiptError(f"transition receipt {category} must be a tuple")
+            for item in items:
+                if not isinstance(item, Evidence):
+                    raise TransitionReceiptError(
+                        f"transition receipt {category} must contain Evidence values"
+                    )
+                item.validate()
                 if item.kind not in allowed:
                     expected = ", ".join(sorted(kind.value for kind in allowed))
                     raise TransitionReceiptError(
@@ -169,6 +215,12 @@ class TransitionReceipt:
         if len(ids) != len(set(ids)):
             raise TransitionReceiptError(
                 "transition receipt contains duplicate evidence_id values across categories"
+            )
+        expected_id = _derive_receipt_id(self.identity_payload())
+        if self.receipt_id != expected_id:
+            raise TransitionReceiptError(
+                f"transition receipt identity mismatch: got {self.receipt_id!r}, "
+                f"expected {expected_id!r}"
             )
 
     def all_evidence(self, *, include_inputs: bool = False) -> tuple[Evidence, ...]:
@@ -207,6 +259,26 @@ class TransitionReceipt:
             "settlement_reasons": list(self.settlement_reasons),
         }
 
+    def identity_payload(self) -> dict[str, Any]:
+        """Return the normalized fields that determine receipt identity."""
+
+        return {
+            "contract_id": self.contract_id,
+            "workstream_id": self.workstream_id,
+            "transition_id": self.transition_id,
+            "obligation_id": self.obligation_id,
+            "attempt": self.attempt,
+            "input_refs": [item.to_dict() for item in self.input_refs],
+            "operator_decisions": [item.to_dict() for item in self.operator_decisions],
+            "execution_receipts": [item.to_dict() for item in self.execution_receipts],
+            "canonical_outputs": [item.to_dict() for item in self.canonical_outputs],
+            "check_results": [item.to_dict() for item in self.check_results],
+            "review_findings": [item.to_dict() for item in self.review_findings],
+            "lifecycle_evidence": [item.to_dict() for item in self.lifecycle_evidence],
+            "external_facts": [item.to_dict() for item in self.external_facts],
+            "claimed_settlement": self.claimed_settlement.value,
+        }
+
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2, sort_keys=False) + "\n"
 
@@ -232,9 +304,10 @@ def build_transition_receipt(
 
     if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:
         raise TransitionReceiptError("transition receipt attempt must be a positive integer")
-    if not _SLUG.fullmatch(transition_id):
-        raise TransitionReceiptError("transition_id must be a slug")
-    evidence_categories = {
+    contract.validate()
+    _validate_slug(transition_id, "transition_id")
+    _validate_slug(obligation_id, "obligation_id")
+    evidence_categories: dict[str, tuple[Evidence, ...]] = {
         "input_refs": tuple(input_refs),
         "operator_decisions": tuple(operator_decisions),
         "execution_receipts": tuple(execution_receipts),
@@ -244,13 +317,19 @@ def build_transition_receipt(
         "lifecycle_evidence": tuple(lifecycle_evidence),
         "external_facts": tuple(external_facts),
     }
+    _validate_evidence_categories(evidence_categories)
     proof = tuple(
         item
         for name, category in evidence_categories.items()
         if name != "input_refs"
         for item in category
     )
-    computed = evaluate_obligation(
+    identity_result = _repository_identity_result(
+        obligation_id,
+        tuple(item for category in evidence_categories.values() for item in category),
+        repo_root=repo_root,
+    )
+    computed = identity_result or evaluate_obligation(
         contract,
         obligation_id,
         proof,
@@ -272,7 +351,7 @@ def build_transition_receipt(
             f"claimed settlement {claim.value!r} disagrees with computed "
             f"settlement {computed.state.value!r}"
         )
-    identity_payload = {
+    identity_payload: dict[str, Any] = {
         "contract_id": contract.contract_id,
         "workstream_id": contract.workstream_id,
         "transition_id": transition_id,
@@ -284,7 +363,7 @@ def build_transition_receipt(
         },
         "claimed_settlement": claim.value,
     }
-    receipt_id = "tr-" + hashlib.sha256(_canonical_bytes(identity_payload)).hexdigest()[:24]
+    receipt_id = _derive_receipt_id(identity_payload)
     receipt = TransitionReceipt(
         receipt_id=receipt_id,
         contract_id=contract.contract_id,
@@ -316,6 +395,8 @@ def evaluate_transition_receipt(
 ) -> SettlementResult:
     """Recompute and verify a serialized receipt against its contract."""
 
+    receipt.validate_shape()
+    contract.validate()
     if receipt.contract_id != contract.contract_id:
         return SettlementResult(
             receipt.obligation_id,
@@ -328,7 +409,12 @@ def evaluate_transition_receipt(
             SettlementState.CONFLICTING,
             reasons=("receipt workstream_id does not match the supplied contract",),
         )
-    computed = evaluate_obligation(
+    identity_result = _repository_identity_result(
+        receipt.obligation_id,
+        receipt.all_evidence(include_inputs=True),
+        repo_root=repo_root,
+    )
+    computed = identity_result or evaluate_obligation(
         contract,
         receipt.obligation_id,
         receipt.all_evidence(),
@@ -420,6 +506,89 @@ def _evidence_list(data: Mapping[str, Any], field_name: str) -> tuple[Evidence, 
     )
 
 
+def _validate_evidence_categories(
+    categories: Mapping[str, tuple[Evidence, ...]],
+) -> None:
+    seen: set[str] = set()
+    for category, allowed in _CATEGORY_KINDS.items():
+        for item in categories[category]:
+            if not isinstance(item, Evidence):
+                raise TransitionReceiptError(f"{category} must contain Evidence values")
+            item.validate()
+            if item.kind not in allowed:
+                expected = ", ".join(sorted(kind.value for kind in allowed))
+                raise TransitionReceiptError(
+                    f"{category} cannot contain {item.kind.value}; expected {expected}"
+                )
+            if item.evidence_id in seen:
+                raise TransitionReceiptError(
+                    "transition receipt contains duplicate evidence_id values across categories"
+                )
+            seen.add(item.evidence_id)
+
+
+def _repository_identity_result(
+    obligation_id: str,
+    evidence: tuple[Evidence, ...],
+    *,
+    repo_root: Path | None,
+) -> SettlementResult | None:
+    """Fail closed when receipt evidence identities cannot be reproduced."""
+
+    unavailable: list[str] = []
+    unsatisfied: list[str] = []
+    conflicting: list[str] = []
+    for item in evidence:
+        if item.kind is EvidenceKind.INPUT:
+            if item.verification_state in {
+                VerificationState.UNKNOWN,
+                VerificationState.UNAVAILABLE,
+            }:
+                unavailable.append(
+                    f"input evidence {item.evidence_id} is {item.verification_state.value}"
+                )
+                continue
+            if item.verification_state is VerificationState.UNVERIFIED:
+                unsatisfied.append(f"input evidence {item.evidence_id} is unverified")
+                continue
+            if item.verification_state is VerificationState.CONFLICTING:
+                conflicting.append(f"input evidence {item.evidence_id} is conflicting")
+                continue
+        if (
+            item.kind in REPOSITORY_EVIDENCE_KINDS
+            and item.verification_state is VerificationState.VERIFIED
+        ):
+            ok, reason = verify_repository_evidence(item, repo_root=repo_root)
+            if not ok:
+                if repo_root is None:
+                    unavailable.append(reason)
+                else:
+                    conflicting.append(reason)
+    if conflicting:
+        return SettlementResult(
+            obligation_id,
+            SettlementState.CONFLICTING,
+            reasons=tuple(conflicting),
+        )
+    if unavailable:
+        return SettlementResult(
+            obligation_id,
+            SettlementState.UNAVAILABLE,
+            reasons=tuple(unavailable),
+        )
+    if unsatisfied:
+        return SettlementResult(
+            obligation_id,
+            SettlementState.UNSATISFIED,
+            reasons=tuple(unsatisfied),
+        )
+    return None
+
+
+def _derive_receipt_id(identity_payload: Mapping[str, Any]) -> str:
+    return "tr-" + hashlib.sha256(_canonical_bytes(identity_payload)).hexdigest()[:24]
+
+
 def _canonical_bytes(value: Mapping[str, Any]) -> bytes:
     return json.dumps(
         value,
@@ -450,6 +619,15 @@ def _required_str(data: Mapping[str, Any], field_name: str, where: str) -> str:
 
 def _slug_value(data: Mapping[str, Any], field_name: str, where: str) -> str:
     value = _required_str(data, field_name, where)
-    if value in {".", ".."} or not _SLUG.fullmatch(value):
-        raise TransitionReceiptError(f"{where}.{field_name} must be a slug")
+    _validate_slug(value, f"{where}.{field_name}")
+    return value
+
+
+def _validate_slug(value: Any, where: str) -> str:
+    if (
+        not isinstance(value, str)
+        or value in {".", ".."}
+        or not _SLUG.fullmatch(value)
+    ):
+        raise TransitionReceiptError(f"{where} must be a slug")
     return value

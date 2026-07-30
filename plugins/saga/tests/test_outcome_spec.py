@@ -148,6 +148,41 @@ def test_absent_lifecycle_references_emit_no_keys() -> None:
     assert "transition_receipt_refs" not in node.to_dict()
 
 
+def test_additive_lifecycle_fields_preserve_positional_node_construction() -> None:
+    github = {"issue": "21"}
+    worktree = {"branch": "feat/example"}
+    evidence = {"source": "fixture"}
+    cost = {"usd": 1}
+    node = M.Node(
+        "legacy",
+        "Legacy positional constructor",
+        "code",
+        "pending",
+        "inline",
+        False,
+        False,
+        False,
+        [],
+        "none",
+        None,
+        None,
+        [],
+        "",
+        "",
+        github,
+        worktree,
+        evidence,
+        cost,
+        None,
+    )
+    assert node.github is github
+    assert node.worktree is worktree
+    assert node.evidence is evidence
+    assert node.cost is cost
+    assert node.obligation_contract_ref == ""
+    assert node.transition_receipt_refs == []
+
+
 # --------------------------------------------------------------------------- edge cases
 
 

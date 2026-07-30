@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -101,6 +102,24 @@ def test_unknown_fields_and_duplicate_obligations_fail_closed() -> None:
     data["obligations"].append(dict(data["obligations"][0]))
     with pytest.raises(M.ObligationError, match="duplicate obligation_id"):
         M.ObligationContract.from_dict(data)
+
+
+def test_direct_contract_and_evidence_objects_cannot_bypass_validation(
+    tmp_path: Path,
+) -> None:
+    contract = replace(_contract(), schema="saga.lifecycle-obligation.v2")
+    with pytest.raises(M.ObligationError, match="unsupported lifecycle obligation schema"):
+        M.evaluate_obligation(contract, "work-proof", [], repo_root=tmp_path)
+
+    evidence = _repo_evidence(
+        tmp_path,
+        "output",
+        "canonical-output",
+        producer="work-agent",
+    )
+    invalid = replace(evidence, verification_state="verified")  # type: ignore[arg-type]
+    with pytest.raises(M.ObligationError, match="must be a VerificationState"):
+        M.evaluate_obligation(_contract(), "work-proof", [invalid], repo_root=tmp_path)
 
 
 def test_required_obligation_cannot_degrade_and_independent_roles_are_mandatory() -> None:
