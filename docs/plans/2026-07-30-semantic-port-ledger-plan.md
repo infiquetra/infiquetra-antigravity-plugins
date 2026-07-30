@@ -8,7 +8,7 @@ linked_issue: https://github.com/infiquetra/infiquetra-antigravity-plugins/issue
 reviewed: 2026-07-30
 review_status: ready
 review_artifact: docs/reviews/2026-07-30-semantic-port-ledger-plan-doc-review.md
-workflow_revision: 2
+workflow_revision: 3
 ---
 
 # Semantic Port Ledger and Read-Only Drift Workflow Implementation Plan
@@ -434,9 +434,20 @@ risk and Jeff approves a contract amendment. The review occurs before the surviv
 receives a tested and reviewed candidate packet. One remediation attempt and one targeted recheck
 are allowed.
 
+Revision 2 used that remediation and recheck allowance. The recheck passed the 50 focused tests,
+all four adversarial review checks, the real campaign inventory, the deterministic report, and the
+complete 80-candidate decision packet, but it failed because two test helpers returned untyped
+PyYAML values from functions with concrete return annotations. Jeff approved revision 3 as a
+narrow exception after that mandatory stop. The exception may change only the focused test module,
+must use explicit type narrowing rather than weaken mypy, and receives one independent rerun of the
+focused mypy command and 50-test suite. The passing revision-2 recheck evidence remains bound to its
+validated receipt; no other failed check, production change, second remediation, or second recheck
+is permitted by this amendment.
+
 The `record-decisions` assignment has a deliberate manual release condition: approval of this
-Workflow Contract does not approve any port candidate. Root must pause after `recheck-preapproval`
-and obtain Jeff's complete candidate disposition mapping before launching it.
+Workflow Contract does not approve any port candidate. Root must pause after
+`confirm-recheck-typing` and obtain Jeff's complete candidate disposition mapping before launching
+it.
 
 ## Workflow Contract
 
@@ -449,7 +460,9 @@ and obtain Jeff's complete candidate disposition mapping before launching it.
 | review-ledger | validate-preapproval | devils-advocate-reviewer | review_high | none | reviewer-result.v1 adjudicates requirements, completeness, read-only boundaries, ranking authority, decision gating, failure handling, and scope with concrete P0-P3 findings | review_max@terminal-failure-or-ambiguity |
 | remediate-ledger | review-ledger | remediation-worker | work_high | scripts/port_ledger.py,scripts/port_claude_plugin.py,.agents/skills/port-claude-plugins/SKILL.md,plugins/saga/tests/test_port_ledger.py,plugins/saga/tests/fixtures/port-ledger,docs/ports/2026-07-30-saga-reliability,docs/engineering-journal/DECISIONS.md,docs/code-reviews/2026-07-30-semantic-port-ledger-code-review.md | every actionable P0-P3 finding is fixed or evidence-reclassified, the durable code-review artifact records dispositions, and affected focused checks pass in one remediation attempt | none |
 | recheck-preapproval | remediate-ledger | scenario-tester | test_medium | none | one targeted recheck proves the remediated pending ledger is complete except for operator decisions and produces the exact ranked decision packet with clean sibling repositories | work_high@terminal-failure |
-| record-decisions | recheck-preapproval | implementation-worker | work_medium | docs/ports/2026-07-30-saga-reliability/ledger.yaml,docs/ports/2026-07-30-saga-reliability/README.md,docs/engineering-journal/DECISIONS.md | after root receives Jeff's complete candidate mapping, only that mapping is recorded, zero candidates remain pending, and no migration units, estimates, sequencing, sibling writes, installs, or outcome edges are created | none |
+| repair-recheck-typing | recheck-preapproval | remediation-worker | work_high | plugins/saga/tests/test_port_ledger.py | after the failed recheck and Jeff's explicit amendment approval, type-narrow only the two PyYAML-derived test-helper returns without changing production code or weakening mypy, then pass the focused test-module mypy command and the 50-test suite | none |
+| confirm-recheck-typing | repair-recheck-typing | scenario-tester | test_medium | none | independently rerun mypy on the focused test module and the 50-test suite, confirm both pass, and bind the unchanged complete decision packet from the validated failed-recheck receipt | none |
+| record-decisions | confirm-recheck-typing | implementation-worker | work_medium | docs/ports/2026-07-30-saga-reliability/ledger.yaml,docs/ports/2026-07-30-saga-reliability/README.md,docs/engineering-journal/DECISIONS.md | after root receives Jeff's complete candidate mapping, only that mapping is recorded, zero candidates remain pending, and no migration units, estimates, sequencing, sibling writes, installs, or outcome edges are created | none |
 | validate-final | record-decisions | scenario-tester | test_medium | none | final validate and report commands, focused tests, Ruff, mypy, plugin validation, and full pytest pass with zero unmatched drift and clean sibling repositories | work_high@terminal-failure |
 | integrate-reviewed-branch | validate-final | git-integration-operator | work_medium | none | run git diff --name-only and prove the final diff equals the approved write-path union excluding .serena/project.yml, then commit, push, open or update the issue-linked PR, wait for required CI, squash-merge, and verify the merge commit is an ancestor of origin/main | none |
 
@@ -460,7 +473,7 @@ and obtain Jeff's complete candidate disposition mapping before launching it.
 | git-discovery-proof | discover-campaign | discover-campaign | read-only Git command log and final `git diff --name-only` prove the raw ledger is bound to the three approved local refs, Antigravity inventory uses origin/main despite feature-branch HEAD, and neither sibling repository changed | yes | stop before semantic curation; no non-Git role may replace or bypass the missing evidence |
 | focused-preapproval | validate-preapproval | validate-preapproval | `uv run pytest plugins/saga/tests/test_port_ledger.py -q`; scoped Ruff and mypy; `python3 scripts/port_ledger.py validate --inventory-only docs/ports/2026-07-30-saga-reliability/ledger.yaml`; pending report; validated Git-operator proof shows no Claude, Codex, install-root, or unrelated target mutation | yes | return to the owning implementation unit; do not weaken schema, coverage, or read-only rules |
 | reviewer-assurance | review-ledger | review-ledger | validated reviewer-result.v1 covers the full approved diff and reports every finding with a scope disposition | yes | block release; send all actionable planned findings to the single remediation assignment |
-| remediation-recheck | recheck-preapproval | recheck-preapproval | durable code-review artifact accounts for every P0-P3 finding and one targeted recheck passes | yes | stop for Jeff; no second remediation or reviewer is launched automatically |
+| remediation-recheck | confirm-recheck-typing | confirm-recheck-typing | the durable code-review artifact accounts for every P0-P3 review finding; the validated revision-2 recheck passes every substantive check and exposes only RC-001; Jeff explicitly approves the test-only repair; and the independent revision-3 mypy plus 50-test rerun passes | yes | stop for Jeff; no further repair, tester, or reviewer is launched automatically |
 | explicit-survivor-decision | record-decisions | record-decisions | root readback binds the recorded complete candidate mapping to Jeff's explicit survivor and non-survivor decision; Workflow Contract approval alone is not decision approval | yes | keep every candidate pending and stop before final validation or Git integration |
 | final-validation | validate-final | validate-final | issue verification commands plus `uv run pytest -q` pass; validate reports zero pending/unmatched candidates; release-drift disclosure is current; sibling repos remain clean relative to their pre-run state | yes | return to the owning unit only within the approved one-hop rule; otherwise stop for Jeff |
 | delivery | integrate-reviewed-branch | integrate-reviewed-branch | final `git diff --name-only` matches the approved union; PR checks pass; squash merge succeeds; fetched `origin/main` contains the merge; `.serena/project.yml` is absent from every commit | yes | do not claim issue completion; repair only approved Git integration drift or stop |
@@ -487,10 +500,12 @@ survivors.
 6. U4 replaces the normal runbook and records the governance decisions.
 7. Focused validation and independent review run before Jeff sees the decision packet.
 8. One remediation and one targeted recheck close every actionable review finding.
-9. Root presents the complete ranked report and pauses for Jeff's survivor mapping.
-10. The exact mapping is recorded and the full validation ladder runs.
-11. The final Git integration operator commits, pushes, verifies CI, merges, and proves `origin/main`.
-12. Root closes issue #16, updates the Operations board and outcome evidence, and uses the approved
+9. After the targeted recheck stops on RC-001, the operator-approved revision 3 exception
+   type-narrows only the two test helpers and independently reruns focused mypy and the 50-test suite.
+10. Root presents the complete ranked report and pauses for Jeff's survivor mapping.
+11. The exact mapping is recorded and the full validation ladder runs.
+12. The final Git integration operator commits, pushes, verifies CI, merges, and proves `origin/main`.
+13. Root closes issue #16, updates the Operations board and outcome evidence, and uses the approved
    stable IDs to unlock planning for issue #15 without inventing migration units.
 
 ## Prerequisite and Unlock Map

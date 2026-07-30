@@ -134,3 +134,31 @@ reviewer, one remediation, one targeted recheck, and no external actions. All ov
 sets are dependency-ordered. Only the two `git-integration-operator` assignments may run Git: the
 first produces read-only discovery evidence and the second performs final delivery. No actionable
 plan-review finding remains after the amendment.
+
+## Workflow Revision 3 Amendment Review
+
+Revision 2 completed discovery, semantic curation, preapproval validation, independent review, and
+the single planned remediation. Its targeted recheck passed the 50-test suite, all four adversarial
+review checks, real campaign validation, deterministic reporting, and the complete 80-candidate
+decision packet. It stopped correctly because scoped mypy found two `no-any-return` errors in the
+focused test module. The recheck changed no files.
+
+Jeff explicitly approved a narrow revision 3 exception after that stop. The amendment review found
+three actionable contract and documentation issues and fixed all three:
+
+| id | priority | finding | disposition |
+|---|---|---|---|
+| A03 | P1 | Continuing directly from a failed recheck would violate the approved stop rule and erase the distinction between operator authorization and automatic retry. | Fixed: revision 3 records Jeff's explicit approval and adds a dependency-ordered test-only repair plus independent confirmation before the operator gate. |
+| A04 | P2 | A generic retry could reopen production code, weaken mypy, or repeat already-passing review work. | Fixed: the repair writes only `plugins/saga/tests/test_port_ledger.py`, requires explicit type narrowing, and reruns only focused mypy plus the 50-test suite; the independent confirmation has no writes. |
+| A05 | P3 | The sequencing list did not represent the revision-3 exception and would send the operator directly from the failed recheck to the survivor gate. | Fixed: the exception, decision gate, delivery, and closeout steps are represented and numbered explicitly. |
+
+Revision 3 retains the validated passing evidence from the failed recheck because the amendment
+does not alter production code, fixtures, ledger data, documentation, or the decision packet. It
+does not authorize another reviewer, production remediation, retry after a second failure, survivor
+decision, migration planning, Git operation, installation, deployment, dependency, schema, or
+outcome edge.
+
+The amended schema v3 contract compiles with twelve assignments, seven blocking checks, one
+independent reviewer, the completed planned remediation and recheck, one explicitly approved
+test-only correction and independent confirmation, and no external actions. All overlapping write
+sets are dependency-ordered. No actionable P0-P3 plan-review finding remains.
