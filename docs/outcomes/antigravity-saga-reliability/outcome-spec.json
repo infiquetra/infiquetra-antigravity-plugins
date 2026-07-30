@@ -54,7 +54,8 @@
       "github": {
         "repo": "infiquetra/infiquetra-antigravity-plugins",
         "issue": "infiquetra/infiquetra-antigravity-plugins#21",
-        "sub_issue": 21
+        "sub_issue": 21,
+        "pr": "https://github.com/infiquetra/infiquetra-antigravity-plugins/pull/25"
       },
       "worktree": {},
       "evidence": {},
