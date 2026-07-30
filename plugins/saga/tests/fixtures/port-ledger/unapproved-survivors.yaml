@@ -1,0 +1,4 @@
+planning-contract:
+  state: approved-survivor
+  rationale: The operator selected the planning contract.
+  revisit_trigger: Revisit if the lifecycle changes.
