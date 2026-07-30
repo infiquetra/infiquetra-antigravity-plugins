@@ -6,6 +6,7 @@ classification: issue-phase-formal-artifact
 reviewed_revision: working-tree-based-on-6565ddb
 linked_issue: https://github.com/infiquetra/infiquetra-antigravity-plugins/issues/16
 verdict: ready-for-workflow-approval
+amended: 2026-07-30
 ---
 
 # Semantic Port Ledger Plan Review
@@ -109,3 +110,27 @@ repositories may advance after the pinned snapshots, heuristic edit packets stil
 semantic curation, and Jeff has not yet selected any survivor. The workflow therefore keeps release
 drift fail-closed, reviews the pending packet before presenting it, and pauses again for the complete
 operator decision before final validation or merge.
+
+## Workflow Revision 2 Amendment Review
+
+Workflow revision 1 stopped safely at `implement-ledger-attempt-1`. The typed blocked result
+validated against the approved assignment and reported eleven changed paths, 31 passing focused
+tests, passing scoped Ruff and mypy, a passing plugin doctor, and three findings. No Git command,
+sibling write, installation, or out-of-scope edit occurred.
+
+Two P1 contract findings required a material graph amendment:
+
+| id | priority | finding | disposition |
+|---|---|---|---|
+| A01 | P1 | The implementation worker was required to produce Git-backed history/tree evidence, while Verified Workflow policy permits only `git-integration-operator` to run Git commands, including read-only commands invoked through the discovery script. | Fixed: revision 2 separates non-Git boundary repair, Git-owned discovery, and semantic curation into three dependency-ordered assignments. |
+| A02 | P1 | The plan required Antigravity `HEAD == origin/main`, which is false by design after the issue branch contains the committed plan. That would make every feature-branch discovery stop. | Fixed: Claude and Codex still require matching local refs; Antigravity records feature-branch HEAD separately and binds inventory to the pinned local `origin/main` target baseline. |
+
+The P3 Bandit B404 subprocess-import warning is an actionable planned implementation finding. It is
+assigned to `repair-discovery-boundary`, which must resolve it and rerun focused non-Git checks
+before the Git discovery assignment is released.
+
+The amended schema v3 contract compiles with ten assignments, seven blocking checks, one independent
+reviewer, one remediation, one targeted recheck, and no external actions. All overlapping write
+sets are dependency-ordered. Only the two `git-integration-operator` assignments may run Git: the
+first produces read-only discovery evidence and the second performs final delivery. No actionable
+plan-review finding remains after the amendment.

@@ -8,6 +8,7 @@ linked_issue: https://github.com/infiquetra/infiquetra-antigravity-plugins/issue
 reviewed: 2026-07-30
 review_status: ready
 review_artifact: docs/reviews/2026-07-30-semantic-port-ledger-plan-doc-review.md
+workflow_revision: 2
 ---
 
 # Semantic Port Ledger and Read-Only Drift Workflow Implementation Plan
@@ -48,11 +49,14 @@ The campaign ID is `2026-07-30-saga-reliability`. Its planning-time inputs are:
 | host contract | merged GitHub issue #20 and PR #24 | merge commit `b3c9855778ef776364860437b63ebc2bea53bc48` | final fit claims consume the shared capability receipt vocabulary and may not invent host support |
 
 Implementation must read all three local `HEAD` and `origin/main` refs before discovery without
-fetching, pulling, or updating either sibling repository. If a local ref differs from the planning
-snapshot, the ledger records both the planning snapshot and the actual inventory snapshot. If
-`HEAD` and local `origin/main` disagree, discovery stops rather than choosing one silently. This
-comparison is disclosure, not permission to broaden the selected surface. The release-drift check
-repeats the same local read-only comparison.
+fetching, pulling, or updating either sibling repository. Claude and Codex discovery stops when
+their local `HEAD` and `origin/main` disagree. Antigravity is intentionally implemented on this
+feature branch, so its inventory snapshot is the pinned local `origin/main` commit while its
+separate working `HEAD` is recorded as implementation context and may differ. If any local
+`origin/main` differs from the planning snapshot, the ledger records both the planning snapshot and
+the actual inventory snapshot. This comparison is disclosure, not permission to broaden the
+selected surface. The release-drift check repeats the same local read-only comparison against each
+inventory commit.
 
 The existing uncommitted `.serena/project.yml` change belongs to the operator and is excluded from
 every write set and commit.
@@ -324,17 +328,21 @@ state.
 - `plugins/saga/tests/fixtures/port-ledger/`
 
 **Approach:** Add an injected Git command runner with a strict read-only subcommand allowlist.
-Normalize commit/path/change/content identity, read local `HEAD` and `origin/main` without updating
-refs, compare the historical Claude seed with all three current trees, and preserve existing stable
-IDs during refresh. Reject output outside the selected campaign directory. Keep the legacy copy
-helper isolated and prove it is never imported or invoked by discovery.
+Normalize commit/path/change/content identity and read local `HEAD` and `origin/main` without
+updating refs. Claude and Codex inventory their matching `HEAD`/`origin/main`; Antigravity records
+the feature-branch `HEAD` but inventories its pinned `origin/main` target baseline so planning and
+implementation commits do not become false port candidates. Compare the historical Claude seed
+with all three inventory trees and preserve existing stable IDs during refresh. Reject output
+outside the selected campaign directory. Keep the legacy copy helper isolated and prove it is never
+imported or invoked by discovery.
 
 **Test scenarios:**
 
 - Temporary Claude, Codex, and Antigravity repositories yield pinned snapshots and normalized
   packets without worktree, index, ref, or untracked-file changes.
-- Divergent local `HEAD` and `origin/main` stop discovery; no fetch, pull, checkout, or ref update is
-  attempted.
+- Divergent Claude or Codex local `HEAD` and `origin/main` stop discovery; Antigravity feature-branch
+  divergence is recorded while its inventory remains bound to local `origin/main`.
+- No fetch, pull, checkout, or ref update is attempted.
 - An absent or stale history seed still yields the complete current-tree inventory.
 - Repeated edits refresh under the existing stable candidate ID.
 - A new unmatched edit creates disclosed release drift and blocks final validation.
@@ -356,8 +364,9 @@ decision mapping.
 - `docs/ports/2026-07-30-saga-reliability/README.md`
 - `docs/engineering-journal/DECISIONS.md`
 
-**Approach:** Read the three local `HEAD` and `origin/main` refs, pin the actual inventory snapshots,
-run discovery, and curate every scoped edit into one stable candidate or an explicit metadata-only
+**Approach:** Consume the Git operator's three-host discovery output, with Claude and Codex bound to
+their matching local `HEAD`/`origin/main` and Antigravity bound to its local `origin/main` target
+baseline. Curate every scoped edit into one stable candidate or an explicit metadata-only
 candidate. Run the host doctor through its safe observation interface and retain only the
 promotable receipt digest and sanitized capability states. Assess the four ranking inputs with
 evidence and leave every decision `pending`. After `validate --inventory-only`, focused checks, and
@@ -412,6 +421,13 @@ Issue #16 uses a root-orchestrated Codex Verified Workflow. All implementation, 
 remediation, and Git work are executable assignments. Root only releases dependencies, verifies
 runtime and typed-result receipts, enforces the operator decision pause, and reports gates.
 
+Workflow revision 1 stopped safely after its implementation worker built the ledger tooling and
+fixtures but could not run the Git-backed campaign discovery that its role forbids. Revision 2
+starts from that preserved approved-path work. It first repairs the target snapshot rule without
+running Git, then delegates actual discovery and cleanliness proof to a Git integration operator,
+then delegates semantic curation to an implementation worker. No completed gate, review, or
+delivery evidence is carried forward from the blocked attempt.
+
 The independent review is one Devil's Advocate review at `review_high`. A second reviewer would be
 disproportionate for this personal plugin-governance tool unless implementation reveals a concrete
 risk and Jeff approves a contract amendment. The review occurs before the survivor decision so Jeff
@@ -426,8 +442,10 @@ and obtain Jeff's complete candidate disposition mapping before launching it.
 
 | id | depends | role | profile | writes | completion | fallback |
 |---|---|---|---|---|---|---|
-| implement-ledger | - | implementation-worker | work_high | scripts/port_ledger.py,scripts/port_claude_plugin.py,.agents/skills/port-claude-plugins/SKILL.md,plugins/saga/tests/test_port_ledger.py,plugins/saga/tests/fixtures/port-ledger,docs/ports/2026-07-30-saga-reliability,docs/engineering-journal/DECISIONS.md | U1-U4 produce a complete pending campaign ledger, deterministic report, sanitized host-receipt binding, read-only discovery proof, and focused passing checks without sibling or installed-plugin changes | none |
-| validate-preapproval | implement-ledger | scenario-tester | test_medium | none | focused pytest, Ruff, mypy, inventory-only validation, pending-ledger report, snapshot disclosure, and sibling-repository cleanliness proofs pass | work_high@terminal-failure |
+| repair-discovery-boundary | - | implementation-worker | work_high | scripts/port_ledger.py,plugins/saga/tests/test_port_ledger.py,plugins/saga/tests/fixtures/port-ledger,docs/ports/2026-07-30-saga-reliability/README.md | adopt the blocked attempt's approved-path tooling, allow Antigravity feature-branch HEAD while binding its inventory to origin/main, resolve the scoped Bandit warning, and pass focused non-Git tests | none |
+| discover-campaign | repair-discovery-boundary | git-integration-operator | work_medium | docs/ports/2026-07-30-saga-reliability/ledger.yaml | run only the approved read-only Git discovery against the three local repositories, write the raw pending ledger, prove Claude and Codex HEAD equal origin/main, bind Antigravity inventory to origin/main while recording feature-branch HEAD, and run git diff --name-only to prove only the approved ledger path changed and sibling repositories remained clean | none |
+| curate-campaign | discover-campaign | implementation-worker | work_high | scripts/port_ledger.py,scripts/port_claude_plugin.py,.agents/skills/port-claude-plugins/SKILL.md,plugins/saga/tests/test_port_ledger.py,plugins/saga/tests/fixtures/port-ledger,docs/ports/2026-07-30-saga-reliability,docs/engineering-journal/DECISIONS.md | U1-U4 produce a complete pending campaign ledger, deterministic report, sanitized host-receipt binding, stable semantic curation of every packet, and focused passing checks without sibling or installed-plugin changes | none |
+| validate-preapproval | curate-campaign | scenario-tester | test_medium | none | focused pytest, Ruff, mypy, inventory-only validation, pending-ledger report, snapshot disclosure, and recorded Git-operator sibling-cleanliness proofs pass | work_high@terminal-failure |
 | review-ledger | validate-preapproval | devils-advocate-reviewer | review_high | none | reviewer-result.v1 adjudicates requirements, completeness, read-only boundaries, ranking authority, decision gating, failure handling, and scope with concrete P0-P3 findings | review_max@terminal-failure-or-ambiguity |
 | remediate-ledger | review-ledger | remediation-worker | work_high | scripts/port_ledger.py,scripts/port_claude_plugin.py,.agents/skills/port-claude-plugins/SKILL.md,plugins/saga/tests/test_port_ledger.py,plugins/saga/tests/fixtures/port-ledger,docs/ports/2026-07-30-saga-reliability,docs/engineering-journal/DECISIONS.md,docs/code-reviews/2026-07-30-semantic-port-ledger-code-review.md | every actionable P0-P3 finding is fixed or evidence-reclassified, the durable code-review artifact records dispositions, and affected focused checks pass in one remediation attempt | none |
 | recheck-preapproval | remediate-ledger | scenario-tester | test_medium | none | one targeted recheck proves the remediated pending ledger is complete except for operator decisions and produces the exact ranked decision packet with clean sibling repositories | work_high@terminal-failure |
@@ -439,7 +457,8 @@ and obtain Jeff's complete candidate disposition mapping before launching it.
 
 | id | owner | after | command-or-proof | blocking | failure |
 |---|---|---|---|---|---|
-| focused-preapproval | validate-preapproval | validate-preapproval | `uv run pytest plugins/saga/tests/test_port_ledger.py -q`; scoped Ruff and mypy; `python3 scripts/port_ledger.py validate --inventory-only docs/ports/2026-07-30-saga-reliability/ledger.yaml`; pending report; pre/post Git state proves no Claude, Codex, install-root, or unrelated target mutation | yes | return to the owning implementation unit; do not weaken schema, coverage, or read-only rules |
+| git-discovery-proof | discover-campaign | discover-campaign | read-only Git command log and final `git diff --name-only` prove the raw ledger is bound to the three approved local refs, Antigravity inventory uses origin/main despite feature-branch HEAD, and neither sibling repository changed | yes | stop before semantic curation; no non-Git role may replace or bypass the missing evidence |
+| focused-preapproval | validate-preapproval | validate-preapproval | `uv run pytest plugins/saga/tests/test_port_ledger.py -q`; scoped Ruff and mypy; `python3 scripts/port_ledger.py validate --inventory-only docs/ports/2026-07-30-saga-reliability/ledger.yaml`; pending report; validated Git-operator proof shows no Claude, Codex, install-root, or unrelated target mutation | yes | return to the owning implementation unit; do not weaken schema, coverage, or read-only rules |
 | reviewer-assurance | review-ledger | review-ledger | validated reviewer-result.v1 covers the full approved diff and reports every finding with a scope disposition | yes | block release; send all actionable planned findings to the single remediation assignment |
 | remediation-recheck | recheck-preapproval | recheck-preapproval | durable code-review artifact accounts for every P0-P3 finding and one targeted recheck passes | yes | stop for Jeff; no second remediation or reviewer is launched automatically |
 | explicit-survivor-decision | record-decisions | record-decisions | root readback binds the recorded complete candidate mapping to Jeff's explicit survivor and non-survivor decision; Workflow Contract approval alone is not decision approval | yes | keep every candidate pending and stop before final validation or Git integration |
@@ -459,16 +478,19 @@ survivors.
 
 ## Sequencing and Checkpoints
 
-1. U1 establishes the schema and decision semantics.
-2. U2 adds read-only discovery and proves mutation boundaries in temporary repositories.
-3. U3 curates the complete pending campaign ledger against refreshed snapshots.
-4. U4 replaces the normal runbook and records the governance decisions.
-5. Focused validation and independent review run before Jeff sees the decision packet.
-6. One remediation and one targeted recheck close every actionable review finding.
-7. Root presents the complete ranked report and pauses for Jeff's survivor mapping.
-8. The exact mapping is recorded and the full validation ladder runs.
-9. The Git integration operator commits, pushes, verifies CI, merges, and proves `origin/main`.
-10. Root closes issue #16, updates the Operations board and outcome evidence, and uses the approved
+1. Repair the discovery snapshot rule and scoped Bandit warning through non-Git tests.
+2. A Git integration operator runs the real read-only three-host discovery and proves sibling
+   cleanliness.
+3. U1 establishes the schema and decision semantics around the discovered packet set.
+4. U2 preserves the Git-owned discovery boundary and proves mutation rules in temporary repositories.
+5. U3 curates the complete pending campaign ledger against the pinned inventory snapshots.
+6. U4 replaces the normal runbook and records the governance decisions.
+7. Focused validation and independent review run before Jeff sees the decision packet.
+8. One remediation and one targeted recheck close every actionable review finding.
+9. Root presents the complete ranked report and pauses for Jeff's survivor mapping.
+10. The exact mapping is recorded and the full validation ladder runs.
+11. The final Git integration operator commits, pushes, verifies CI, merges, and proves `origin/main`.
+12. Root closes issue #16, updates the Operations board and outcome evidence, and uses the approved
    stable IDs to unlock planning for issue #15 without inventing migration units.
 
 ## Prerequisite and Unlock Map
@@ -477,7 +499,7 @@ survivors.
 |---|---|---|
 | completed prerequisite | GitHub issue #20 and PR #24 | supplies the versioned host-capability vocabulary, safe probe interface, and promotable receipt rules used by R13 |
 | historical discovery seed | target README at Claude commit `099ec4c` | starts history discovery but cannot establish current semantic completeness |
-| current source inputs | local Claude and Codex `HEAD == origin/main` snapshots named above | remain read-only; divergence stops discovery |
+| current source inputs | local Claude and Codex `HEAD == origin/main` plus Antigravity `origin/main` target baseline | remain read-only; Claude/Codex divergence stops discovery, while Antigravity feature-branch HEAD is recorded separately |
 | operator gate | Jeff's complete candidate disposition mapping | required before `record-decisions`, final validation, merge, or issue closure |
 | directly unlocked | GitHub issue #15 | may derive migration units and dependency order only from the fully decided stable ID set |
 | later release consumers | GitHub issues #18 and #22 | consume release-drift disclosure and exact source snapshots for conformance and canary evidence |
