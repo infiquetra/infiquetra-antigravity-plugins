@@ -1,0 +1,104 @@
+{
+  "schema": "saga.lifecycle-obligation.v1",
+  "contract_id": "reference-workstream-v1",
+  "workstream_id": "issue-21",
+  "stored_lifecycle_phases": [
+    "plan",
+    "review",
+    "work",
+    "qa"
+  ],
+  "off_chain_obligations": [
+    "impl-spec",
+    "retro"
+  ],
+  "obligations": [
+    {
+      "obligation_id": "impl-spec",
+      "kind": "off-chain-ceremony",
+      "subject": "issue-21",
+      "requirement": "required",
+      "producer": "work-agent",
+      "required_evidence": [
+        {
+          "kind": "ceremony-artifact",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "command": "impl-spec"
+    },
+    {
+      "obligation_id": "work-proof",
+      "kind": "quality-assurance",
+      "subject": "issue-21",
+      "requirement": "required",
+      "producer": "work-agent",
+      "required_evidence": [
+        {
+          "kind": "execution-receipt",
+          "minimum_count": 1,
+          "independent": true
+        },
+        {
+          "kind": "canonical-output",
+          "minimum_count": 1,
+          "independent": false
+        },
+        {
+          "kind": "check-result",
+          "minimum_count": 1,
+          "independent": false
+        },
+        {
+          "kind": "review-finding",
+          "minimum_count": 1,
+          "independent": true
+        },
+        {
+          "kind": "qa-result",
+          "minimum_count": 1,
+          "independent": true
+        }
+      ]
+    },
+    {
+      "obligation_id": "deliberation",
+      "kind": "deliberation",
+      "subject": "issue-21",
+      "requirement": "optional",
+      "producer": "work-agent",
+      "required_evidence": [
+        {
+          "kind": "deliberation-receipt",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "fallback": {
+        "state": "degraded",
+        "evidence": [
+          {
+            "kind": "fallback-receipt",
+            "minimum_count": 1,
+            "independent": false
+          }
+        ]
+      }
+    },
+    {
+      "obligation_id": "github-closed",
+      "kind": "external-github",
+      "subject": "issue-21",
+      "requirement": "required",
+      "producer": "github",
+      "required_evidence": [
+        {
+          "kind": "github-fact",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ]
+    }
+  ]
+}

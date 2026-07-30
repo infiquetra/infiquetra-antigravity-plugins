@@ -246,3 +246,43 @@ sets, or Antigravity stops carrying Mission Control as an active plugin.
 **KTD5 — Port `run()` safety wiring, not the teardown transition.** The safety preflights (operator-confirmed gate, hazard detection, merge-watcher validate) are self-contained in `run()`. The `teardown` transition and helper functions are stripped. `TRANSITIONS` stays at 7 entries.
 
 **KTD6 — R23 (already-deleted branch) is a new adaptation, not a claude port.** The claude hazard detection prevents the scenario, but `gh pr merge --auto --delete-branch` can race ahead. The port adds a `git ls-remote` check before deletion; if the remote ref is absent, records `branch_already_deleted: true` and returns success.
+
+---
+
+## 2026-07-30 — Proof-carrying lifecycle obligation contracts
+
+**Context.** GitHub issue #21 establishes the reusable settlement contract used
+later by `/outcome`, `/loop`, `/resume`, promotion, deliberation, and
+conformance work. Plan:
+`docs/plans/2026-07-30-lifecycle-obligation-transition-receipts-plan.md`.
+
+**Decision.** Use strict, JSON-compatible v1 contracts with standard-library
+runtime validation. Version 1 is the first supported version; schema-less legacy
+and unknown future versions fail closed until an explicit upgrader exists.
+Rejected: adding the development-only `jsonschema` package to the installed
+plugin.
+
+**Decision.** Keep settlement separate from the generic Saga lifecycle state.
+The forward workstream contract treats `/impl-spec` and `/retro` as off-chain
+obligations and does not migrate the legacy envelope's historical `retro` value.
+Rejected: changing the stored public lifecycle enum inside this contract leaf.
+
+**Decision.** Compute settlement from role-scoped evidence and verify
+repository references against real files and SHA-256 digests. Execution, review,
+and quality-assurance proof must be independent of the obligation producer;
+GitHub facts satisfy only an explicitly typed external obligation. Rejected:
+model narration, free-form claims, issue closure, or PR merge as aggregate
+proof.
+
+**Decision.** Persist canonical receipts beneath
+`docs/outcomes/<outcome-id>/receipts/` using deterministic identities and
+atomic create-or-compare writes. Keep `outcome_store.py` as rebuildable cache
+and `run_ledger.py` as local telemetry. Rejected: making either host-local
+surface a second canonical receipt authority.
+
+**Decision.** Add optional contract and receipt references to outcome nodes
+without activating the new completion gate. Full routing remains owned by
+GitHub issue #14.
+
+**Revisit when.** Routing integration begins, a v2 schema is required, or the
+legacy stored `retro` value is migrated with an explicit compatibility plan.

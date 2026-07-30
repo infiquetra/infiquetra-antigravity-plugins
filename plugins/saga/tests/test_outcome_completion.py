@@ -8,6 +8,7 @@ and R34 (a GitHub read failure degrades to ``unknown``, never a false completion
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -38,6 +39,7 @@ SPEC = _load("outcome_spec")
 STORE = _load("outcome_store")
 ORCH = _load("outcome_orchestrator")
 OUTCOME = _load("outcome")
+OBLIGATIONS = _load("lifecycle_obligations")
 
 
 def _store(tmp_path: Path):
@@ -119,6 +121,89 @@ def test_noncode_leaf_done_when_tracking_issue_closed(tmp_path: Path) -> None:
     assert closed.satisfied and closed.contract == ORCH.CONTRACT_NONCODE
     openv = ORCH.barrier_satisfied(node, store=store, github_runner=_gh(issue={"7": "OPEN"}))
     assert not openv.satisfied
+
+
+def test_closed_github_leaf_without_repository_evidence_remains_unsettled(
+    tmp_path: Path,
+) -> None:
+    """Issue closure is not aggregate proof once the obligation contract is evaluated."""
+
+    node = _node("design", kind="non-code", github={"issue": "21"})
+    github_barrier = ORCH.barrier_satisfied(
+        node,
+        store=_store(tmp_path),
+        github_runner=_gh(issue={"21": "CLOSED"}),
+    )
+    assert github_barrier.satisfied  # current router behavior remains unchanged in issue #21
+
+    contract = OBLIGATIONS.ObligationContract.from_dict(
+        {
+            "schema": "saga.lifecycle-obligation.v1",
+            "contract_id": "issue-21-contract",
+            "workstream_id": "issue-21",
+            "stored_lifecycle_phases": [],
+            "off_chain_obligations": [],
+            "obligations": [
+                {
+                    "obligation_id": "repository-output",
+                    "kind": "artifact",
+                    "subject": "issue-21",
+                    "requirement": "required",
+                    "producer": "work-agent",
+                    "required_evidence": [
+                        {
+                            "kind": "canonical-output",
+                            "minimum_count": 1,
+                            "independent": False,
+                        }
+                    ],
+                },
+                {
+                    "obligation_id": "github-closed",
+                    "kind": "external-github",
+                    "subject": "issue-21",
+                    "requirement": "required",
+                    "producer": "github",
+                    "required_evidence": [
+                        {
+                            "kind": "github-fact",
+                            "minimum_count": 1,
+                            "independent": False,
+                        }
+                    ],
+                },
+            ],
+        }
+    )
+    github_fact = OBLIGATIONS.Evidence.from_dict(
+        {
+            "evidence_id": "github-issue-21",
+            "kind": "github-fact",
+            "subject": "issue-21",
+            "producer": "github",
+            "reference": "https://github.com/infiquetra/repo/issues/21",
+            "digest": "sha256:" + hashlib.sha256(b"closed").hexdigest(),
+            "verification_state": "verified",
+            "assertion": "closed",
+        }
+    )
+    assert (
+        OBLIGATIONS.evaluate_obligation(
+            contract,
+            "github-closed",
+            [github_fact],
+        ).state
+        is OBLIGATIONS.SettlementState.SATISFIED
+    )
+    assert (
+        OBLIGATIONS.evaluate_obligation(
+            contract,
+            "repository-output",
+            [github_fact],
+            repo_root=tmp_path,
+        ).state
+        is OBLIGATIONS.SettlementState.UNSATISFIED
+    )
 
 
 def test_noncode_leaf_canonical_event_without_issue(tmp_path: Path) -> None:
