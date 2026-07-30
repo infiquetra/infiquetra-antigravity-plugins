@@ -683,8 +683,14 @@ def _evaluate_rules(
                     reasons.append(reason)
                     continue
             verified.append(item)
-        distinct_producers = {item.producer for item in verified}
-        count = len(distinct_producers) if rule.independent else len(verified)
+        if rule.independent:
+            by_producer: dict[str, Evidence] = {}
+            for item in verified:
+                by_producer.setdefault(item.producer, item)
+            accepted_candidates = list(by_producer.values())
+        else:
+            accepted_candidates = verified
+        count = len(accepted_candidates)
         if count < rule.minimum_count:
             independence = " independent" if rule.independent else ""
             reasons.append(
@@ -692,7 +698,9 @@ def _evaluate_rules(
                 f"item(s); found {count}"
             )
             continue
-        accepted.extend(item.evidence_id for item in verified[: rule.minimum_count])
+        accepted.extend(
+            item.evidence_id for item in accepted_candidates[: rule.minimum_count]
+        )
     if reasons:
         state = SettlementState.UNAVAILABLE if saw_unavailable else SettlementState.UNSATISFIED
         return SettlementResult(

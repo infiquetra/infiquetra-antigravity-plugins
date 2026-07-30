@@ -158,6 +158,29 @@ def test_required_obligation_accepts_only_complete_independent_repository_eviden
     assert set(result.evidence_ids) == {item.evidence_id for item in evidence}
 
 
+def test_independent_minimum_count_reports_one_evidence_per_producer(
+    tmp_path: Path,
+) -> None:
+    data = _contract().to_dict()
+    data["obligations"][1]["required_evidence"] = [
+        {"kind": "execution-receipt", "minimum_count": 2, "independent": True}
+    ]
+    contract = M.ObligationContract.from_dict(data)
+    evidence = [
+        _repo_evidence(tmp_path, "runner-one-a", "execution-receipt", producer="runner-one"),
+        _repo_evidence(tmp_path, "runner-one-b", "execution-receipt", producer="runner-one"),
+        _repo_evidence(tmp_path, "runner-two", "execution-receipt", producer="runner-two"),
+    ]
+    result = M.evaluate_obligation(
+        contract,
+        "work-proof",
+        evidence,
+        repo_root=tmp_path,
+    )
+    assert result.state is M.SettlementState.SATISFIED
+    assert result.evidence_ids == ("runner-one-a", "runner-two")
+
+
 @pytest.mark.parametrize("kind", ["execution-receipt", "review-finding", "qa-result"])
 def test_producer_cannot_satisfy_its_own_independent_gate(tmp_path: Path, kind: str) -> None:
     evidence = [

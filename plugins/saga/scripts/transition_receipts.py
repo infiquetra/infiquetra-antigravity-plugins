@@ -467,6 +467,20 @@ def write_transition_receipt(
     """Atomically create a receipt, or return the identical existing receipt."""
 
     receipt.validate_shape()
+    identity_result = _repository_identity_result(
+        receipt.obligation_id,
+        receipt.all_evidence(include_inputs=True),
+        repo_root=repo_root,
+    )
+    if identity_result is not None and receipt.settlement_state in {
+        SettlementState.SATISFIED,
+        SettlementState.DEGRADED,
+    }:
+        raise TransitionReceiptError(
+            f"cannot persist {receipt.settlement_state.value} receipt with "
+            f"{identity_result.state.value} repository evidence: "
+            f"{'; '.join(identity_result.reasons)}"
+        )
     path = receipt_path(repo_root, outcome_id, receipt.receipt_id)
     content = receipt.to_json()
     path.parent.mkdir(parents=True, exist_ok=True)

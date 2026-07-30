@@ -276,6 +276,17 @@ def test_write_rejects_different_content_at_the_same_identity(tmp_path: Path) ->
     ) == receipt
 
 
+def test_write_rechecks_repository_identity_before_persisting(tmp_path: Path) -> None:
+    receipt = _receipt(tmp_path)
+    (tmp_path / receipt.input_refs[0].reference).write_text(
+        "changed after evaluation",
+        encoding="utf-8",
+    )
+    with pytest.raises(M.TransitionReceiptError, match="cannot persist satisfied receipt"):
+        M.write_transition_receipt(tmp_path, "outcome-21", receipt)
+    assert not M.receipt_path(tmp_path, "outcome-21", receipt.receipt_id).exists()
+
+
 def test_direct_receipt_object_cannot_bypass_schema_validation(tmp_path: Path) -> None:
     receipt = replace(_receipt(tmp_path), schema="saga.transition-receipt.v2")
     with pytest.raises(M.TransitionReceiptError, match="unsupported transition receipt schema"):
