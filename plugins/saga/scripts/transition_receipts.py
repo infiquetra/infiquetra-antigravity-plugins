@@ -123,9 +123,7 @@ class TransitionReceipt:
             claimed = SettlementState(
                 _required_str(data, "claimed_settlement", "transition receipt")
             )
-            settled = SettlementState(
-                _required_str(data, "settlement_state", "transition receipt")
-            )
+            settled = SettlementState(_required_str(data, "settlement_state", "transition receipt"))
         except ValueError as exc:
             raise TransitionReceiptError(
                 f"transition receipt has unsupported settlement state: {exc}"
@@ -174,9 +172,7 @@ class TransitionReceipt:
         ):
             _validate_slug(value, f"transition receipt.{field_name}")
         if isinstance(self.attempt, bool) or not isinstance(self.attempt, int) or self.attempt < 1:
-            raise TransitionReceiptError(
-                "transition receipt attempt must be a positive integer"
-            )
+            raise TransitionReceiptError("transition receipt attempt must be a positive integer")
         if not isinstance(self.claimed_settlement, SettlementState):
             raise TransitionReceiptError(
                 "transition receipt claimed_settlement must be a SettlementState"
@@ -185,12 +181,8 @@ class TransitionReceipt:
             raise TransitionReceiptError(
                 "transition receipt settlement_state must be a SettlementState"
             )
-        if (
-            not isinstance(self.settlement_reasons, tuple)
-            or any(
-                not isinstance(reason, str) or not reason
-                for reason in self.settlement_reasons
-            )
+        if not isinstance(self.settlement_reasons, tuple) or any(
+            not isinstance(reason, str) or not reason for reason in self.settlement_reasons
         ):
             raise TransitionReceiptError(
                 "transition receipt settlement_reasons must contain non-empty strings"
@@ -336,15 +328,9 @@ def build_transition_receipt(
         repo_root=repo_root,
     )
     claim = (
-        SettlementState(claimed_settlement)
-        if claimed_settlement is not None
-        else computed.state
+        SettlementState(claimed_settlement) if claimed_settlement is not None else computed.state
     )
-    final_state = (
-        computed.state
-        if claim is computed.state
-        else SettlementState.CONFLICTING
-    )
+    final_state = computed.state if claim is computed.state else SettlementState.CONFLICTING
     reasons = list(computed.reasons)
     if final_state is SettlementState.CONFLICTING and claim is not computed.state:
         reasons.append(
@@ -515,8 +501,7 @@ def _evidence_list(data: Mapping[str, Any], field_name: str) -> tuple[Evidence, 
     if not isinstance(value, list):
         raise TransitionReceiptError(f"transition receipt {field_name} must be a list")
     return tuple(
-        Evidence.from_dict(_mapping(item, f"transition receipt {field_name}"))
-        for item in value
+        Evidence.from_dict(_mapping(item, f"transition receipt {field_name}")) for item in value
     )
 
 
@@ -638,10 +623,6 @@ def _slug_value(data: Mapping[str, Any], field_name: str, where: str) -> str:
 
 
 def _validate_slug(value: Any, where: str) -> str:
-    if (
-        not isinstance(value, str)
-        or value in {".", ".."}
-        or not _SLUG.fullmatch(value)
-    ):
+    if not isinstance(value, str) or value in {".", ".."} or not _SLUG.fullmatch(value):
         raise TransitionReceiptError(f"{where} must be a slug")
     return value

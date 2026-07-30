@@ -249,7 +249,9 @@ class Obligation:
                 _required_str(data, "requirement", f"obligation {obligation_id}")
             )
         except ValueError as exc:
-            raise ObligationError(f"obligation {obligation_id} has unsupported enum: {exc}") from exc
+            raise ObligationError(
+                f"obligation {obligation_id} has unsupported enum: {exc}"
+            ) from exc
         fallback_raw = data.get("fallback")
         if fallback_raw is not None and not isinstance(fallback_raw, Mapping):
             raise ObligationError(f"obligation {obligation_id} fallback must be an object or null")
@@ -272,9 +274,7 @@ class Obligation:
     def validate(self) -> None:
         _validate_slug(self.obligation_id, "obligation.obligation_id")
         if not isinstance(self.kind, ObligationKind):
-            raise ObligationError(
-                f"obligation {self.obligation_id} kind must be an ObligationKind"
-            )
+            raise ObligationError(f"obligation {self.obligation_id} kind must be an ObligationKind")
         if not isinstance(self.requirement, RequirementLevel):
             raise ObligationError(
                 f"obligation {self.obligation_id} requirement must be a RequirementLevel"
@@ -285,9 +285,7 @@ class Obligation:
                     f"obligation {self.obligation_id} requires non-empty {field_name}"
                 )
         if not self.required_evidence:
-            raise ObligationError(
-                f"obligation {self.obligation_id} must declare required_evidence"
-            )
+            raise ObligationError(f"obligation {self.obligation_id} must declare required_evidence")
         for rule in self.required_evidence:
             if not isinstance(rule, EvidenceRule):
                 raise ObligationError(
@@ -376,12 +374,8 @@ class ObligationContract:
             raise ObligationError(
                 f"unsupported lifecycle obligation schema {schema!r}; expected {SCHEMA_VERSION!r}"
             )
-        phases = _unique_str_tuple(
-            data.get("stored_lifecycle_phases"), "stored_lifecycle_phases"
-        )
-        off_chain = _unique_str_tuple(
-            data.get("off_chain_obligations"), "off_chain_obligations"
-        )
+        phases = _unique_str_tuple(data.get("stored_lifecycle_phases"), "stored_lifecycle_phases")
+        off_chain = _unique_str_tuple(data.get("off_chain_obligations"), "off_chain_obligations")
         invalid_phases = sorted(set(phases) - set(STORED_LIFECYCLE_PHASES))
         if invalid_phases:
             raise ObligationError(
@@ -390,8 +384,7 @@ class ObligationContract:
         invalid_off_chain = sorted(set(off_chain) - set(OFF_CHAIN_OBLIGATIONS))
         if invalid_off_chain:
             raise ObligationError(
-                f"off_chain_obligations contains unsupported values: "
-                f"{', '.join(invalid_off_chain)}"
+                f"off_chain_obligations contains unsupported values: {', '.join(invalid_off_chain)}"
             )
         obligations_raw = data.get("obligations")
         if not isinstance(obligations_raw, list) or not obligations_raw:
@@ -420,16 +413,14 @@ class ObligationContract:
             )
         _validate_slug(self.contract_id, "obligation contract.contract_id")
         _validate_slug(self.workstream_id, "obligation contract.workstream_id")
-        if (
-            len(self.stored_lifecycle_phases) != len(set(self.stored_lifecycle_phases))
-            or any(phase not in STORED_LIFECYCLE_PHASES for phase in self.stored_lifecycle_phases)
+        if len(self.stored_lifecycle_phases) != len(set(self.stored_lifecycle_phases)) or any(
+            phase not in STORED_LIFECYCLE_PHASES for phase in self.stored_lifecycle_phases
         ):
             raise ObligationError(
                 "stored_lifecycle_phases must contain unique supported phase values"
             )
-        if (
-            len(self.off_chain_obligations) != len(set(self.off_chain_obligations))
-            or any(command not in OFF_CHAIN_OBLIGATIONS for command in self.off_chain_obligations)
+        if len(self.off_chain_obligations) != len(set(self.off_chain_obligations)) or any(
+            command not in OFF_CHAIN_OBLIGATIONS for command in self.off_chain_obligations
         ):
             raise ObligationError(
                 "off_chain_obligations must contain unique supported command values"
@@ -458,9 +449,7 @@ class ObligationContract:
         for obligation in self.obligations:
             if obligation.obligation_id == obligation_id:
                 return obligation
-        raise ObligationError(
-            f"contract {self.contract_id} has no obligation {obligation_id!r}"
-        )
+        raise ObligationError(f"contract {self.contract_id} has no obligation {obligation_id!r}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -698,9 +687,7 @@ def _evaluate_rules(
                 f"item(s); found {count}"
             )
             continue
-        accepted.extend(
-            item.evidence_id for item in accepted_candidates[: rule.minimum_count]
-        )
+        accepted.extend(item.evidence_id for item in accepted_candidates[: rule.minimum_count])
     if reasons:
         state = SettlementState.UNAVAILABLE if saw_unavailable else SettlementState.UNSATISFIED
         return SettlementResult(
@@ -807,11 +794,7 @@ def _slug_value(data: Mapping[str, Any], field_name: str, where: str) -> str:
 
 
 def _validate_slug(value: Any, where: str) -> str:
-    if (
-        not isinstance(value, str)
-        or value in {".", ".."}
-        or not _SLUG.fullmatch(value)
-    ):
+    if not isinstance(value, str) or value in {".", ".."} or not _SLUG.fullmatch(value):
         raise ObligationError(f"{where} must be a slug")
     return value
 

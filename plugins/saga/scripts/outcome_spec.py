@@ -595,9 +595,7 @@ def _optional_repository_ref(value: Any, *, where: str, field_name: str) -> str:
     if value is None or value == "":
         return ""
     if not isinstance(value, str):
-        raise OutcomeSpecError(
-            f"{where}: {field_name} must be a repository-relative path string"
-        )
+        raise OutcomeSpecError(f"{where}: {field_name} must be a repository-relative path string")
     return _repository_ref(value, where=where, field_name=field_name)
 
 
@@ -610,9 +608,7 @@ def _repository_ref_list(value: Any, *, where: str, field_name: str) -> list[str
         raise OutcomeSpecError(f"{where}: {field_name} must be a list")
     if any(not isinstance(item, str) for item in value):
         raise OutcomeSpecError(f"{where}: {field_name} must contain only strings")
-    references = [
-        _repository_ref(item, where=where, field_name=field_name) for item in value
-    ]
+    references = [_repository_ref(item, where=where, field_name=field_name) for item in value]
     if len(references) != len(set(references)):
         raise OutcomeSpecError(f"{where}: {field_name} contains duplicates")
     return references

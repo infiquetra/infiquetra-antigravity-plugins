@@ -17,18 +17,11 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import lifecycle_obligations as O  # noqa: E402, N812
 import transition_receipts as M  # noqa: E402, N812
 
-FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "lifecycle-obligations"
-    / "valid-contract.json"
-)
+FIXTURE = Path(__file__).parent / "fixtures" / "lifecycle-obligations" / "valid-contract.json"
 
 
 def _contract() -> O.ObligationContract:
-    return O.ObligationContract.from_dict(
-        json.loads(FIXTURE.read_text(encoding="utf-8"))
-    )
+    return O.ObligationContract.from_dict(json.loads(FIXTURE.read_text(encoding="utf-8")))
 
 
 def _repository_evidence(
@@ -78,9 +71,7 @@ def _receipt(tmp_path: Path) -> M.TransitionReceipt:
         transition_id="work-to-qa",
         obligation_id="work-proof",
         attempt=1,
-        input_refs=[
-            _repository_evidence(tmp_path, "input", "input", "planner")
-        ],
+        input_refs=[_repository_evidence(tmp_path, "input", "input", "planner")],
         operator_decisions=[
             _repository_evidence(
                 tmp_path,
@@ -152,14 +143,10 @@ def test_receipt_binds_every_category_and_round_trips(tmp_path: Path) -> None:
 
 def test_reference_schemas_validate_current_contract_and_receipt(tmp_path: Path) -> None:
     contract_schema = json.loads(
-        (ROOT / "references" / "lifecycle-obligation-schema.json").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "references" / "lifecycle-obligation-schema.json").read_text(encoding="utf-8")
     )
     receipt_schema = json.loads(
-        (ROOT / "references" / "transition-receipt-schema.json").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "references" / "transition-receipt-schema.json").read_text(encoding="utf-8")
     )
     Draft202012Validator.check_schema(contract_schema)
     Draft202012Validator.check_schema(receipt_schema)
@@ -267,13 +254,16 @@ def test_write_rejects_different_content_at_the_same_identity(tmp_path: Path) ->
     divergent = replace(receipt, settlement_reasons=("different",))
     with pytest.raises(M.TransitionReceiptConflictError, match="different content"):
         M.write_transition_receipt(tmp_path, "outcome-21", divergent)
-    assert M.TransitionReceipt.from_dict(
-        json.loads(
-            M.receipt_path(tmp_path, "outcome-21", receipt.receipt_id).read_text(
-                encoding="utf-8"
+    assert (
+        M.TransitionReceipt.from_dict(
+            json.loads(
+                M.receipt_path(tmp_path, "outcome-21", receipt.receipt_id).read_text(
+                    encoding="utf-8"
+                )
             )
         )
-    ) == receipt
+        == receipt
+    )
 
 
 def test_write_rechecks_repository_identity_before_persisting(tmp_path: Path) -> None:
