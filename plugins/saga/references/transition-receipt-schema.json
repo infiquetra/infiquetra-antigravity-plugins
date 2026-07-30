@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "saga.transition-receipt.v1",
+  "title": "Saga transition receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "receipt_id",
+    "contract_id",
+    "workstream_id",
+    "transition_id",
+    "obligation_id",
+    "attempt",
+    "input_refs",
+    "operator_decisions",
+    "execution_receipts",
+    "canonical_outputs",
+    "check_results",
+    "review_findings",
+    "lifecycle_evidence",
+    "external_facts",
+    "claimed_settlement",
+    "settlement_state",
+    "settlement_reasons"
+  ],
+  "properties": {
+    "schema": {
+      "const": "saga.transition-receipt.v1"
+    },
+    "receipt_id": {
+      "$ref": "#/$defs/slug"
+    },
+    "contract_id": {
+      "$ref": "#/$defs/slug"
+    },
+    "workstream_id": {
+      "$ref": "#/$defs/slug"
+    },
+    "transition_id": {
+      "$ref": "#/$defs/slug"
+    },
+    "obligation_id": {
+      "$ref": "#/$defs/slug"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "input_refs": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "operator_decisions": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "execution_receipts": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "canonical_outputs": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "check_results": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "review_findings": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "lifecycle_evidence": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "external_facts": {
+      "$ref": "#/$defs/evidenceArray"
+    },
+    "claimed_settlement": {
+      "$ref": "#/$defs/settlement"
+    },
+    "settlement_state": {
+      "$ref": "#/$defs/settlement"
+    },
+    "settlement_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "settlement": {
+      "enum": [
+        "satisfied",
+        "unsatisfied",
+        "degraded",
+        "unavailable",
+        "conflicting"
+      ]
+    },
+    "evidenceArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "subject",
+        "producer",
+        "reference",
+        "digest",
+        "verification_state",
+        "assertion"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/slug"
+        },
+        "kind": {
+          "enum": [
+            "input",
+            "lifecycle-state",
+            "ceremony-artifact",
+            "operator-decision",
+            "execution-receipt",
+            "canonical-output",
+            "check-result",
+            "qa-result",
+            "review-finding",
+            "deliberation-receipt",
+            "fallback-receipt",
+            "handoff-receipt",
+            "github-fact"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "producer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "verification_state": {
+          "enum": [
+            "verified",
+            "unverified",
+            "unknown",
+            "unavailable",
+            "conflicting"
+          ]
+        },
+        "assertion": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

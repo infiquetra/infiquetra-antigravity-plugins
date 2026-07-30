@@ -1,0 +1,8 @@
+{
+  "schema": "saga.lifecycle-obligation.v2",
+  "contract_id": "future-contract",
+  "workstream_id": "issue-21",
+  "stored_lifecycle_phases": [],
+  "off_chain_obligations": [],
+  "obligations": []
+}
