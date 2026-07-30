@@ -22,6 +22,68 @@
 
 ---
 
+## 2026-07-30
+
+### Use complete current trees and non-authoritative ranking for semantic ports (commit pending) {#semantic-port-ledger-current-tree-ranking}
+
+**Decision.** Govern future Claude and Codex reconciliation through the
+schema-versioned semantic ledger at
+`docs/ports/<campaign-id>/ledger.yaml`. Discovery combines the historical
+Claude delta with complete current-tree manifests for Claude, Codex, and
+Antigravity. Every normalized edit packet has exactly one stable candidate
+owner. The command boundary permits only commit-bound read operations and the
+explicit campaign output.
+
+Store candidate recommendation and operator decision separately. Sort reports
+by operator value, Antigravity fit, proof feasibility, inverse maintenance
+cost, and stable ID, but never derive an approval, rejection, or hidden row
+from those scores. Plain validation fails while any candidate remains pending;
+only inventory-only validation permits the reviewed pre-decision packet.
+
+Bind final fit assessments to the fleet-core host contract using only the
+promotable receipt digest, capability-catalog digest, and sanitized capability
+states. Do not promote paths, hostnames, transcripts, runtime roots, or rich
+diagnostics into the ledger.
+
+**Rejected alternatives.** Treating the historical sync marker as current
+coverage; diffing only file counts; clustering automatically by path or commit
+message; copying the source tree before classification; using a ranking
+threshold as an implicit survivor decision; storing a second candidate
+database; or attaching raw host diagnostics to campaign evidence.
+
+**Rationale.** A historical marker cannot reveal a current capability that
+never existed in its range, including Codex-native behavior. Complete tree
+comparison makes those capabilities visible and also exposes Antigravity
+behavior that already supersedes a source change. Human-curated stable IDs
+keep repeated edits as evidence for one semantic contract. Separate ranking
+and decision fields preserve Jeff's authority over every survivor and
+non-survivor.
+
+The first campaign applied that contract to 1,475 normalized packets and
+curated 80 stable candidates with zero unmatched or duplicate ownership. On
+2026-07-30, Jeff recorded the complete mapping: 51 approved survivors, 19
+blocked candidates, 8 metadata-only candidates, 1 rejected candidate, and 1
+superseded candidate. Unavailable sanitized host capabilities block the 19
+affected candidates without promoting hostnames, paths, transcripts, or
+diagnostics. A blocked candidate requires a host-capability change before
+reconsideration.
+
+The 51 approved survivors only unlock later planning in GitHub issue #15.
+They do not authorize migration units, estimates, sequencing, code, or
+implementation recommendations.
+
+**Revisit when.** A source repository publishes a stronger signed semantic
+manifest that covers history and the complete tree, the host receipt schema
+changes, or the operator adopts a different explicit candidate-decision
+authority.
+
+**Refs.** Plan:
+`docs/plans/2026-07-30-semantic-port-ledger-plan.md`. Campaign:
+`docs/ports/2026-07-30-saga-reliability/`. Issue:
+`infiquetra/infiquetra-antigravity-plugins#16`.
+
+---
+
 ## 2026-07-26
 
 ### Antigravity host contract and capability doctor plan decisions (commit pending) {#antigravity-host-contract-plan}

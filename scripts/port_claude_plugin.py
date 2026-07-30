@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""
-Port Claude Code Plugins to Antigravity
+"""Legacy destructive bulk-copy helper for Claude Code plugins.
 
-Automates the migration of legacy Claude plugins (saga, deploy, mission-control)
-to the Antigravity architecture.
+New port campaigns must use ``scripts/port_ledger.py`` for read-only semantic
+discovery and stop at its explicit operator-decision gate. This module remains
+only for historical callers that deliberately choose destructive bulk copying.
 """
 
 import json
@@ -24,7 +24,7 @@ TARGET_PLUGINS = ["saga", "deploy", "mission-control"]
 
 
 def rewrite_paths_and_syntax(dest_dir: Path):
-    """Translates paths and agent syntaxes in the newly copied files."""
+    """Legacy helper that rewrites files after destructive bulk copying."""
     for filepath in dest_dir.rglob("*"):
         if filepath.is_file() and filepath.suffix in [
             ".py",
@@ -62,6 +62,7 @@ def rewrite_paths_and_syntax(dest_dir: Path):
 
 
 def port_plugin(source_dir: Path, dest_dir: Path) -> tuple[bool, list[str]]:
+    """Legacy opt-in bulk copy; semantic-ledger discovery never calls this."""
     errors = []
 
     if not source_dir.exists():
@@ -108,6 +109,11 @@ def port_plugin(source_dir: Path, dest_dir: Path) -> tuple[bool, list[str]]:
 
 
 def main():
+    print(
+        f"{YELLOW}{BOLD}Legacy bulk-copy utility: "
+        "use scripts/port_ledger.py for normal port campaigns."
+        f"{RESET}"
+    )
     repo_root = Path(__file__).resolve().parent.parent
     claude_repo_root = repo_root.parent / "infiquetra-claude-plugins"
     source_plugins_dir = claude_repo_root / "plugins"
