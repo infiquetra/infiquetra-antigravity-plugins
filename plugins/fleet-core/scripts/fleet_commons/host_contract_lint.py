@@ -93,7 +93,7 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
         ),
         (
             "plugins/saga/scripts/outcome_spec.py",
-            "a7abeaea57a4515547ba9be116bfecdfa127738067d3fd738fc3690e31e407ca",
+            "298f7a3051518164365271612f688e848c3a2ec6c3b9b6cc9d7b9dd30dd38c03",
             "947e287593feb5211391b3a0e630c4a5148089b7f6bbb8dd2dcd349d4eff016b",
         ),
         (

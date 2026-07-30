@@ -103,12 +103,35 @@ Durable artifacts are repo docs:
 - `docs/work-sessions/`
 - `docs/retros/`
 - `docs/engineering-journal/`
+- `docs/outcomes/<outcome-id>/receipts/`
 
 Ignored local state belongs under `.gemini/saga/`. Durable, resumable work-state is
 tracked as sagas: append-only, timestamped envelope logs under
 `.gemini/saga/sagas/<saga_id>/`, plus a derived `state.json` index. See
 [`references/saga-spec.md`](references/saga-spec.md) for the storage contract and
 [`references/operator-choice.md`](references/operator-choice.md) for the execution-backend decision contract (`inline` / `team-execution` / `cc-workflows-ultracode`).
+
+### Proof-carrying lifecycle contracts
+
+Workstreams can declare named settlement obligations with
+`saga.lifecycle-obligation.v1` and record attempted transitions with
+`saga.transition-receipt.v1`. Required obligations settle only from verified
+`satisfied` evidence. Optional obligations may use `degraded` only through a
+fallback declared before execution; `unsatisfied`, `unavailable`, and
+`conflicting` remain distinct.
+
+Repository evidence is checked against its repository-relative path and SHA-256
+digest. Execution, review, and quality-assurance evidence must be independent of
+the obligation producer. GitHub closure or PR merge is evidence only for its
+typed external-fact obligation.
+
+See
+[`references/lifecycle-obligation-contract.md`](references/lifecycle-obligation-contract.md),
+[`references/lifecycle-obligation-schema.json`](references/lifecycle-obligation-schema.json),
+and
+[`references/transition-receipt-schema.json`](references/transition-receipt-schema.json).
+Routing these contracts through `/outcome`, `/loop`, and `/resume` is a separate
+integration boundary.
 
 ## Boundaries
 
@@ -134,3 +157,7 @@ tracked as sagas: append-only, timestamped envelope logs under
 - `scripts/detect_deploy_strategy.py` classifies tag-promotion workflow coverage.
 - `scripts/issue_progress.py` renders issue comments, including doc-review status when present.
 - `scripts/handoff_envelope.py` builds the thin source envelope for `/handoff`.
+- `scripts/lifecycle_obligations.py` validates workstream contracts and computes
+  evidence-backed settlement.
+- `scripts/transition_receipts.py` builds, verifies, and atomically persists
+  canonical transition receipts.

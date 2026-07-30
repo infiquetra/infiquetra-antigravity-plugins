@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 - 2026-07-30
+
+- Add strict `saga.lifecycle-obligation.v1` contracts with required, optional,
+  independent-evidence, and predeclared degraded-fallback semantics.
+- Add `saga.transition-receipt.v1` receipts that bind transition inputs,
+  operator decisions, execution receipts, canonical outputs, checks, reviews,
+  lifecycle evidence, external facts, and computed settlement.
+- Verify repository evidence by normalized path and SHA-256 digest, reject
+  self-authored execution/review/quality-assurance proof, and keep GitHub facts
+  scoped to their declared obligation.
+- Persist canonical transition receipts atomically and idempotently under the
+  outcome artifact tree.
+- Add optional obligation-contract and transition-receipt references to outcome
+  nodes without changing current completion routing.
+
 ## 1.4.0 - 2026-07-26
 
 - Add `host_capability_gate.py`, which resolves fleet-core through the vendored
