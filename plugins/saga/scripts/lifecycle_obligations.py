@@ -200,6 +200,9 @@ class DegradedFallback:
             if not isinstance(rule, EvidenceRule):
                 raise ObligationError("fallback.evidence must contain EvidenceRule values")
             rule.validate()
+        kinds = [rule.kind for rule in self.evidence]
+        if len(kinds) != len(set(kinds)):
+            raise ObligationError("fallback.evidence contains duplicate evidence kinds")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -292,6 +295,12 @@ class Obligation:
                     "EvidenceRule values"
                 )
             rule.validate()
+        kinds = [rule.kind for rule in self.required_evidence]
+        if len(kinds) != len(set(kinds)):
+            raise ObligationError(
+                f"obligation {self.obligation_id} required_evidence contains duplicate "
+                "evidence kinds"
+            )
         if self.requirement is RequirementLevel.REQUIRED and self.fallback is not None:
             raise ObligationError(
                 f"required obligation {self.obligation_id} cannot declare a degraded fallback"

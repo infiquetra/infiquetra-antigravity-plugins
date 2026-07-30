@@ -171,6 +171,11 @@ def test_reference_schemas_validate_current_contract_and_receipt(tmp_path: Path)
     with pytest.raises(ValidationError):
         Draft202012Validator(contract_schema).validate(invalid)
 
+    wrong_category = _receipt(tmp_path).to_dict()
+    wrong_category["review_findings"] = wrong_category["execution_receipts"]
+    with pytest.raises(ValidationError):
+        Draft202012Validator(receipt_schema).validate(wrong_category)
+
 
 def test_receipt_identity_is_stable_for_unchanged_inputs(tmp_path: Path) -> None:
     first = _receipt(tmp_path)
