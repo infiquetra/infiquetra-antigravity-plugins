@@ -162,3 +162,30 @@ The amended schema v3 contract compiles with twelve assignments, seven blocking 
 independent reviewer, the completed planned remediation and recheck, one explicitly approved
 test-only correction and independent confirmation, and no external actions. All overlapping write
 sets are dependency-ordered. No actionable P0-P3 plan-review finding remains.
+
+## Workflow Revision 4 Amendment Review
+
+Revision 3 completed the approved typing correction, its independent confirmation, and the exact
+80-candidate operator mapping. Final validation passed the decided ledger, report, Ruff, mypy,
+Bandit, plugin validation, and scope checks. It stopped without edits on VF-001 and VF-002: one
+focused scenario still asserted the preapproval decision state, and two full-suite assertions
+depended on process-global module import order.
+
+Jeff confirmed a narrow revision 4 exception after that stop. The amendment review found and closed
+three contract risks:
+
+| id | priority | finding | disposition |
+|---|---|---|---|
+| A06 | P1 | Treating the failed final validation as delivery-ready would bypass three failing tests and the blocking final-validation gate. | Fixed: Git integration now depends on an explicit test-only repair and independent confirmation. |
+| A07 | P2 | Updating the decided-state assertion could accidentally erase the separate preapproval pending-decision proof. | Fixed: the repair must preserve the existing pending-gate scenarios and change only the real fully decided campaign assertion. |
+| A08 | P2 | A generic retry could modify production isolation behavior or normalize global module-state coupling. | Fixed: the repair writes only the focused test module and must assert discovery isolation behavior without relying on `sys.modules` history; the independent confirmation reruns both focused and full suites. |
+
+Revision 4 retains the validated passing final-check evidence because its repair cannot modify
+production code, ledger data, fixtures, documentation, configuration, dependencies, or workflow
+authority. It does not authorize another failure repair, survivor change, migration work, Git
+operation before confirmation, installation, deployment, schema, or outcome edge.
+
+The amended schema v3 contract compiles with fourteen assignments, seven blocking checks, the
+existing independent reviewer, two operator-approved test-only correction and confirmation pairs,
+and no external actions. All overlapping write sets are dependency-ordered. No actionable P0-P3
+plan-review finding remains.

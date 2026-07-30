@@ -8,7 +8,7 @@ linked_issue: https://github.com/infiquetra/infiquetra-antigravity-plugins/issue
 reviewed: 2026-07-30
 review_status: ready
 review_artifact: docs/reviews/2026-07-30-semantic-port-ledger-plan-doc-review.md
-workflow_revision: 3
+workflow_revision: 4
 ---
 
 # Semantic Port Ledger and Read-Only Drift Workflow Implementation Plan
@@ -444,6 +444,16 @@ focused mypy command and 50-test suite. The passing revision-2 recheck evidence 
 validated receipt; no other failed check, production change, second remediation, or second recheck
 is permitted by this amendment.
 
+Revision 3 then completed its approved test-only correction and independent confirmation. After
+Jeff recorded the complete candidate mapping, `validate-final` passed ledger validation, reporting,
+Ruff, mypy, Bandit, plugin validation, and scope inspection, but stopped on two test-contract
+findings: the real-campaign scenario still required pending decisions after the approved mapping,
+and two discovery-isolation assertions depended on process-global module import order. Jeff
+confirmed revision 4 as a second narrow exception after that stop. It may change only the focused
+test module, must preserve the separate preapproval pending-gate coverage, must replace import-order
+assumptions with behavioral isolation proof, and receives one independent focused and full-suite
+rerun. No production or ledger change and no further retry are permitted.
+
 The `record-decisions` assignment has a deliberate manual release condition: approval of this
 Workflow Contract does not approve any port candidate. Root must pause after
 `confirm-recheck-typing` and obtain Jeff's complete candidate disposition mapping before launching
@@ -464,7 +474,9 @@ it.
 | confirm-recheck-typing | repair-recheck-typing | scenario-tester | test_medium | none | independently rerun mypy on the focused test module and the 50-test suite, confirm both pass, and bind the unchanged complete decision packet from the validated failed-recheck receipt | none |
 | record-decisions | confirm-recheck-typing | implementation-worker | work_medium | docs/ports/2026-07-30-saga-reliability/ledger.yaml,docs/ports/2026-07-30-saga-reliability/README.md,docs/engineering-journal/DECISIONS.md | after root receives Jeff's complete candidate mapping, only that mapping is recorded, zero candidates remain pending, and no migration units, estimates, sequencing, sibling writes, installs, or outcome edges are created | none |
 | validate-final | record-decisions | scenario-tester | test_medium | none | final validate and report commands, focused tests, Ruff, mypy, plugin validation, and full pytest pass with zero unmatched drift and clean sibling repositories | work_high@terminal-failure |
-| integrate-reviewed-branch | validate-final | git-integration-operator | work_medium | none | run git diff --name-only and prove the final diff equals the approved write-path union excluding .serena/project.yml, then commit, push, open or update the issue-linked PR, wait for required CI, squash-merge, and verify the merge commit is an ancestor of origin/main | none |
+| repair-final-test-contract | validate-final | remediation-worker | work_high | plugins/saga/tests/test_port_ledger.py | after the failed final validation and Jeff's explicit amendment confirmation, make the real-campaign assertion validate the exact decided counts while preserving preapproval pending coverage, replace process-global import-order assertions with behavioral discovery-isolation proof, and pass the focused and full repository suites | none |
+| confirm-final-tests | repair-final-test-contract | scenario-tester | test_medium | none | independently rerun the 50-test focused suite and full repository suite, confirm both pass, and bind the unchanged passing ledger, static-analysis, plugin-validation, and scope evidence from the validated failed-final receipt | none |
+| integrate-reviewed-branch | confirm-final-tests | git-integration-operator | work_medium | none | run git diff --name-only and prove the final diff equals the approved write-path union excluding .serena/project.yml, then commit, push, open or update the issue-linked PR, wait for required CI, squash-merge, and verify the merge commit is an ancestor of origin/main | none |
 
 ### Blocking Checks
 
@@ -475,7 +487,7 @@ it.
 | reviewer-assurance | review-ledger | review-ledger | validated reviewer-result.v1 covers the full approved diff and reports every finding with a scope disposition | yes | block release; send all actionable planned findings to the single remediation assignment |
 | remediation-recheck | confirm-recheck-typing | confirm-recheck-typing | the durable code-review artifact accounts for every P0-P3 review finding; the validated revision-2 recheck passes every substantive check and exposes only RC-001; Jeff explicitly approves the test-only repair; and the independent revision-3 mypy plus 50-test rerun passes | yes | stop for Jeff; no further repair, tester, or reviewer is launched automatically |
 | explicit-survivor-decision | record-decisions | record-decisions | root readback binds the recorded complete candidate mapping to Jeff's explicit survivor and non-survivor decision; Workflow Contract approval alone is not decision approval | yes | keep every candidate pending and stop before final validation or Git integration |
-| final-validation | validate-final | validate-final | issue verification commands plus `uv run pytest -q` pass; validate reports zero pending/unmatched candidates; release-drift disclosure is current; sibling repos remain clean relative to their pre-run state | yes | return to the owning unit only within the approved one-hop rule; otherwise stop for Jeff |
+| final-validation | confirm-final-tests | confirm-final-tests | the validated failed-final receipt passes ledger, report, Ruff, mypy, Bandit, plugin, scope, and sibling-evidence checks and exposes only VF-001 and VF-002; Jeff explicitly confirms the test-only repair; and the independent revision-4 focused plus full-suite rerun passes | yes | stop for Jeff; no further repair or tester is launched automatically |
 | delivery | integrate-reviewed-branch | integrate-reviewed-branch | final `git diff --name-only` matches the approved union; PR checks pass; squash merge succeeds; fetched `origin/main` contains the merge; `.serena/project.yml` is absent from every commit | yes | do not claim issue completion; repair only approved Git integration drift or stop |
 
 ### External Actions
@@ -504,8 +516,10 @@ survivors.
    type-narrows only the two test helpers and independently reruns focused mypy and the 50-test suite.
 10. Root presents the complete ranked report and pauses for Jeff's survivor mapping.
 11. The exact mapping is recorded and the full validation ladder runs.
-12. The final Git integration operator commits, pushes, verifies CI, merges, and proves `origin/main`.
-13. Root closes issue #16, updates the Operations board and outcome evidence, and uses the approved
+12. After final validation stops on VF-001 and VF-002, the operator-confirmed revision 4 exception
+    repairs only the focused test contract and independently reruns the focused and full suites.
+13. The final Git integration operator commits, pushes, verifies CI, merges, and proves `origin/main`.
+14. Root closes issue #16, updates the Operations board and outcome evidence, and uses the approved
    stable IDs to unlock planning for issue #15 without inventing migration units.
 
 ## Prerequisite and Unlock Map
