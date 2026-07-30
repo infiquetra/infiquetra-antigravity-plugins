@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "outcome_id": "antigravity-saga-reliability",
+  "spec_revision": 4,
+  "objective": "Deliver the complete first release of the Antigravity-native Saga reliability system across one reference lifecycle",
+  "nodes": [
+    {
+      "subplot_id": "issue-20-host-contract",
+      "title": "Establish the Antigravity host contract and capability doctor",
+      "kind": "code",
+      "state": "done",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#20",
+        "sub_issue": 20,
+        "pr": "infiquetra/infiquetra-antigravity-plugins#24"
+      },
+      "worktree": {},
+      "evidence": {
+        "merged_pr": "infiquetra/infiquetra-antigravity-plugins#24",
+        "merge_commit": "b3c9855778ef776364860437b63ebc2bea53bc48"
+      },
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-21-lifecycle-contracts",
+      "title": "Implement lifecycle obligation and transition receipt contracts",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-20-host-contract"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#21",
+        "sub_issue": 21
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-16-port-inventory",
+      "title": "Inventory and rank semantic port candidates",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-20-host-contract"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#16",
+        "sub_issue": 16
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-23-artifact-promotion",
+      "title": "Implement canonical artifact promotion and conflict handling",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-20-host-contract",
+        "issue-21-lifecycle-contracts"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#23",
+        "sub_issue": 23
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-19-gemini-deliberation",
+      "title": "Add receipt-backed Gemini deliberation and recovery",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-20-host-contract",
+        "issue-21-lifecycle-contracts"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#19",
+        "sub_issue": 19
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-15-port-migration",
+      "title": "Migrate every approved port survivor natively",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-20-host-contract",
+        "issue-16-port-inventory"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#15",
+        "sub_issue": 15
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-17-reference-route",
+      "title": "Deliver impl-spec and the reference lifecycle route",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-19-gemini-deliberation",
+        "issue-21-lifecycle-contracts",
+        "issue-23-artifact-promotion"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#17",
+        "sub_issue": 17
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-14-lifecycle-reconciliation",
+      "title": "Reconcile outcome, loop, and resume from shared evidence",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-17-reference-route",
+        "issue-19-gemini-deliberation",
+        "issue-21-lifecycle-contracts",
+        "issue-23-artifact-promotion"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#14",
+        "sub_issue": 14
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-18-conformance-laboratory",
+      "title": "Build deterministic Saga conformance and baseline laboratory",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-14-lifecycle-reconciliation",
+        "issue-15-port-migration",
+        "issue-16-port-inventory",
+        "issue-17-reference-route",
+        "issue-19-gemini-deliberation",
+        "issue-20-host-contract",
+        "issue-21-lifecycle-contracts",
+        "issue-23-artifact-promotion"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#18",
+        "sub_issue": 18
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    },
+    {
+      "subplot_id": "issue-22-live-canary",
+      "title": "Qualify the release with a live AGY Gemini lifecycle canary",
+      "kind": "code",
+      "state": "pending",
+      "backend": "inline",
+      "gated": true,
+      "risky": true,
+      "destructive": false,
+      "guarantee_tags": [],
+      "degrade_policy": "halt",
+      "timeout_seconds": null,
+      "heartbeat_seconds": null,
+      "depends_on": [
+        "issue-14-lifecycle-reconciliation",
+        "issue-15-port-migration",
+        "issue-16-port-inventory",
+        "issue-17-reference-route",
+        "issue-18-conformance-laboratory",
+        "issue-19-gemini-deliberation",
+        "issue-20-host-contract",
+        "issue-21-lifecycle-contracts",
+        "issue-23-artifact-promotion"
+      ],
+      "leaf_saga_id": "",
+      "child_spec_ref": "",
+      "github": {
+        "repo": "infiquetra/infiquetra-antigravity-plugins",
+        "issue": "infiquetra/infiquetra-antigravity-plugins#22",
+        "sub_issue": 22
+      },
+      "worktree": {},
+      "evidence": {},
+      "cost": {}
+    }
+  ],
+  "decision_trail": [
+    {
+      "revision": 2,
+      "reason": "Replace the generic starter graph with the reviewed ten-child dependency graph from parent issue 13",
+      "at": "2026-07-30T15:51:09Z"
+    },
+    {
+      "revision": 3,
+      "reason": "Bind completed issue 20 to merged pull request 24 for canonical completion harvesting",
+      "at": "2026-07-30T15:53:12Z"
+    },
+    {
+      "revision": 4,
+      "reason": "Adopt the operator-approved bounded autonomy policy for outcome execution",
+      "at": "2026-07-30T16:02:41Z",
+      "kind": "autonomy-policy",
+      "policy": {
+        "mode": "autonomous-within-outcome-and-leaf-plan",
+        "incidental_fix_limit": 1,
+        "targeted_recheck_limit": 1,
+        "allowed": [
+          "Implement and verify behavior directly required by the active issue and its plan",
+          "Fix one defect that directly blocks an acceptance criterion or was caused by the active change",
+          "Make a narrow adjacent refactor only when required to implement or test the planned behavior",
+          "Address obvious secrets, command execution, path handling, or unsafe input defects on a touched trust boundary",
+          "Create leaf branches, commits, pushes, and draft pull requests for the exact active issue",
+          "Perform reversible Operations board synchronization through the Outcome coordinator"
+        ],
+        "approval_required": [
+          "A second-order defect or another follow-on workstream",
+          "Changes outside the declared repository or plugin boundaries",
+          "A new dependency, public contract, architecture, outcome edge, or acceptance criterion",
+          "Speculative hardening beyond plausible personal Antigravity harness use",
+          "Credential, permission, deployment, destructive data, or production changes",
+          "Merging a pull request, deploying, or closing the parent outcome issue",
+          "An unresolved product or operator tradeoff"
+        ],
+        "incidental_findings": "Record and report non-blocking findings without fixing them"
+      }
+    }
+  ],
+  "cost_rollup": {},
+  "created_at": "2026-07-30T15:51:09Z",
+  "updated_at": "2026-07-30T16:02:41Z"
+}
