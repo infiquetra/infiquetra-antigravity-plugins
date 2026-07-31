@@ -40,7 +40,7 @@ separation: read-only code reviewers emit `reviewer-result.v1`, then a declared-
 | F04 | P1 | Host lint did not bind the exact selector and all changed runtime surfaces. | Named `antigravity-host-contract-surfaces.json`, `host_contract_lint.py`, and `test_host_contract_lint.py`; the one canonical selector must equal every changed active Saga, Fleet Core, Mission Control, and Multi-Agent Consensus runtime path. | Compiler write cells are literal; host-lint tests reject selector narrowing and unresolved AGHC001-AGHC006 findings. | yes |
 | F05 | P1 | Five workflows could falsely claim independence while the current host reports agent execution and sequential isolation unavailable. | Added safe `--observe-host` checks before work and recording plus a five-row audit. Each row now distinguishes deterministic evidence consumption from host-created independence and names `agy.agent.execution` or `agy.sequential.isolation` when that mode is requested. | Current receipt states are recorded as unavailable; tests must reject host-independence claims and block required origin modes without a passed capability. | yes |
 | F06 | P1 | Release drift could change after recheck but before recording. | Added no-write Git-integration refreshes before implementation, after recheck, and immediately before recording. The last typed result and source/host binding enter the evidence manifest. | Any changed source, host, evidence byte, manifest byte, or operator-gate reset preserves ledger bytes and stops recording. | yes |
-| F07 | P1 | Workflow writes used prose or directory expansion. | Replaced them with literal repository-relative paths. The compiled remediation assignment contains the literal 302-path union; generated v2, lint, review, mapping, evidence, manifest, changelog, and test paths are explicit. | Active compiler accepts 19 assignments and dependency-orders every overlap; `.serena/project.yml` and sibling/installed roots are absent. | yes |
+| F07 | P1 | Workflow writes used prose or directory expansion. | Replaced them with literal repository-relative paths. At the initial revision 2 review, the compiled remediation assignment contained the literal 302-path union; generated v2, lint, review, mapping, evidence, manifest, changelog, and test paths were explicit. | The initial compiler validation accepted 19 assignments and dependency-ordered every overlap; `.serena/project.yml` and sibling/installed roots were absent. | yes |
 | F08 | P1 | Git-bearing tests had no exclusive Git-role owner. | Listed eight exact Git-bearing nodes. Only a non-delivery `git-integration-operator` runs them in controlled temporary repositories; scenario and other roles receive exact deselections. | The workflow has three Git-role assignments: `refresh-approved-ledger`, `test-git-bearing-nodes`, and `refresh-before-recording`. Each is read-only with final `git diff --name-only`; full proof is the typed union of Git-bearing and Git-free results. | yes |
 | F09 | P1 | Reviewer write authority and result schemas were inconsistent. | Kept reviewers read-only with `reviewer-result.v1`, added declared-write code-review transcription with `assignment-result.v1`, and used this remediation assignment as the plan-review artifact writer. | Active registry/compiler resolves every role/profile and result schema; no reviewer declares writes. | yes |
 | F10 | P2 | `orphan-evidence-attestation` incorrectly claimed five packets. | Corrected the claim to nine and required numeric packet-claim generation/checking from `edit_packet_ids`. | Ledger inspection reports nine owned packets; every explicit numeric claim in the table equals the ledger count. | yes |
@@ -63,9 +63,25 @@ separation: read-only code reviewers emit `reviewer-result.v1`, then a declared-
 | pagination scope | existing `sdlc_manager.py` seam only; duplicate helper paths excluded |
 | Git ownership | eight exact Git-bearing nodes assigned only to `git-integration-operator`; delivery excluded |
 | role and result contracts | all 19 role/profile pairs are registry-allowed; reviewers use `reviewer-result.v1`; other assignments use `assignment-result.v1` |
-| compiler | active schema 3 compiler accepts 19 assignments, 11 blocking checks, zero external actions, and contract digest `4265afaa7d421a641266b2fae2dd1afbcda13549decddb55fc650a2443a8a3b7` |
-| write scope | literal paths only; remediation union has 302 paths; `.serena/project.yml`, siblings, installed plugins, and external state are excluded |
+| compiler | active schema 3 compiler accepts the amended contract with digest `c11caa0e1227afdfda67cf2ac4e8ecacc74bc7bbfb7556c7c8a40d25dce5d004` |
+| write scope | implementation union has 302 literal paths; remediation union has 303 literal paths and equals the implementation union plus `docs/code-reviews/2026-07-30-migrate-approved-port-survivors-code-review.md` |
+| approved implementation-path amendment | `tests/test_antigravity_plugin_doctor.py` is the sole added implementation path and is limited to the three R11 legacy fixtures |
+| host-contract selector | remains exact at 190 paths; the amendment does not widen or narrow selector coverage |
 | external actions | exact value `[]`; no push, PR, merge, issue/board mutation, install, release, or deployment |
+
+## Amendment review: DA-001
+
+Jeff approved one bounded documentation amendment after the independent reviewer reported DA-001.
+The finding identified stale current-readiness statements after
+`tests/test_antigravity_plugin_doctor.py` was added solely for the three R11 legacy fixtures.
+
+| finding | reviewer | disposition | targeted validation | status |
+|---|---|---|---|---|
+| `DA-001` | independent Devil's Advocate reviewer | Fixed the current contract digest and distinguished the 302-path implementation union from the 303-path remediation union. Recorded that the remediation union is exactly the implementation union plus the durable code-review artifact, that `tests/test_antigravity_plugin_doctor.py` is the sole approved implementation-path addition and is limited to the three R11 legacy fixtures, and that the selector remains exact at 190 paths. | Confirmed the amended values are stated consistently in current readiness evidence; preserved the initial review history and all 15 original dispositions; checked this document's Markdown table structure without running implementation tests. | resolved |
+
+The amended contract digest is
+`c11caa0e1227afdfda67cf2ac4e8ecacc74bc7bbfb7556c7c8a40d25dce5d004`.
+No plan or implementation path was changed by this amendment review.
 
 ## Remaining findings
 
@@ -80,10 +96,13 @@ separation: read-only code reviewers emit `reviewer-result.v1`, then a declared-
 
 `ready-for-workflow-approval`
 
-Revision 2 is decision-complete and compiler-ready. It preserves one canonical ledger authority,
-the exact 51 approved candidates, all existing decisions and packets, typed evidence integrity,
-current host honesty, literal writes, role separation, and a one-remediation limit. It stops here
-before implementation. Jeff must separately approve execution of the compiled workflow.
+Revision 2 with the approved DA-001 amendment is decision-complete and compiler-ready at contract
+digest `c11caa0e1227afdfda67cf2ac4e8ecacc74bc7bbfb7556c7c8a40d25dce5d004`.
+It preserves one canonical ledger authority, the exact 51 approved candidates, all existing
+decisions and packets, typed evidence integrity, current host honesty, the exact 190-path selector,
+the 302-path implementation union, the 303-path remediation union, role separation, and a
+one-remediation limit. It stops here before implementation. Jeff must separately approve execution
+of the compiled workflow.
 
 ## Residual risk
 
