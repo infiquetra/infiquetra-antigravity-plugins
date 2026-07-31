@@ -63,10 +63,12 @@ separation: read-only code reviewers emit `reviewer-result.v1`, then a declared-
 | pagination scope | existing `sdlc_manager.py` seam only; duplicate helper paths excluded |
 | Git ownership | eight exact Git-bearing nodes assigned only to `git-integration-operator`; delivery excluded |
 | role and result contracts | all 19 role/profile pairs are registry-allowed; reviewers use `reviewer-result.v1`; other assignments use `assignment-result.v1` |
-| compiler | active schema 3 compiler accepts the amended contract with digest `c11caa0e1227afdfda67cf2ac4e8ecacc74bc7bbfb7556c7c8a40d25dce5d004` |
-| write scope | implementation union has 302 literal paths; remediation union has 303 literal paths and equals the implementation union plus `docs/code-reviews/2026-07-30-migrate-approved-port-survivors-code-review.md` |
-| approved implementation-path amendment | `tests/test_antigravity_plugin_doctor.py` is the sole added implementation path and is limited to the three R11 legacy fixtures |
-| host-contract selector | remains exact at 190 paths; the amendment does not widen or narrow selector coverage |
+| compiler | active schema 3 compiler accepts the second-amended contract with digest `946e327c581edf4ef6ab304b21d5e6120726432dcf27fcdf84bf5383f69535a7` |
+| write scope | implementation union has 305 literal paths; remediation union has 306 literal paths and equals the implementation union plus `docs/code-reviews/2026-07-30-migrate-approved-port-survivors-code-review.md` |
+| Saga substrate scope | `implement-saga-substrate` has 56 literal paths |
+| first-amendment implementation path | `tests/test_antigravity_plugin_doctor.py` remains the DA-001 path, limited to the three R11 legacy fixtures; it is not the sole current addition |
+| second-amendment implementation paths | `plugins/saga/docs/commands.md` is owned by `saga-fleet-doctor`; `plugins/saga/scripts/render_docs_visuals.py` and `plugins/saga/docs/assets/ownership-boundary-map.svg` are owned by `codex-portability-contracts` |
+| host-contract selector | remains exact at 190 runtime paths; all three second-amendment documentation and rendering paths are excluded from the unchanged runtime selector |
 | external actions | exact value `[]`; no push, PR, merge, issue/board mutation, install, release, or deployment |
 
 ## Amendment review: DA-001
@@ -83,6 +85,18 @@ The amended contract digest is
 `c11caa0e1227afdfda67cf2ac4e8ecacc74bc7bbfb7556c7c8a40d25dce5d004`.
 No plan or implementation path was changed by this amendment review.
 
+## Second amendment review: DA-002
+
+Jeff approved a second bounded documentation amendment after the independent reviewer reported
+DA-002. The finding identified stale current-readiness statements after three Saga documentation
+and rendering paths were added to their existing semantic owners.
+
+| finding | reviewer | disposition | targeted validation | status |
+|---|---|---|---|---|
+| `DA-002` | independent Devil's Advocate reviewer | Updated the current contract digest to `946e327c581edf4ef6ab304b21d5e6120726432dcf27fcdf84bf5383f69535a7`; recorded the 305-path implementation union, 56-path `implement-saga-substrate` assignment, and 306-path remediation union equal to the implementation union plus the durable code-review artifact; retained `tests/test_antigravity_plugin_doctor.py` as the historical first-amendment path; assigned `plugins/saga/docs/commands.md` to `saga-fleet-doctor` and `plugins/saga/scripts/render_docs_visuals.py` plus `plugins/saga/docs/assets/ownership-boundary-map.svg` to `codex-portability-contracts`; recorded that all three are excluded from the unchanged 190-path runtime selector. | Confirmed every second-amendment value and ownership statement appears consistently in current readiness evidence; preserved the initial review and DA-001 as historical records; checked this document's Markdown table structure without running implementation tests. | resolved |
+
+No plan or implementation path was changed by this second-amendment review.
+
 ## Remaining findings
 
 | severity | remaining | status |
@@ -96,13 +110,13 @@ No plan or implementation path was changed by this amendment review.
 
 `ready-for-workflow-approval`
 
-Revision 2 with the approved DA-001 amendment is decision-complete and compiler-ready at contract
-digest `c11caa0e1227afdfda67cf2ac4e8ecacc74bc7bbfb7556c7c8a40d25dce5d004`.
+Revision 2 with the approved DA-001 and DA-002 amendments is decision-complete and compiler-ready
+at contract digest `946e327c581edf4ef6ab304b21d5e6120726432dcf27fcdf84bf5383f69535a7`.
 It preserves one canonical ledger authority, the exact 51 approved candidates, all existing
-decisions and packets, typed evidence integrity, current host honesty, the exact 190-path selector,
-the 302-path implementation union, the 303-path remediation union, role separation, and a
-one-remediation limit. It stops here before implementation. Jeff must separately approve execution
-of the compiled workflow.
+decisions and packets, typed evidence integrity, current host honesty, the unchanged exact
+190-path runtime selector, the 305-path implementation union, the 56-path Saga substrate
+assignment, the 306-path remediation union, role separation, and a one-remediation limit. It stops
+here before implementation. Jeff must separately approve execution of the compiled workflow.
 
 ## Residual risk
 
