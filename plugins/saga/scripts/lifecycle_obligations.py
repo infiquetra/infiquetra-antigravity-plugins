@@ -10,6 +10,7 @@ that answer in later integration work.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 SCHEMA_VERSION = "saga.lifecycle-obligation.v1"
+INDEPENDENCE_RECEIPT_SCHEMA = "saga.independent-evidence-receipt.v1"
 
 # The forward workstream contract follows plugins/saga/docs/lifecycle.md.  The
 # generic legacy saga envelope still parses "retro"; this module does not
@@ -115,6 +117,7 @@ INDEPENDENT_EVIDENCE_KINDS = frozenset(
         EvidenceKind.EXECUTION_RECEIPT,
         EvidenceKind.REVIEW_FINDING,
         EvidenceKind.QA_RESULT,
+        EvidenceKind.CHECK_RESULT,
     }
 )
 
@@ -140,7 +143,13 @@ class EvidenceRule:
         independent = data.get("independent", False)
         if not isinstance(independent, bool):
             raise ObligationError("evidence rule independent must be a boolean")
-        if kind in INDEPENDENT_EVIDENCE_KINDS and not independent:
+        # Check results may remain ordinary repository evidence unless the
+        # owning contract explicitly requires an independent result.
+        if (
+            kind in INDEPENDENT_EVIDENCE_KINDS
+            and kind is not EvidenceKind.CHECK_RESULT
+            and not independent
+        ):
             raise ObligationError(f"{kind.value} evidence must be declared independent")
         rule = cls(kind=kind, minimum_count=count, independent=independent)
         rule.validate()
@@ -157,7 +166,11 @@ class EvidenceRule:
             raise ObligationError("evidence rule minimum_count must be a positive integer")
         if not isinstance(self.independent, bool):
             raise ObligationError("evidence rule independent must be a boolean")
-        if self.kind in INDEPENDENT_EVIDENCE_KINDS and not self.independent:
+        if (
+            self.kind in INDEPENDENT_EVIDENCE_KINDS
+            and self.kind is not EvidenceKind.CHECK_RESULT
+            and not self.independent
+        ):
             raise ObligationError(f"{self.kind.value} evidence must be declared independent")
 
     def to_dict(self) -> dict[str, Any]:
@@ -671,6 +684,15 @@ def _evaluate_rules(
                 if not ok:
                     reasons.append(reason)
                     continue
+            if rule.independent:
+                ok, reason = verify_independent_receipt(
+                    item,
+                    obligation_producer=obligation.producer,
+                    repo_root=repo_root,
+                )
+                if not ok:
+                    reasons.append(reason)
+                    continue
             verified.append(item)
         if rule.independent:
             by_producer: dict[str, Evidence] = {}
@@ -729,6 +751,80 @@ def verify_repository_evidence(
     actual = "sha256:" + hashlib.sha256(resolved.read_bytes()).hexdigest()
     if actual != evidence.digest:
         return False, f"{evidence.evidence_id} repository evidence digest does not match"
+    return True, ""
+
+
+def verify_independent_receipt(
+    evidence: Evidence,
+    *,
+    obligation_producer: str,
+    repo_root: Path | None,
+) -> tuple[bool, str]:
+    """Verify a closed identity-bound receipt for an independent result."""
+
+    if evidence.kind not in INDEPENDENT_EVIDENCE_KINDS:
+        return False, f"{evidence.evidence_id} is not an independent evidence kind"
+    if repo_root is None:
+        return False, f"{evidence.evidence_id} cannot resolve its identity receipt without repo_root"
+    target = repo_root.resolve().joinpath(*PurePosixPath(evidence.reference).parts)
+    try:
+        raw = target.resolve(strict=True).read_bytes()
+        receipt = json.loads(raw)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False, f"{evidence.evidence_id} identity receipt is not valid JSON"
+    expected_fields = {
+        "schema",
+        "receipt_id",
+        "evidence_kind",
+        "subject",
+        "producer_id",
+        "attester_id",
+        "origin",
+        "host_capability",
+        "host_capability_state",
+        "artifact_sha256",
+    }
+    if not isinstance(receipt, dict) or set(receipt) != expected_fields:
+        return False, f"{evidence.evidence_id} identity receipt has an invalid shape"
+    if receipt.get("schema") != INDEPENDENCE_RECEIPT_SCHEMA:
+        return False, f"{evidence.evidence_id} identity receipt schema is invalid"
+    body = {key: value for key, value in receipt.items() if key != "receipt_id"}
+    identity = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    if receipt.get("receipt_id") != identity:
+        return False, f"{evidence.evidence_id} identity receipt digest is invalid"
+    if receipt.get("evidence_kind") != evidence.kind.value:
+        return False, f"{evidence.evidence_id} identity receipt kind is mismatched"
+    if receipt.get("subject") != evidence.subject:
+        return False, f"{evidence.evidence_id} identity receipt subject is mismatched"
+    if receipt.get("producer_id") != evidence.producer:
+        return False, f"{evidence.evidence_id} attested producer is mismatched"
+    attester = receipt.get("attester_id")
+    if (
+        not isinstance(attester, str)
+        or not attester.strip()
+        or attester in {evidence.producer, obligation_producer}
+    ):
+        return False, f"{evidence.evidence_id} requires a distinct attester identity"
+    artifact_digest = receipt.get("artifact_sha256")
+    if not isinstance(artifact_digest, str) or re.fullmatch(r"[0-9a-f]{64}", artifact_digest) is None:
+        return False, f"{evidence.evidence_id} artifact_sha256 is invalid"
+    origin = receipt.get("origin")
+    if origin == "saga-host-created":
+        if (
+            receipt.get("host_capability") != "agy.agent.execution"
+            or receipt.get("host_capability_state") != "passed"
+        ):
+            return False, (
+                f"{evidence.evidence_id} cannot claim Saga-created independence without "
+                "a passing agy.agent.execution capability"
+            )
+    elif origin == "imported-external":
+        if receipt.get("host_capability") is not None or receipt.get("host_capability_state") is not None:
+            return False, f"{evidence.evidence_id} imported receipt may not claim host execution"
+    else:
+        return False, f"{evidence.evidence_id} identity receipt origin is invalid"
     return True, ""
 
 

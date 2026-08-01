@@ -6,6 +6,15 @@ command. The table is designed from the already-shipped siblings' own clean-exit
 upstream router to port. `/loop` reads this table in Phase 2, then ticks the saga and dispatches
 (Phase 4).
 
+## Proof-carrying route precedence
+
+When a workstream has a canonical lifecycle-obligation contract and transition receipts, the
+obligation order takes precedence over this phase table. `/loop` routes to the earliest required
+obligation that is not verifiably satisfied. It skips only satisfied required obligations, and an
+unchanged contract-and-receipt set must return the same route on every retry. Missing, invalid, or
+conflicting evidence keeps the obligation unsettled. Use the tables below only when no such contract
+applies or after all required obligations are satisfied.
+
 The 17 routable commands: `/office-hours`, `/ideate`, `/brainstorm`, `/spec`, `/plan`, `/doc-review`,
 `/work`, `/code-review`, `/qa`, `/investigate`, `/founder-review`, `/strategy`, `/optimize`, `/handoff`,
 `/retro`, `/resume`, and `/loop` itself (re-entry).

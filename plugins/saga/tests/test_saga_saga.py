@@ -1365,11 +1365,11 @@ def test_orchestration_recommended_and_choice_round_trip(saga: ModuleType) -> No
     s = _make_saga(
         saga,
         orchestration_recommended="multi-agent-consensus",
-        orchestration_operator_choice="team-execution",
+        orchestration_operator_choice="multi-agent-consensus",
     )
     restored = saga.parse_envelope(saga.render_envelope(s))
     assert restored.orchestration_recommended == "multi-agent-consensus"
-    assert restored.orchestration_operator_choice == "team-execution"
+    assert restored.orchestration_operator_choice == "multi-agent-consensus"
 
 
 def test_orchestration_recommended_and_choice_persist_via_save(
@@ -1431,12 +1431,12 @@ def test_orchestration_override_rate_fields_present_in_frontmatter_output(saga: 
     """render_envelope emits both new fields into the frontmatter."""
     s = _make_saga(
         saga,
-        orchestration_recommended="team-execution",
-        orchestration_operator_choice="team-execution",
+        orchestration_recommended="multi-agent-consensus",
+        orchestration_operator_choice="multi-agent-consensus",
     )
     rendered = saga.render_envelope(s)
-    assert "orchestration_recommended: team-execution" in rendered
-    assert "orchestration_operator_choice: team-execution" in rendered
+    assert "orchestration_recommended: multi-agent-consensus" in rendered
+    assert "orchestration_operator_choice: multi-agent-consensus" in rendered
 
 
 # ===========================================================================

@@ -54,6 +54,11 @@ when_to_use: |
 Operator-facing helpers over the GraphQL + REST APIs the active boards use.
 Each command is a thin wrapper with idempotency + clear error messages.
 
+Read-only discovery never mutates. Before any mutating helper runs, normalize the repository,
+resolve the explicitly named active project, issue, field, and option, show the proposed change,
+and obtain explicit operator approval. An ambiguous repository mapping, missing project or option,
+or malformed API response stops the operation; do not guess or silently choose the first match.
+
 ## Commands
 
 ```bash
@@ -107,6 +112,8 @@ sdlc_manager.py flow validate-card --repo campps-mvp --number 42
 
 ## Hard rules
 
+- **Mutation is a separate approved step.** Discovery and validation results are not approval to
+  set fields, link issues, create labels, or change assignments.
 - **Never apply `objective:*` or `initiative:*` colon-prefixed labels.** Both are project FIELDS (decided 2026-05-03; see [DECISIONS](https://github.com/infiquetra/infiquetra-sdlc/blob/main/docs/engineering-journal/DECISIONS.md)). Use `flow set-field` instead.
 - **Field option IDs rotate on rename/recreate.** Never cache them. Every command that reads field state calls `flow field-options` (or its equivalent GraphQL query) at start.
 - **Verify-label distinguishes 404 from other errors.** A 401/403/5xx must NOT be silently treated as missing — that would create labels under the wrong auth context or mask real failures.

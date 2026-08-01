@@ -8,7 +8,8 @@ Saga record.
 
 ## `/ideate`
 **Purpose:** Generate, critique, and surface surviving grounded Infiquetra ideas.
-**Brain State Impact:** Creates the ideation artifact and the raw candidates pool.
+**Artifact impact:** Creates canonical ideation artifacts under repository
+`docs/`; any brain copy is staging only.
 
 ```mermaid
 flowchart LR
@@ -28,7 +29,8 @@ flowchart LR
 
 ## `/brainstorm`
 **Purpose:** Deep-dive one chosen idea into a right-sized requirements document.
-**Brain State Impact:** Takes the ideation survivor or raw user request and generates a formal requirements file.
+**Artifact impact:** Takes the ideation survivor or raw user request and writes a
+canonical requirements file under repository `docs/`.
 
 ```mermaid
 flowchart LR
@@ -46,7 +48,8 @@ flowchart LR
 
 ## `/plan`
 **Purpose:** Create durable implementation plans with issue, review, test, and deploy gates.
-**Brain State Impact:** The critical gateway. Creates the native Antigravity `implementation_plan.md`.
+**Artifact impact:** The critical gateway. Creates the canonical repository
+`implementation_plan.md`; a native brain projection is not authoritative.
 
 ```mermaid
 flowchart LR
@@ -64,7 +67,9 @@ flowchart LR
 
 ## `/work`
 **Purpose:** Execute an approved plan to PR-ready.
-**Brain State Impact:** Parses the approved plan, builds the `task.md` checklist, mutates source code, and writes the final `walkthrough.md`.
+**Artifact impact:** Parses the approved canonical plan, builds the `task.md`
+checklist, mutates source code, and writes the final repository
+`walkthrough.md`.
 
 ```mermaid
 flowchart LR
@@ -87,7 +92,8 @@ flowchart LR
 
 ## `/qa`
 **Purpose:** Run a risk-driven acceptance-evidence QA gate.
-**Brain State Impact:** Consumes the walkthrough and mutates the status tracking to approved or rejected.
+**Artifact impact:** Consumes the canonical walkthrough and records the QA
+verdict in repository lifecycle evidence.
 
 ```mermaid
 flowchart LR
@@ -108,7 +114,8 @@ flowchart LR
 
 ## `/retro`
 **Purpose:** Meta-improvement engine. Terminal advisory phase.
-**Brain State Impact:** Reads everything and appends to the Engineering Journal.
+**Artifact impact:** Reads canonical evidence and appends to the repository
+Engineering Journal.
 
 ```mermaid
 flowchart LR

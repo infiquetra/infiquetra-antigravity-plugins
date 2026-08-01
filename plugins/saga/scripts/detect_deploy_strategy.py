@@ -12,6 +12,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import external_action_contract  # noqa: E402
+
 ENV_ORDER = ("nonprod", "staging", "production")
 CACHE_TTL_SECONDS = 24 * 60 * 60
 CACHE_DIR = Path(".gemini/saga")
@@ -45,6 +49,47 @@ def classify(workflows: Sequence[str]) -> dict[str, object]:
         "strategy": strategy,
         "envs_available": envs,
         "workflows": list(workflows),
+    }
+
+
+def build_deploy_intent(
+    workflows: Sequence[str],
+    *,
+    environment: str,
+    workspace_id: str,
+    requested_by: str,
+) -> dict[str, object]:
+    """Build a local handoff packet for the deploy plugin without executing a release."""
+
+    if environment not in ENV_ORDER:
+        raise ValueError(f"environment must be one of {', '.join(ENV_ORDER)}")
+    detected = classify(workflows)
+    available = cast("list[str]", detected["envs_available"])
+    if environment not in available:
+        raise ValueError(
+            f"no unambiguous deployment workflow covers {environment!r}; release intent refused"
+        )
+    payload = {
+        "strategy": detected["strategy"],
+        "environment": environment,
+        "workflows": sorted(set(workflows)),
+    }
+    intent = external_action_contract.build_intent(
+        action_id=f"deploy-{environment}",
+        workspace_id=workspace_id,
+        adapter="deploy",
+        operation="promote",
+        target=environment,
+        payload_sha256=external_action_contract.canonical_sha256(payload),
+        requested_by=requested_by,
+    )
+    return {
+        "schema": "saga.deploy-intent.v1",
+        "owner": "deploy",
+        "detected": detected,
+        "external_action_intent": intent,
+        "authority_required": True,
+        "executed": False,
     }
 
 

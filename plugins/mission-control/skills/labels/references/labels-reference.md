@@ -3,6 +3,10 @@
 Complete label taxonomy for Infiquetra repositories. Source of truth:
 `$INFIQUETRA_SDLC_PATH/config/labels.json`
 
+Auditing this taxonomy is read-only. Unknown requested labels fail validation. Deployment,
+auto-labeling, and direct edits require a separately displayed mutation plan and explicit operator
+approval; an audit result alone is never mutation authority.
+
 ---
 
 ## Issue Type Labels (exactly ONE per issue)

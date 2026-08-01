@@ -47,7 +47,7 @@ issue command; `/issue` remains a compatibility alias.
 Prepare from a source artifact:
 
 ```bash
-python3 ~/.gemini/plugins/cache/infiquetra-plugins/mission-control/1.6.0/scripts/sdlc_manager.py \
+python3 ~/.gemini/plugins/cache/infiquetra-plugins/mission-control/2.8.0/scripts/sdlc_manager.py \
   issue prepare --repo infiquetra-antigravity-plugins --type capability \
   --team campps --project campps --risk medium \
   --from docs/plans/example.md --maturity plan-ready
@@ -56,7 +56,7 @@ python3 ~/.gemini/plugins/cache/infiquetra-plugins/mission-control/1.6.0/scripts
 Create after review and confirmation:
 
 ```bash
-python3 ~/.gemini/plugins/cache/infiquetra-plugins/mission-control/1.6.0/scripts/sdlc_manager.py \
+python3 ~/.gemini/plugins/cache/infiquetra-plugins/mission-control/2.8.0/scripts/sdlc_manager.py \
   issue create-prepared docs/sdlc-issue-drafts/<draft>.md
 ```
 

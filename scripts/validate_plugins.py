@@ -4,9 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import hashlib
 import json
 import re
+import subprocess  # nosec B404
 import sys
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -32,6 +36,8 @@ CATALOG_PATH = Path("plugins/fleet-core/references/antigravity-capability-probes
 HOST_CONTRACT_SELECTOR_PATH = Path(
     "plugins/fleet-core/references/antigravity-host-contract-surfaces.json"
 )
+QUALITY_EVIDENCE_SCHEMA = "antigravity.repository-quality-evidence.v1"
+QUALITY_STABLE_ID = "repository-quality-guards"
 
 
 class ProbeRunner(Protocol):
@@ -106,6 +112,272 @@ class DoctorResult:
     capability: CapabilityStatus = field(default_factory=CapabilityStatus)
     receipt_privacy: PrivacyStatus = field(default_factory=PrivacyStatus)
     host_contract: HostContractStatus = field(default_factory=HostContractStatus)
+
+
+def _resolve_repository_file(repo_root: Path, value: object, field: str) -> tuple[Path | None, str | None]:
+    if not isinstance(value, str) or not value:
+        return None, f"{field} must be a non-empty repository-relative path"
+    candidate = Path(value)
+    if candidate.is_absolute() or ".." in candidate.parts or "\\" in value:
+        return None, f"{field} must remain repository-relative"
+    root = repo_root.resolve()
+    try:
+        resolved = (root / candidate).resolve(strict=True)
+        resolved.relative_to(root)
+    except (OSError, ValueError):
+        return None, f"{field} does not resolve to a contained repository file"
+    if not resolved.is_file():
+        return None, f"{field} does not resolve to a regular file"
+    return resolved, None
+
+
+def _pytest_node_exists(repo_root: Path, node_id: str) -> bool:
+    path_text, separator, function_name = node_id.partition("::")
+    if not separator or not function_name.startswith("test_") or "::" in function_name:
+        return False
+    source, error = _resolve_repository_file(repo_root, path_text, "test node path")
+    if error or source is None or source.suffix != ".py":
+        return False
+    try:
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return False
+    return any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name
+        for node in tree.body
+    )
+
+
+def validate_repository_quality_evidence(
+    evidence: object, *, repo_root: Path | None = None, collect_nodes: bool = False
+) -> list[str]:
+    """Reject unowned fixtures, unsupported claims, and weak semantic test shapes."""
+
+    if not isinstance(evidence, Mapping):
+        return ["quality evidence must be an object"]
+    expected_fields = {"schema", "fixtures", "ownership", "journals", "tests"}
+    errors = (
+        ["quality evidence has unknown or missing fields"]
+        if set(evidence) != expected_fields
+        else []
+    )
+    if evidence.get("schema") != QUALITY_EVIDENCE_SCHEMA:
+        errors.append("quality evidence schema is invalid")
+
+    fixtures = evidence.get("fixtures")
+    if not isinstance(fixtures, list):
+        errors.append("fixtures must be a list")
+    else:
+        for index, fixture in enumerate(fixtures):
+            prefix = f"fixtures[{index}]"
+            if not isinstance(fixture, Mapping) or set(fixture) != {
+                "path",
+                "owner",
+                "purpose",
+                "provenance",
+                "sha256",
+            }:
+                errors.append(f"{prefix} has an invalid shape")
+                continue
+            for field in ("path", "owner", "purpose"):
+                if not isinstance(fixture.get(field), str) or not fixture[field].strip():
+                    errors.append(f"{prefix}.{field} must be a non-empty string")
+            if fixture.get("provenance") not in {"synthetic", "sanitized"}:
+                errors.append(f"{prefix} claims unverified fixture provenance")
+            if repo_root is not None:
+                resolved, path_error = _resolve_repository_file(
+                    repo_root, fixture.get("path"), f"{prefix}.path"
+                )
+                if path_error:
+                    errors.append(path_error)
+                elif resolved is not None:
+                    expected_digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
+                    if fixture.get("sha256") != expected_digest:
+                        errors.append(f"{prefix}.sha256 does not match fixture bytes")
+                    relative = resolved.relative_to(repo_root.resolve()).as_posix()
+                    if "/tests/fixtures/" not in f"/{relative}":
+                        errors.append(f"{prefix}.path is not a repository test fixture")
+
+    ownership = evidence.get("ownership")
+    if not isinstance(ownership, list):
+        errors.append("ownership must be a list")
+    else:
+        seen_paths: set[str] = set()
+        for index, row in enumerate(ownership):
+            prefix = f"ownership[{index}]"
+            if not isinstance(row, Mapping) or set(row) != {"path", "stable_ids"}:
+                errors.append(f"{prefix} has an invalid shape")
+                continue
+            path = row.get("path")
+            owners = row.get("stable_ids")
+            if not isinstance(path, str) or not path or path in seen_paths:
+                errors.append(f"{prefix}.path is missing or duplicated")
+            else:
+                seen_paths.add(path)
+                if repo_root is not None:
+                    _resolved, path_error = _resolve_repository_file(
+                        repo_root, path, f"{prefix}.path"
+                    )
+                    if path_error:
+                        errors.append(path_error)
+            if (
+                not isinstance(owners, list)
+                or not owners
+                or any(not isinstance(owner, str) or not owner for owner in owners)
+                or len(owners) != len(set(owners))
+            ):
+                errors.append(f"{prefix}.stable_ids must name unique owners")
+
+    journals = evidence.get("journals")
+    if not isinstance(journals, list):
+        errors.append("journals must be a list")
+    else:
+        for index, journal in enumerate(journals):
+            prefix = f"journals[{index}]"
+            if not isinstance(journal, Mapping) or set(journal) != {
+                "path",
+                "status",
+                "evidence",
+            }:
+                errors.append(f"{prefix} has an invalid shape")
+                continue
+            if journal.get("status") not in {"planned", "in-progress", "completed"}:
+                errors.append(f"{prefix}.status is invalid")
+            if repo_root is not None:
+                _resolved, path_error = _resolve_repository_file(
+                    repo_root, journal.get("path"), f"{prefix}.path"
+                )
+                if path_error:
+                    errors.append(path_error)
+            journal_evidence = journal.get("evidence")
+            if not isinstance(journal_evidence, list):
+                errors.append(f"{prefix}.evidence must be a list")
+            elif journal.get("status") == "completed" and not journal_evidence:
+                errors.append(f"{prefix} claims completion without evidence")
+            elif repo_root is not None:
+                for evidence_index, reference in enumerate(journal_evidence):
+                    _resolved, path_error = _resolve_repository_file(
+                        repo_root,
+                        reference,
+                        f"{prefix}.evidence[{evidence_index}]",
+                    )
+                    if path_error:
+                        errors.append(path_error)
+
+    tests = evidence.get("tests")
+    exact_nodes: list[str] = []
+    if not isinstance(tests, list):
+        errors.append("tests must be a list")
+    else:
+        by_owner: dict[str, set[str]] = {}
+        for index, test in enumerate(tests):
+            prefix = f"tests[{index}]"
+            if not isinstance(test, Mapping) or set(test) != {
+                "stable_id",
+                "kind",
+                "node_id",
+            }:
+                errors.append(f"{prefix} has an invalid shape")
+                continue
+            stable_id = test.get("stable_id")
+            kind = test.get("kind")
+            node_id = test.get("node_id")
+            if kind not in {"positive", "negative"}:
+                errors.append(f"{prefix}.kind is invalid")
+                continue
+            if (
+                not isinstance(stable_id, str)
+                or not stable_id
+                or not isinstance(node_id, str)
+                or "::test_" not in node_id
+            ):
+                errors.append(f"{prefix} is not an exact Pytest semantic node")
+                continue
+            if kind == "negative" and not node_id.endswith("_rejects_negative_cases"):
+                errors.append(f"{prefix} does not use the closed negative-node shape")
+            if repo_root is not None and not _pytest_node_exists(repo_root, node_id):
+                errors.append(f"{prefix}.node_id is not a collected repository test function")
+            elif isinstance(node_id, str):
+                exact_nodes.append(node_id)
+            by_owner.setdefault(stable_id, set()).add(kind)
+        for stable_id, kinds in sorted(by_owner.items()):
+            if kinds != {"positive", "negative"}:
+                errors.append(f"tests for {stable_id!r} lack positive or negative coverage")
+    if repo_root is not None and collect_nodes and exact_nodes:
+        try:
+            collected = subprocess.run(  # nosec B603
+                [sys.executable, "-m", "pytest", "--collect-only", "-q", *exact_nodes],
+                cwd=repo_root,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            errors.append("quality evidence Pytest collection could not run")
+        else:
+            if collected.returncode != 0:
+                errors.append("quality evidence contains a node Pytest did not collect")
+    if repo_root is not None:
+        known_ids: set[str] = set()
+        ledger_path = repo_root / "docs/ports/2026-07-30-saga-reliability/ledger.yaml"
+        try:
+            ledger_text = ledger_path.read_text(encoding="utf-8")
+        except OSError:
+            errors.append("canonical semantic-port ledger is missing")
+        else:
+            for match in re.finditer(r"(?m)^- id: ([a-z0-9.-]+)$", ledger_text):
+                known_ids.add(match.group(1))
+        fixture_ids = {
+            row.get("owner") for row in fixtures or [] if isinstance(row, Mapping)
+        }
+        ownership_ids = {
+            stable_id
+            for row in ownership or []
+            if isinstance(row, Mapping) and isinstance(row.get("stable_ids"), list)
+            for stable_id in row["stable_ids"]
+        }
+        test_ids = set(by_owner) if isinstance(tests, list) else set()
+        referenced_ids = {value for value in fixture_ids | ownership_ids | test_ids if isinstance(value, str)}
+        unknown_ids = sorted(referenced_ids - known_ids)
+        if unknown_ids:
+            errors.append("quality evidence names unknown stable identifiers: " + ", ".join(unknown_ids))
+        if fixture_ids != ownership_ids or ownership_ids != test_ids:
+            errors.append("fixture, ownership, and test stable identifiers must match exactly")
+    return errors
+
+
+def canonical_repository_quality_evidence(repo_root: Path) -> dict[str, Any]:
+    fixture_path = Path("plugins/fleet-core/tests/fixtures/orphan-evidence/valid.json")
+    fixture_digest = hashlib.sha256((repo_root / fixture_path).read_bytes()).hexdigest()
+    test_prefix = "plugins/fleet-core/tests/test_repository_quality_guards.py::"
+    return {
+        "schema": QUALITY_EVIDENCE_SCHEMA,
+        "fixtures": [{
+            "path": fixture_path.as_posix(),
+            "owner": QUALITY_STABLE_ID,
+            "purpose": "sanitized orphan-evidence contract fixture",
+            "provenance": "sanitized",
+            "sha256": fixture_digest,
+        }],
+        "ownership": [
+            {"path": fixture_path.as_posix(), "stable_ids": [QUALITY_STABLE_ID]},
+            {"path": "scripts/validate_plugins.py", "stable_ids": [QUALITY_STABLE_ID]},
+            {"path": "plugins/fleet-core/tests/test_repository_quality_guards.py", "stable_ids": [QUALITY_STABLE_ID]},
+        ],
+        "journals": [{
+            "path": "docs/engineering-journal/DECISIONS.md",
+            "status": "completed",
+            "evidence": [
+                fixture_path.as_posix(),
+                "plugins/fleet-core/tests/test_repository_quality_guards.py",
+            ],
+        }],
+        "tests": [
+            {"stable_id": QUALITY_STABLE_ID, "kind": "positive", "node_id": test_prefix + "test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps"},
+            {"stable_id": QUALITY_STABLE_ID, "kind": "negative", "node_id": test_prefix + "test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases"},
+        ],
+    }
 
 
 def default_install_dir() -> Path:
@@ -365,6 +637,19 @@ def run_doctor(
         next_actions.append("supply a valid passing capability receipt for the selected profile")
     if host_status.unresolved_count:
         next_actions.append("remediate or narrowly classify unresolved host-contract findings")
+
+    quality_campaign = repo_root / "docs/ports/2026-07-30-saga-reliability/ledger.yaml"
+    if quality_campaign.is_file():
+        try:
+            quality_evidence = canonical_repository_quality_evidence(repo_root)
+            quality_errors = validate_repository_quality_evidence(
+                quality_evidence, repo_root=repo_root, collect_nodes=True
+            )
+        except OSError:
+            quality_errors = ["canonical quality evidence artifacts are missing"]
+        errors.extend(f"repository quality: {item}" for item in quality_errors)
+        if quality_errors:
+            next_actions.append("repair repository quality evidence and semantic test ownership")
 
     return DoctorResult(
         not errors,

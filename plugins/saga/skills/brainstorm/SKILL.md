@@ -5,6 +5,12 @@ description: Deep-dive one chosen Infiquetra idea into a right-sized requirement
 
 # Brainstorm
 
+## Migration evidence contract
+
+The durable result names testable requirement IDs, assumptions, actors, and acceptance examples.
+Unresolved product choices remain explicit open decisions. Present each material choice to the operator
+and stop until it is decided; do not silently convert an assumption into approval.
+
 Brainstorm answers **WHAT to build** for one chosen idea, then writes a right-sized requirements
 document. It precedes `/plan`, which answers **HOW to build it**.
 

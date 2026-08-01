@@ -154,6 +154,12 @@ A change usually lands in 1-3 classes. **trivial** short-circuits to a quick rea
 
 ## Phase 2 — Run checks per class
 
+Before accepting a check result, bind a typed evidence record with `producer_id`, `tester_id`, exact
+`test_node_ids`, statuses, and evidence digests. `producer_id` and `tester_id` must differ; a producer
+cannot certify its own work. Externally supplied tester evidence records that host independence was not
+performed. If `/qa` is asked to originate the tester through Antigravity, require
+`agy.agent.execution=passed` or stop that mode. Never replace the identity gate with a fixture or prose.
+
 For each in-scope class, run the acceptance checks from `references/risk-taxonomy.md`, narrow before
 broad, and gather **evidence** for every result:
 

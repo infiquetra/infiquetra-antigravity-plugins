@@ -6,6 +6,12 @@ argument-hint: "[metric, workflow, or bottleneck]"
 
 # Optimize
 
+## Migration evidence contract
+
+Every improvement claim binds the approved metric, baseline, one-variable change, measured result,
+degenerate checks, and stopping condition. The operator approves the experiment specification and any
+fan-out mode. A measured winner is advisory and never authorizes deployment or lifecycle completion.
+
 Ported from Compound-Engineering `ce-optimize` — the metric-driven iterative optimization loop is a
 **single-source PORT** of that engine's spine (spec -> baseline -> hypothesis backlog -> bounded
 one-variable experiments -> measure with hard degenerate gates BEFORE LLM-judge -> strategy digest ->

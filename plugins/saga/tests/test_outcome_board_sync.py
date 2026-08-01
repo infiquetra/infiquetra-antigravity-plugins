@@ -52,6 +52,7 @@ _load("outcome_report")
 _load("outcome_projection")
 CERT_MOD = _load("reversibility_certificate")
 SYNC_MOD = _load("outcome_board_sync")
+ACTION_MOD = _load("external_action_contract")
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +92,60 @@ class RecordingWriter:
 
     def calls_for(self, op_kind: str) -> list[dict[str, Any]]:
         return [c for c in self.calls if c["op_kind"] == op_kind]
+
+
+def test_outcome_board_reconciliation_is_idempotent_and_authority_bounded(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    spec = _spec([_leaf("leaf")])
+    first = SYNC_MOD.plan_board_intents(
+        spec, store, workspace_id="repo-15", requested_by="operator"
+    )
+    second = SYNC_MOD.plan_board_intents(
+        spec, store, workspace_id="repo-15", requested_by="operator"
+    )
+    assert first == second
+    assert first and all(item["executed"] is False for item in first)
+    writer = RecordingWriter()
+    authority = ACTION_MOD.build_authority(
+        receipt_id="board-authority",
+        intent=first[0]["intent"],
+        authority="operator",
+    )
+    result = SYNC_MOD.execute_board_intent(first[0], authority, board_writer=writer)
+    assert result["status"] == "ok"
+    assert len(writer.calls) == 1
+
+
+def test_outcome_board_reconciliation_is_idempotent_and_authority_bounded_rejects_negative_cases(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    spec = _spec([_leaf("leaf")])
+    with pytest.raises(ValueError, match="stale"):
+        SYNC_MOD.plan_board_intents(
+            spec,
+            store,
+            workspace_id="repo-15",
+            requested_by="operator",
+            observed_revision=spec.spec_revision + 1,
+        )
+    planned = SYNC_MOD.plan_board_intents(
+        spec, store, workspace_id="repo-15", requested_by="operator"
+    )
+    writer = RecordingWriter()
+    with pytest.raises(ACTION_MOD.ExternalActionContractError):
+        SYNC_MOD.execute_board_intent(planned[0], {}, board_writer=writer)
+    assert writer.calls == []
+    planned[0]["payload"]["target_state"] = "tampered"
+    authority = ACTION_MOD.build_authority(
+        receipt_id="board-authority",
+        intent=planned[0]["intent"],
+        authority="operator",
+    )
+    with pytest.raises(ValueError, match="no longer matches"):
+        SYNC_MOD.execute_board_intent(planned[0], authority, board_writer=writer)
 
 
 # ---------------------------------------------------------------------------

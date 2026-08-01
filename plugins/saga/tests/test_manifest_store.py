@@ -64,6 +64,7 @@ def _manifest(execution_id: str = "exec-1") -> dict[str, Any]:
         "created_at": "2026-07-01T00:00:00Z",
         "output_completeness": None,
         "claim_provenance": None,
+        "evidence_binding": None,
     }
 
 
@@ -148,6 +149,96 @@ def test_manifest_store_write_overwrites_in_place(tmp_path: Path) -> None:
     updated["disposition_note"] = "revised"
     M.write_manifest(store, "exec-1", updated)
     assert M.read_manifest(store, "exec-1")["disposition_note"] == "revised"
+
+
+def test_manifest_round_trip_binds_input_output_digest_and_owner(tmp_path: Path) -> None:
+    store = M.Store(root=tmp_path / "saga-manifests" / "saga-1").ensure()
+    input_value = {"plan": "docs/plans/approved.md", "revision": 3}
+    output_value = {"changed_paths": ["src/app.py"], "checks": ["unit"]}
+    manifest = M.build_evidence_manifest(
+        execution_id="exec-bound",
+        saga_ref="saga-1",
+        assignment_id="unit-1",
+        owner_id="worker-1",
+        input_value=input_value,
+        output_value=output_value,
+        created_at="2026-07-30T00:00:00Z",
+    )
+
+    M.write_evidence_manifest(store, "exec-bound", manifest)
+    restored = M.read_manifest(store, "exec-bound")
+
+    assert restored == manifest
+    assert (
+        M.validate_evidence_manifest(
+            restored,
+            assignment_id="unit-1",
+            owner_id="worker-1",
+            input_value=input_value,
+            output_value=output_value,
+        )
+        == []
+    )
+
+
+def test_manifest_round_trip_binds_input_output_digest_and_owner_rejects_negative_cases(
+    tmp_path: Path,
+) -> None:
+    store = M.Store(root=tmp_path / "saga-manifests" / "saga-1").ensure()
+    input_value = {"plan": "approved"}
+    output_value = {"result": "complete"}
+    manifest = M.build_evidence_manifest(
+        execution_id="exec-bound",
+        saga_ref="saga-1",
+        assignment_id="unit-1",
+        owner_id="worker-1",
+        input_value=input_value,
+        output_value=output_value,
+        created_at="2026-07-30T00:00:00Z",
+    )
+    M.write_evidence_manifest(store, "exec-bound", manifest)
+
+    assert "input digest" in " ".join(
+        M.validate_evidence_manifest(
+            manifest,
+            assignment_id="unit-1",
+            owner_id="worker-1",
+            input_value={"plan": "tampered"},
+            output_value=output_value,
+        )
+    )
+    assert "output digest" in " ".join(
+        M.validate_evidence_manifest(
+            manifest,
+            assignment_id="unit-1",
+            owner_id="worker-1",
+            input_value=input_value,
+            output_value={"result": "tampered"},
+        )
+    )
+    assert "owner" in " ".join(
+        M.validate_evidence_manifest(
+            manifest,
+            assignment_id="unit-1",
+            owner_id="worker-2",
+            input_value=input_value,
+            output_value=output_value,
+        )
+    )
+    orphan = dict(manifest)
+    orphan["evidence_binding"] = None
+    assert M.validate_evidence_manifest(
+        orphan,
+        assignment_id="unit-1",
+        owner_id="worker-1",
+        input_value=input_value,
+        output_value=output_value,
+    ) == ["manifest is missing evidence_binding"]
+
+    conflicting = dict(manifest)
+    conflicting["disposition_note"] = "different evidence"
+    with pytest.raises(M.ManifestStoreError, match="duplicate execution identity"):
+        M.write_evidence_manifest(store, "exec-bound", conflicting)
 
 
 def test_read_manifest_missing_returns_none(tmp_path: Path) -> None:

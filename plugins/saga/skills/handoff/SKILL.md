@@ -16,6 +16,8 @@ Infiquetra lifecycle artifact.
 - infer lifecycle phase and handoff maturity;
 - capture why the work is being handed off, blockers, open questions, target team, and target
   repository when known;
+- emit a closed, locally validated `saga.handoff-envelope.v1` packet naming artifacts, evidence,
+  risks, and external actions still requiring authority;
 - route to `mission-control`.
 
 `mission-control` owns the issue artifact:
@@ -32,7 +34,8 @@ Do not copy SDLC issue templates into this skill.
 
 1. Prefer an explicit source path or URL from the command arguments.
 2. If no source is explicit, inspect `.gemini/saga/state.json` and durable docs.
-3. Build the envelope:
+3. Build the envelope. The helper validates the closed schema and repository-relative artifact
+   references without performing an external action:
 
    ```bash
    python3 plugins/saga/scripts/handoff_envelope.py \
@@ -43,10 +46,13 @@ Do not copy SDLC issue templates into this skill.
 
 4. If the helper finds no source, ask for one.
 5. If multiple durable artifacts are plausible, ask the user to choose.
-6. Route with the envelope's `suggested_command`, shaped like
+6. Confirm that `artifacts`, `evidence`, `risks`, and `still_unauthorized` are non-empty. The last
+   field remains authoritative: an envelope never grants permission to create an issue, update a
+   board, open a PR, merge, or deploy.
+7. Route with the envelope's `suggested_command`, shaped like
    `/issue --prepare --from <source> --maturity <maturity>`.
-7. Review the prepared issue draft before mutation.
-8. Use `issue create-prepared` only after confirmation.
+8. Review the prepared issue draft before mutation.
+9. Use `issue create-prepared` only after confirmation.
 
 ## Maturity
 

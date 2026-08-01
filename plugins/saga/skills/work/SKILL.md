@@ -5,6 +5,13 @@ description: Execute a settled Infiquetra plan to PR-ready, then own the round-N
 
 # Work
 
+## Migration evidence contract
+
+Execute only approved units within their literal write sets and dependency order. Record exact checks
+and preserve unrelated changes. Stop at authority gates; PR creation, merge, deployment, and lifecycle
+continuation require the operator authority named by the plan. Never self-certify required review or
+quality-assurance evidence.
+
 `/work` answers **"Build it."** It takes a settled plan — from `/plan`, a `plan-ready` / `resume-ready`
 handoff issue, or an approved ad-hoc request — and executes it phase by phase to PR-ready, then **owns
 the round-N PR continuation loop** around the resulting PR. It does **not** invent product behavior

@@ -226,6 +226,35 @@ def rollup(spec: Any, store: Any) -> dict[str, Any]:
     return result
 
 
+def telemetry_assessment(
+    spec: Any,
+    store: Any,
+    *,
+    liveness: dict[str, Any],
+    settlement_state: str,
+) -> dict[str, Any]:
+    """Report activity, spend, and liveness without deriving lifecycle completion from them."""
+
+    if settlement_state not in {
+        "satisfied",
+        "unsatisfied",
+        "degraded",
+        "unavailable",
+        "conflicting",
+    }:
+        raise ValueError("settlement_state must use the canonical lifecycle vocabulary")
+    return {
+        "cost": rollup(spec, store),
+        "liveness": {
+            "stalled": sorted(set(liveness.get("stalled", []))),
+            "cascade_paused": sorted(set(liveness.get("cascade_paused", []))),
+        },
+        "settlement_state": settlement_state,
+        "complete": settlement_state == "satisfied",
+        "completion_authority": "canonical lifecycle settlement only",
+    }
+
+
 def materialize(spec: Any, store: Any) -> bool:
     """Recompute the rollup and write it into ``spec.cost_rollup`` IF it changed. Returns True if changed.
 

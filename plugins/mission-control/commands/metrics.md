@@ -26,6 +26,11 @@ throughput, WIP age, and bottleneck hints.
 4. Flags metrics that are over target.
 5. Separates workflow Status from deployment environment state.
 
+Metrics are descriptive evidence only. They do not select an executor, route work, change Status,
+or declare completion. If any board or timeline page is missing, repeated, malformed, or does not
+reconcile with its reported total, report the history as incomplete and do not calculate a
+complete metric.
+
 ## Examples
 
 ```
@@ -37,7 +42,7 @@ throughput, WIP age, and bottleneck hints.
 ## Script Commands
 
 ```bash
-SCRIPT=~/.gemini/plugins/cache/infiquetra-plugins/mission-control/1.6.0/scripts/sdlc_manager.py
+SCRIPT=~/.gemini/plugins/cache/infiquetra-plugins/mission-control/2.8.0/scripts/sdlc_manager.py
 
 python3 $SCRIPT metrics cycle-time --project operations --days 30
 python3 $SCRIPT metrics throughput --project asgard --weeks 4
@@ -52,7 +57,8 @@ When the user invokes `/metrics --project <project> [--type metric-type]`:
    (Operations / Asgard / CAMPPS); never default to a board.
 2. Determine which metrics to show, defaulting to all.
 3. Run the matching metric commands.
-4. Summarize pass/fail signals, bottlenecks, and concrete next actions.
+4. Summarize observed values, data completeness, bottlenecks, and possible follow-up questions.
+   Do not convert a target comparison into routing or mutation authority.
 
 Use the `metrics` skill for detailed interpretation or the `sdlc-operator` agent for
 multi-step SDLC health reports.

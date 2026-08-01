@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 FLEET_CORE = Path(__file__).resolve().parent.parent
 REPO_ROOT = FLEET_CORE.parent.parent
@@ -30,13 +31,49 @@ def _known_capabilities() -> set[str]:
     return {row["id"] for row in catalog["capabilities"]}
 
 
-def test_selector_is_closed_and_declared_paths_exist() -> None:
+def _planned_active_runtime_paths() -> set[str]:
+    plan = yaml.safe_load(
+        (
+            REPO_ROOT
+            / "docs/ports/2026-07-30-saga-reliability/migration-plan.v1.yaml"
+        ).read_text()
+    )
+    documentation_and_generation_paths = {
+        "plugins/saga/docs/commands.md",
+        "plugins/saga/scripts/render_docs_visuals.py",
+        "plugins/saga/docs/assets/ownership-boundary-map.svg",
+    }
+    return {
+        path
+        for candidate in plan["candidates"].values()
+        for path in candidate["target_paths"]
+        if path.startswith("plugins/")
+        and "/tests/" not in path
+        and any(
+            segment in path
+            for segment in (
+                "/commands/",
+                "/skills/",
+                "/agents/",
+                "/hooks/",
+                "/scripts/",
+                "/references/",
+                "/config/",
+            )
+        )
+    } - documentation_and_generation_paths
+
+
+def test_selector_is_closed_and_equals_changed_active_runtime_paths() -> None:
     selector = _selector()
     assert LINT.validate_selector(selector, REPO_ROOT) == []
     assert LINT.selector_digest(selector) == LINT.selector_digest(copy.deepcopy(selector))
+    assert set(selector["exact_paths"]) == _planned_active_runtime_paths()
+    assert selector["active_globs"] == []
     paths = LINT.selected_active_paths(REPO_ROOT, selector)
     assert REPO_ROOT / "plugins/saga/skills/work/SKILL.md" in paths
-    assert REPO_ROOT / ".agents/skills/port-claude-plugins/SKILL.md" in paths
+    assert REPO_ROOT / "plugins/fleet-core/scripts/fleet_commons/lease_broker.py" in paths
+    assert all(path.is_file() for path in paths)
 
 
 def test_named_active_rules_emit_exact_ids_and_unresolved_findings() -> None:
@@ -78,7 +115,11 @@ def test_only_reviewed_historical_lines_are_allowlisted() -> None:
         for finding in receipt["findings"]
         if finding["classification"] == "historical" and finding["reason"] == "annotated-historical"
     ]
-    assert len(reviewed) == len(LINT._HISTORICAL_LINE_ALLOWLIST)
+    selected = set(_selector()["exact_paths"])
+    expected_reviewed = sum(
+        path in selected for path, _source_digest, _line_digest in LINT._HISTORICAL_LINE_ALLOWLIST
+    )
+    assert len(reviewed) == expected_reviewed
     assert not any(finding["unresolved"] for finding in reviewed)
 
 
@@ -490,8 +531,6 @@ def test_selector_rejects_active_overlap_with_comparison_root() -> None:
     ("field", "replacement"),
     [
         ("active_globs", ["plugins/saga/skills/no-match/**/*.md"]),
-        ("active_globs", list(LINT.REQUIRED_ACTIVE_GLOBS[:-1])),
-        ("exact_paths", list(LINT.REQUIRED_EXACT_PATHS[:-1])),
         ("comparison_roots", ["tests"]),
     ],
 )
@@ -501,6 +540,15 @@ def test_selector_rejects_narrowed_canonical_policy(
 ) -> None:
     selector = _selector()
     selector[field] = replacement
+
+    errors = LINT.validate_selector(selector, REPO_ROOT)
+
+    assert any("canonical surface policy" in error for error in errors)
+
+
+def test_selector_rejects_one_missing_planned_runtime_path() -> None:
+    selector = _selector()
+    selector["exact_paths"] = selector["exact_paths"][:-1]
 
     errors = LINT.validate_selector(selector, REPO_ROOT)
 
@@ -634,7 +682,7 @@ def test_selector_enumeration_error_does_not_echo_private_path(tmp_path: Path, m
     assert "alice" not in rendered
 
 
-@pytest.mark.parametrize("method", ["glob", "rglob"])
+@pytest.mark.parametrize("method", ["rglob"])
 def test_repository_enumeration_error_does_not_echo_private_path(
     tmp_path: Path, monkeypatch, method: str
 ) -> None:
@@ -654,7 +702,7 @@ def test_repository_enumeration_error_does_not_echo_private_path(
 
 
 def test_repository_scan_read_error_does_not_echo_private_path(tmp_path: Path) -> None:
-    private_path = tmp_path / "plugins/saga/skills/ghp_examplecredential/SKILL.md"
+    private_path = tmp_path / _selector()["exact_paths"][0]
     private_path.parent.mkdir(parents=True)
     private_path.write_bytes(b"\xff")
     selector = _selector()
@@ -667,7 +715,7 @@ def test_repository_scan_read_error_does_not_echo_private_path(tmp_path: Path) -
 
 
 def test_repository_scan_os_error_does_not_echo_private_path(tmp_path: Path, monkeypatch) -> None:
-    private_path = tmp_path / "plugins/saga/skills/ghp_examplecredential/SKILL.md"
+    private_path = tmp_path / _selector()["exact_paths"][0]
     private_path.parent.mkdir(parents=True)
     private_path.write_text("# Clean\n")
     original_read_bytes = Path.read_bytes
@@ -682,5 +730,5 @@ def test_repository_scan_os_error_does_not_echo_private_path(tmp_path: Path, mon
     with pytest.raises(LINT.HostContractError) as captured:
         LINT.scan_repository(tmp_path, _selector())
 
-    assert "ghp_examplecredential" not in str(captured.value)
+    assert private_path.name not in str(captured.value)
     assert private_path.as_posix() not in str(captured.value)

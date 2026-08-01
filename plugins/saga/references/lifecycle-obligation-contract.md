@@ -33,6 +33,8 @@ A required obligation settles only as `satisfied`. A required obligation cannot 
 
 Every evidence item identifies its role, subject, producer, reference, SHA-256 digest, and verification state. Repository evidence is authoritative only when its normalized repository-relative path resolves to a regular file and the file bytes match the declared digest. External GitHub state is one typed evidence role and can satisfy only an `external-github` obligation.
 
+Independent execution, review, and quality-assurance evidence must reference a closed `saga.independent-evidence-receipt.v1` JSON object. The receipt binds its producer and attester identities, subject, evidence kind, artifact digest, and origin into `receipt_id`. A Saga-host-created receipt is accepted only with a passing `agy.agent.execution` capability. An imported external receipt must carry no host-capability claim and is reported as imported evidence, not as host-created independence.
+
 Free-form narration, a receipt's claimed settlement, issue closure, and PR merge are not aggregate proof of other obligations.
 
 ## Transition receipt

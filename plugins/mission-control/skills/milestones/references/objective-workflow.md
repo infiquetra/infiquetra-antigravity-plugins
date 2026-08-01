@@ -5,6 +5,11 @@ Complete reference for Objective lifecycle in the Infiquetra SDLC. Source of tru
 `$INFIQUETRA_SDLC_PATH/docs/process/board-topology.md`, and
 `$INFIQUETRA_SDLC_PATH/config/sdlc-schema.json`.
 
+Milestone list and progress operations are read-only. Before remote creation or linking, resolve
+the Objective, repository, due date, linked work, current progress, and risk evidence; render the
+mutation plan and obtain explicit operator approval. Missing progress or risk evidence stops
+creation rather than being guessed.
+
 ---
 
 ## What Is An Objective?
@@ -28,7 +33,7 @@ work items toward a common outcome.
 |------|-------------|---------|
 | Pilot | Customer or operator validation with explicit success criteria | `Pilot: Platform Launch (2026-04-15)` |
 | MVP | Minimum viable product or service slice | `MVP: Core Integration (2026-02-28)` |
-| Release | Versioned delivery requiring coordination | `Release: Olympus v1.0 (2026-05-30)` |
+| Release | Versioned delivery requiring coordination | `Release: Platform v1.0 (2026-05-30)` |
 | Program | OKR or strategic initiative phase | `Program: Q1 KR1 - User Adoption (2026-03-31)` |
 
 ---
@@ -67,7 +72,7 @@ lightweight or exploratory Objectives where the Objective field and sub-issue tr
 
 ```bash
 python3 sdlc_manager.py board add --repo <repo> --number <N>
-python3 sdlc_manager.py flow set-field --project mount-olympus \
+python3 sdlc_manager.py flow set-field --project campps \
   --repo <repo> --number <N> \
   --field Objective --option "<Objective name>"
 ```

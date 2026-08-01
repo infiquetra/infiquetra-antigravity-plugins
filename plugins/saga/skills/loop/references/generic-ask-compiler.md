@@ -10,6 +10,7 @@ Use this before mutation when a request is vague, such as "please fix this issue
 | repo state | What branch, dirty files, and relevant existing artifacts exist now? |
 | saga phase | Is this office-hours, ideate, brainstorm, spec, plan, doc-review, work, code-review, qa, resume, or retro? |
 | proof | What check, review, or visible artifact proves done? |
+| settlement evidence | Does a lifecycle-obligation contract or transition receipt already define the next required work? |
 | scope boundary | What is explicitly out of scope? |
 | mutation boundary | Is this read-only, docs-only, local edit, GitHub mutation, deploy, or credential/production action? |
 | final report | What changed, what ran, what risk remains? |
@@ -18,4 +19,6 @@ Use this before mutation when a request is vague, such as "please fix this issue
 
 If target, proof, scope boundary, or mutation boundary is missing, do not edit. Ask one blocking question or route to `/office-hours`, `/spec`, or `/brainstorm`.
 
-If a matching saga exists, prefer `/resume` over starting a new thread.
+If a matching saga exists, prefer `/resume` over starting a new thread. If canonical obligation and
+receipt evidence exists, route to the earliest unsettled required obligation instead of inferring the
+next phase from prose or activity.

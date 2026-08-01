@@ -1,0 +1,168 @@
+schema: antigravity.semantic-port-ledger.v2
+campaign:
+  id: 2026-07-30-fixture
+  snapshots:
+  - host: antigravity
+    repository: antigravity-fixture
+    planning_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    inventory_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    head_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    origin_main_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - host: claude
+    repository: claude-fixture
+    planning_commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    inventory_commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    head_commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    origin_main_commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  - host: codex
+    repository: codex-fixture
+    planning_commit: cccccccccccccccccccccccccccccccccccccccc
+    inventory_commit: cccccccccccccccccccccccccccccccccccccccc
+    head_commit: cccccccccccccccccccccccccccccccccccccccc
+    origin_main_commit: cccccccccccccccccccccccccccccccccccccccc
+  selected_surfaces:
+  - host: antigravity
+    repository: antigravity-fixture
+    paths:
+    - plugins/saga
+  - host: claude
+    repository: claude-fixture
+    paths:
+    - plugins/saga
+  - host: codex
+    repository: codex-fixture
+    paths:
+    - plugins/saga
+  historical_seeds:
+  - host: claude
+    commit: '1111111111111111111111111111111111111111'
+  host_receipt:
+    schema: antigravity.capabilities.v1
+    catalog_digest: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+    receipt_sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+    states:
+    - capability: agy.agent.execution
+      state: passed
+    - capability: agy.effort.selection
+      state: unavailable
+  edit_packets:
+  - id: edit-antigravity-394e4a8649243ef51d68
+    host: antigravity
+    commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    path: plugins/saga/skills/plan/SKILL.md
+    change: tree
+    content_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    source: tree
+  - id: edit-claude-090ed630cc6c49c3a448
+    host: claude
+    commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    path: plugins/saga/skills/plan/SKILL.md
+    change: modified
+    content_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    source: history
+  - id: edit-claude-1d45364b4d31266baca9
+    host: claude
+    commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    path: plugins/saga/skills/plan/SKILL.md
+    change: tree
+    content_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    source: tree
+  - id: edit-codex-403986731a7adce6a0c4
+    host: codex
+    commit: cccccccccccccccccccccccccccccccccccccccc
+    path: plugins/saga/skills/plan/SKILL.md
+    change: tree
+    content_sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+    source: tree
+  unmatched_edit_packet_ids: []
+  release_drift:
+    checked_at: '2026-07-30T12:00:00Z'
+    status: clean
+    snapshots:
+    - host: antigravity
+      inventory_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      current_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    - host: claude
+      inventory_commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      current_commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    - host: codex
+      inventory_commit: cccccccccccccccccccccccccccccccccccccccc
+      current_commit: cccccccccccccccccccccccccccccccccccccccc
+    unmatched_edit_packet_ids: []
+candidates:
+- id: planning-contract
+  title: Planning contract alignment
+  edit_packet_ids:
+  - edit-antigravity-394e4a8649243ef51d68
+  - edit-claude-090ed630cc6c49c3a448
+  - edit-claude-1d45364b4d31266baca9
+  provenance:
+  - host: antigravity
+    commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    path: plugins/saga/skills/plan/SKILL.md
+  - host: claude
+    commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    path: plugins/saga/skills/plan/SKILL.md
+  semantic_contract: Planning remains explicit and produces reviewable repository
+    evidence.
+  adjacent_dependencies:
+  - fleet-core capability receipt
+  required_host_capabilities: []
+  antigravity_state: partial
+  proposed_disposition: antigravity-adapt
+  ranking:
+    operator_value: 5
+    antigravity_fit: 4
+    proof_feasibility: 5
+    maintenance_cost: 2
+  evidence_expectation:
+  - Focused planning contract tests pass.
+  decision:
+    state: approved-survivor
+    rationale: The operator selected this semantic contract.
+    revisit_trigger: Revisit if the planning lifecycle is replaced.
+    operator: fixture-operator
+    decided_at: '2026-07-30T12:30:00Z'
+  migration:
+    state: planned
+    target_paths:
+    - plugins/saga/tests/test_port_ledger.py
+    test_node_ids:
+    - plugins/saga/tests/test_port_ledger.py::test_packet_set_digest_vectors
+    negative_test_node_ids:
+    - plugins/saga/tests/test_port_ledger.py::test_migration_plan_rejects_scope_and_containment_failures
+    intentional_differences:
+    - Uses the Antigravity ledger contract instead of a source runtime API.
+    packet_set_sha256: b3f67d4dcb435ab19d7be5966284b071fff04f95ebb7c2e0155a9c3ff333dbf9
+    host_receipt_sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+    evidence_manifest_sha256: null
+    blocking_capabilities: []
+    validated_at: null
+- id: codex-independent-execution
+  title: Codex independent execution evidence
+  edit_packet_ids:
+  - edit-codex-403986731a7adce6a0c4
+  provenance:
+  - host: codex
+    commit: cccccccccccccccccccccccccccccccccccccccc
+    path: plugins/saga/skills/plan/SKILL.md
+  semantic_contract: Independent execution is bound to capability evidence.
+  adjacent_dependencies:
+  - multi-agent-consensus
+  required_host_capabilities:
+  - agy.agent.execution
+  antigravity_state: present
+  proposed_disposition: metadata-only
+  ranking:
+    operator_value: 3
+    antigravity_fit: 5
+    proof_feasibility: 4
+    maintenance_cost: 1
+  evidence_expectation:
+  - The host capability receipt remains promotable.
+  decision:
+    state: metadata-only
+    rationale: Existing Antigravity behavior already satisfies the contract.
+    revisit_trigger: Revisit when the host receipt schema changes.
+    operator: fixture-operator
+    decided_at: '2026-07-30T12:30:00Z'

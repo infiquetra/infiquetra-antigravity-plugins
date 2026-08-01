@@ -39,10 +39,16 @@ when_to_use: |
 Track and drive SDLC rollout across Infiquetra organization repositories. Check rollout status,
 run gap analysis, deploy labels and templates, and update tracking records.
 
+`rollout status` and `rollout gap-analysis` are read-only census operations. They may recommend
+work but never deploy, create or edit an issue, or update tracking state. Every `deploy-*` or
+`rollout update` operation is a separate mutation: show the exact repository, files or labels,
+and tracking changes, then obtain explicit operator approval. Never treat a gap report or status
+request as approval to mutate.
+
 ## Script Location
 
 ```
-$INFIQUETRA_SDLC_PATH/../infiquetra-claude-plugins/plugins/mission-control/scripts/sdlc_manager.py
+$INFIQUETRA_SDLC_PATH/../infiquetra-antigravity-plugins/plugins/mission-control/scripts/sdlc_manager.py
 ```
 
 > If `$INFIQUETRA_SDLC_PATH` is unset, use `~/workspace/infiquetra/infiquetra-sdlc` as the default base path.
@@ -59,15 +65,14 @@ Rollout status is tracked in `$INFIQUETRA_SDLC_PATH/config/rollout-status.json`.
 |------|----------|-------------|-----------|
 | Tier 1 | High | Core service repos — full SDLC | All 6 templates |
 | Tier 2 | Medium | Infrastructure/shared repos — full SDLC | All 6 templates |
-| Tier 3 | Minimal | Claude tool repos — minimal SDLC only | defect + enhancement only |
+| Tier 3 | Minimal | Tooling repos — minimal SDLC only | defect + enhancement only |
 
-### Team
+### Active Project Targets
 
-| Team | Project | Description |
-|------|---------|-------------|
-| Mount Olympus | mount-olympus | All Infiquetra org repos |
+No repository is silently routed to a board. When project participation is part of a rollout,
+the operator must explicitly select `operations`, `asgard`, or `campps`.
 
-**Note**: Tier 3 repos (Claude tooling) are excluded from project board automation.
+**Note**: Tier 3 tooling repos are excluded from project board automation.
 
 ## Rollout Tracking Fields
 
@@ -77,8 +82,8 @@ Each repo tracks four fields in `rollout-status.json`:
 |-------|-------------|-----------------|
 | `labels` | SDLC labels deployed | All 40+ SDLC labels present in the repo |
 | `templates` | Issue templates deployed | All required templates present (6 for Tier 1/2, 2 for Tier 3) |
-| `claude_md` | CLAUDE.md has SDLC guidance section | CLAUDE.md exists with SDLC workflow guidance |
-| `project` | Repo added to project board | Repo is linked to mount-olympus GitHub Project |
+| `claude_md` | Legacy tracking key for repository SDLC guidance | The repository carries its required SDLC workflow guidance |
+| `project` | Repo added to project board | Repo is linked to the explicitly selected active GitHub Project |
 
 Status values: `pending`, `complete`, `n/a` (for Tier 3 repos where project board is excluded)
 
@@ -130,7 +135,7 @@ Safe to run multiple times (idempotent).
 python3 sdlc_manager.py rollout deploy-templates --repo infiquetra-core
 
 # Tier 3 repos get minimal templates (defect + enhancement only)
-python3 sdlc_manager.py rollout deploy-templates --repo infiquetra-claude-plugins
+python3 sdlc_manager.py rollout deploy-templates --repo infiquetra-antigravity-plugins
 ```
 
 Copies templates from `infiquetra-sdlc` checkout into `.github/ISSUE_TEMPLATE/` in the
@@ -156,10 +161,11 @@ python3 sdlc_manager.py rollout update --repo infiquetra-core --field claude_md 
 python3 sdlc_manager.py rollout update --repo infiquetra-core --field project --status complete
 
 # Mark as n/a (for Tier 3 project field)
-python3 sdlc_manager.py rollout update --repo infiquetra-claude-plugins --field project --status n/a
+python3 sdlc_manager.py rollout update --repo infiquetra-antigravity-plugins --field project --status n/a
 ```
 
-Always run `rollout update` after successful deployment to track progress.
+After successful deployment, render the tracking change and run `rollout update` only with
+separate operator approval.
 
 ## Natural Language Examples
 
@@ -173,7 +179,8 @@ Always run `rollout update` after successful deployment to track progress.
 -> `rollout gap-analysis --repo infiquetra-auth`
 
 **"Set up SDLC on infiquetra-core"**
--> `rollout deploy-all --repo infiquetra-core`, then update tracking fields
+-> Run read-only gap analysis, show the proposed deployment and tracking plan, obtain explicit
+operator approval, then run the approved `rollout deploy-all` and `rollout update` operations.
 
 **"Deploy labels to all Infiquetra repos"**
 -> Run `rollout deploy-labels` for each repo
@@ -200,7 +207,7 @@ python3 sdlc_manager.py rollout update --repo infiquetra-core --field labels --s
 python3 sdlc_manager.py rollout update --repo infiquetra-core --field templates --status complete
 
 # 4. Remaining steps (manual or via other commands):
-#    - Add SDLC guidance section to CLAUDE.md -> update field claude_md
+#    - Add the repository SDLC guidance section -> update legacy field claude_md
 #    - Confirm repo is linked to project board -> update field project
 ```
 
@@ -233,7 +240,7 @@ If gap analysis finds nothing missing but `rollout-status.json` shows `pending`,
 
 ## Special Cases
 
-### Tier 3 Repos (Claude Tooling)
+### Tier 3 Tooling Repos
 
 - Deploy only defect and enhancement templates (not capability, objective, exploration, context-update)
 - `project` field is `n/a` — these repos are excluded from project board automation

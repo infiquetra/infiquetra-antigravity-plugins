@@ -225,3 +225,26 @@ def test_vendored_shim_is_importable_data_only() -> None:
         "ACCEPTANCE_EXECUTABLE_RE_PATTERN",
     ):
         assert const in namespace, f"vendored shim missing {const}"
+
+
+def test_generated_issue_contract_matches_schema_and_templates() -> None:
+    """The schema, generated modules, digests, and rendered reference agree."""
+    assert _load_parity().parity_errors() == []
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    template_reference = (
+        ROOT
+        / "plugins"
+        / "mission-control"
+        / "skills"
+        / "issues"
+        / "references"
+        / "templates-reference.md"
+    ).read_text(encoding="utf-8")
+    for field in schema["issue_fields"]["fields"]:
+        assert f"- {field['header']}" in template_reference
+
+
+def test_generated_issue_contract_matches_schema_and_templates_rejects_negative_cases() -> None:
+    """Both generated artifacts fail closed when their checked-in bytes drift."""
+    test_parity_gate_fails_on_injected_drift()
+    test_parity_gate_fails_on_injected_shim_drift()

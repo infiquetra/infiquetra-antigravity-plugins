@@ -54,6 +54,7 @@ SAGA_PY = SCRIPT_DIR / "saga.py"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import ceremony_hazards  # noqa: E402
+import external_action_contract  # noqa: E402
 import merge_watcher  # noqa: E402
 import ship_undo  # noqa: E402
 
@@ -148,6 +149,77 @@ def next_transition(last_transition: str) -> str | None:
     if index + 1 >= len(TRANSITIONS):
         return None
     return TRANSITIONS[index + 1]
+
+
+def build_transition_intent(
+    saga: Mapping[str, Any],
+    *,
+    workspace_id: str,
+    requested_by: str,
+) -> dict[str, Any]:
+    """Prepare the next reversible ceremony step without executing Git or GitHub."""
+
+    upcoming = next_transition(str(saga.get("ceremony_transition", "")))
+    if upcoming is None:
+        raise ShipCeremonyError("ceremony is already complete")
+    saga_id = str(saga.get("saga_id", ""))
+    if not saga_id:
+        raise ShipCeremonyError("saga_id is required to bind a ship transition")
+    tier = TRANSITION_TIERS[upcoming]
+    payload = {
+        "saga_id": saga_id,
+        "issue_ref": str(saga.get("issue_ref", "")),
+        "transition": upcoming,
+        "tier": tier,
+        "hazard_preflight_required": upcoming in ceremony_hazards.GATED_TRANSITIONS,
+        "reversibility_receipt_required": True,
+        "operator_confirmation_required": tier == CeremonyTier.ALWAYS_OPERATOR,
+    }
+    intent = external_action_contract.build_intent(
+        action_id=f"ship-{saga_id}-{upcoming.replace('_', '-')}",
+        workspace_id=workspace_id,
+        adapter="ship-ceremony",
+        operation=upcoming.replace("_", "-"),
+        target=saga_id,
+        payload_sha256=external_action_contract.canonical_sha256(payload),
+        requested_by=requested_by,
+    )
+    return {
+        "schema": "saga.ship-transition-intent.v1",
+        "payload": payload,
+        "intent": intent,
+        "executed": False,
+    }
+
+
+def execute_authorized_transition(
+    planned: Mapping[str, Any],
+    authority: Mapping[str, Any],
+    *,
+    repo_root: Path,
+    issue_ref: str | None = None,
+    saga_id: str | None = None,
+    operator_confirmed: str | None = None,
+    acknowledge_hazard: Sequence[str] | None = None,
+    runner: Callable[..., Any] | None = None,
+) -> str:
+    """Run a prepared transition only when a separate U4 authority receipt binds it."""
+
+    intent = planned.get("intent")
+    payload = planned.get("payload")
+    if not isinstance(intent, Mapping) or not isinstance(payload, Mapping):
+        raise ShipCeremonyError("ship transition plan is malformed")
+    if external_action_contract.canonical_sha256(payload) != intent.get("payload_sha256"):
+        raise ShipCeremonyError("ship transition plan payload changed after authority was prepared")
+    external_action_contract.validate_authority(authority, intent=intent)
+    return run(
+        repo_root=repo_root,
+        issue_ref=issue_ref,
+        saga_id=saga_id,
+        operator_confirmed=operator_confirmed,
+        acknowledge_hazard=acknowledge_hazard,
+        runner=runner,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -530,8 +602,11 @@ def run(
         )
 
     if undo:
-        return ship_undo.undo(
-            saga, repo_root=repo_root, operator_confirmed=operator_confirmed, runner=runner
+        return cast(
+            str,
+            ship_undo.undo(
+                saga, repo_root=repo_root, operator_confirmed=operator_confirmed, runner=runner
+            ),
         )
 
     upcoming = next_transition(saga.get("ceremony_transition", ""))

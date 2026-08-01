@@ -6,6 +6,12 @@ argument-hint: "[vague ask | issue# | rough doc path]"
 
 # Spec
 
+## Migration evidence contract
+
+The specification records the required outcome, scope boundaries, failure modes, and observable
+acceptance behavior. It excludes implementation choices unless they are already operator-approved
+constraints. Open product decisions block finalization rather than being silently selected.
+
 Ported from gstack `spec` — the WHAT-interrogation half (five-Why, scope/MVP lock, failure-mode
 enumeration, read-code-first, quantify-everything). It is the sibling of /plan's HOW-interrogation
 (both from gstack `spec`, split WHAT vs HOW). No CE spec engine exists; the CE flavor reaches the

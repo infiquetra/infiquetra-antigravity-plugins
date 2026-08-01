@@ -37,7 +37,7 @@ Triage an existing issue by analyzing its content, recommending appropriate labe
 ## Script Commands
 
 ```bash
-SCRIPT=~/.gemini/plugins/cache/infiquetra-plugins/mission-control/1.6.0/scripts/sdlc_manager.py
+SCRIPT=~/.gemini/plugins/cache/infiquetra-plugins/mission-control/2.8.0/scripts/sdlc_manager.py
 
 # Auto-label based on content
 python3 $SCRIPT labels auto-label --repo athena-service --number 42

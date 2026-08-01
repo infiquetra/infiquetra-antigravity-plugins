@@ -34,6 +34,11 @@ when_to_use: |
 Manage Infiquetra's active project boards. No board is a default: every board operation
 requires an explicit `--project`.
 
+Board reads must finish every cursor page and reconcile the returned item count with the
+project's reported total before they are described as complete. A missing cursor, repeated
+cursor, duplicate item, malformed page, or count mismatch is a typed failure. Never report,
+route from, or mutate from a partial census.
+
 | Project key | Board | Workflow |
 |-------------|-------|----------|
 | `operations` | Operations | `Idea -> Shaping -> Ready -> Active -> Verify -> Done` |
@@ -70,6 +75,9 @@ python3 sdlc_manager.py board view --project campps --status "In Progress"
 
 ### Add Item
 
+Resolve the repository, issue or PR node, and every explicitly named project first. Show the
+resolved mutation plan and obtain explicit operator approval before adding the item.
+
 ```bash
 # Add an item to a board (--project is required; no default routing)
 python3 sdlc_manager.py board add --project asgard --repo infiquetra-sdlc --number 42
@@ -78,6 +86,11 @@ python3 sdlc_manager.py board add --project campps --repo athena-service --numbe
 ```
 
 ### Move Item
+
+Resolve exactly one project item, the Status field, the requested option, and the workflow's
+applicable exit criteria first. Ambiguous items, missing fields or options, missing exit criteria,
+and partial censuses stop before mutation. Show the resolved move and obtain explicit operator
+approval before applying it.
 
 ```bash
 # Intent-flow boards (Operations / Asgard)
@@ -99,7 +112,7 @@ Use `board discover-fields` when unsure which Status options exist live.
 python3 sdlc_manager.py board archive --project campps --dry-run
 python3 sdlc_manager.py board archive --project asgard --dry-run
 
-# Run only after operator confirmation
+# Run only after explicit operator approval of the dry-run output
 python3 sdlc_manager.py board archive --project campps
 ```
 

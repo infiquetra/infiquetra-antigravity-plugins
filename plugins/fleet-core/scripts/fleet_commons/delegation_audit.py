@@ -370,3 +370,82 @@ def reconcile(
     if engine_says_ok != observer_says_launched:
         return DELEGATION_INTEGRITY
     return REAL if observer_says_launched else FALLBACK_SUSPECTED
+
+
+def audit_assignment_evidence(
+    assignments: list[dict[str, Any]],
+    completions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Audit exact assignment ownership and completion evidence.
+
+    The audit is local and deterministic. It reports missing, duplicate, replayed,
+    unknown, and wrong-owner evidence without inferring success from narration.
+    """
+
+    problems: list[str] = []
+    expected: dict[str, tuple[str, str]] = {}
+    for index, assignment in enumerate(assignments):
+        assignment_id = assignment.get("assignment_id")
+        worker_id = assignment.get("worker_id")
+        run_id = assignment.get("run_id")
+        if (
+            not isinstance(assignment_id, str)
+            or not assignment_id
+            or not isinstance(worker_id, str)
+            or not worker_id
+            or not isinstance(run_id, str)
+            or not run_id
+        ):
+            problems.append(f"assignments[{index}] has an invalid shape")
+            continue
+        if assignment_id in expected:
+            problems.append(f"duplicate assignment: {assignment_id}")
+            continue
+        expected[assignment_id] = (worker_id, run_id)
+
+    seen_assignments: set[str] = set()
+    seen_events: set[str] = set()
+    for index, completion in enumerate(completions):
+        assignment_id = completion.get("assignment_id")
+        worker_id = completion.get("worker_id")
+        run_id = completion.get("run_id")
+        event_id = completion.get("event_id")
+        output_digest = completion.get("output_sha256")
+        if (
+            not isinstance(assignment_id, str)
+            or not assignment_id
+            or not isinstance(worker_id, str)
+            or not worker_id
+            or not isinstance(run_id, str)
+            or not run_id
+            or not isinstance(event_id, str)
+            or not event_id
+            or not isinstance(output_digest, str)
+            or not output_digest
+        ):
+            problems.append(f"completions[{index}] has an invalid shape")
+            continue
+        if event_id in seen_events:
+            problems.append(f"replayed completion event: {event_id}")
+        seen_events.add(event_id)
+        owner = expected.get(assignment_id)
+        if owner is None:
+            problems.append(f"unknown assignment completion: {assignment_id}")
+            continue
+        if assignment_id in seen_assignments:
+            problems.append(f"duplicate completion: {assignment_id}")
+        seen_assignments.add(assignment_id)
+        if worker_id != owner[0]:
+            problems.append(f"wrong owner for assignment: {assignment_id}")
+        if run_id != owner[1]:
+            problems.append(f"wrong run for assignment: {assignment_id}")
+
+    for assignment_id in sorted(set(expected) - seen_assignments):
+        problems.append(f"missing completion: {assignment_id}")
+    return {
+        "schema": "antigravity.delegation-audit.v1",
+        "complete": not problems,
+        "problems": problems,
+        "assignment_count": len(expected),
+        "completion_count": len(seen_assignments),
+    }

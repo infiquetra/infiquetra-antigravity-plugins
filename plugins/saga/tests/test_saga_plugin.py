@@ -77,6 +77,7 @@ def test_infiquetra_lifecycle_commands_are_packaged() -> None:
         "optimize",
         "investigate",
         "spec",
+        "pulse",
     ):
         assert (PLUGIN_ROOT / "commands" / f"{command}.md").exists()
 
@@ -90,7 +91,13 @@ def test_lifecycle_obligation_contracts_are_packaged_and_versioned() -> None:
         _read(PLUGIN_ROOT / "references" / "transition-receipt-schema.json")
     )
 
-    assert plugin_json["version"] == "1.5.0"
+    assert plugin_json["version"] == "1.6.0"
+    newest_heading = next(
+        line.removeprefix("## ").split(" - ", maxsplit=1)[0]
+        for line in _read(PLUGIN_ROOT / "CHANGELOG.md").splitlines()
+        if line.startswith("## ")
+    )
+    assert newest_heading == plugin_json["version"]
     assert obligation_schema["$id"] == "saga.lifecycle-obligation.v1"
     assert receipt_schema["$id"] == "saga.transition-receipt.v1"
     assert (PLUGIN_ROOT / "scripts" / "lifecycle_obligations.py").exists()

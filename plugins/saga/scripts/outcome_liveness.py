@@ -26,6 +26,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import fleet_commons_shim  # noqa: E402
 import outcome_orchestrator  # noqa: E402  (after the sys.path shim, by design)
 import outcome_store  # noqa: E402
 
@@ -80,14 +81,34 @@ def _is_stalled(node: Any, *, dispatched_at: float, last_beat: float | None, now
     """
     hb = node.heartbeat_seconds
     to = node.timeout_seconds
+    if hb is None and to is None:
+        return ""
+    last_activity = max(dispatched_at, last_beat) if last_beat is not None else dispatched_at
+    deadlines = []
     if hb is not None:
-        last_activity = max(dispatched_at, last_beat) if last_beat is not None else dispatched_at
-        if now - last_activity > hb:
+        deadlines.append(("heartbeat", last_activity + hb))
+    if to is not None:
+        deadlines.append(("timeout", dispatched_at + to))
+    reason, deadline = min(deadlines, key=lambda item: item[1])
+    owner = str(getattr(node, "leaf_saga_id", "") or node.subplot_id)
+    liveness = fleet_commons_shim.load("liveness_engine")
+    classified = liveness.evaluate_liveness(
+        [
+            {
+                "resource_id": node.subplot_id,
+                "owner_id": owner,
+                "expires_at": deadline,
+            }
+        ],
+        now=now,
+        known_owners={owner},
+    )
+    if node.subplot_id in classified["expired"]:
+        if reason == "heartbeat":
             gap = round(now - last_activity)
-            return f"no heartbeat for {gap}s (> {hb}s budget) — leaf reclaimed (R31)"
-    if to is not None and now - dispatched_at > to:
+            return f"no heartbeat for {gap}s (>= {hb}s budget) — leaf reclaimed"
         ran = round(now - dispatched_at)
-        return f"ran {ran}s (> {to}s timeout) — leaf reclaimed (R31)"
+        return f"ran {ran}s (>= {to}s timeout) — leaf reclaimed"
     return ""
 
 

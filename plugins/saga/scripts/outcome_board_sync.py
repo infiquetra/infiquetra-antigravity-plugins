@@ -18,12 +18,13 @@ a live producer+consumer.  The entrypoint (``reconcile_board``) is called from t
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # ---------------------------------------------------------------------------
 # Lazy module imports (house pattern: no I/O at import — outcome_store pulls
@@ -98,7 +99,7 @@ def _safe_ledger_name(key: str) -> str:
     """
     import board_progression as _m  # noqa: PLC0415
 
-    return _m._safe_ledger_name(key)
+    return cast(str, _m._safe_ledger_name(key))
 
 
 def _board_sync_dir(store: Any) -> Path:
@@ -163,6 +164,106 @@ def _candidate_ops(state: str, status_map: dict[str, str]) -> list[tuple[str, st
         ]
     # blocked / failed / rejected / stalled → no autonomous board op in v1
     return []
+
+
+def plan_board_intents(
+    spec: Any,
+    store: Any,
+    *,
+    workspace_id: str,
+    requested_by: str,
+    project: str = "operations",
+    schema_path: Path | None = None,
+    observed_revision: int | None = None,
+) -> list[dict[str, Any]]:
+    """Return deterministic U4 external-action intents; never call a board writer."""
+
+    import external_action_contract as contract  # noqa: PLC0415
+
+    if observed_revision is not None and observed_revision != spec.spec_revision:
+        raise ValueError("stale outcome revision cannot produce board intents")
+    states: dict[str, str] = _engine().derive_states(spec, store)
+    status_map = _resolve_status_map(
+        schema_path if schema_path is not None else _default_schema_path(), project
+    )
+    planned: list[dict[str, Any]] = []
+    for node in sorted(spec.nodes, key=lambda item: item.subplot_id):
+        if node.is_outcome:
+            continue
+        issue_raw = str(node.github.get("issue", "") or node.github.get("sub_issue", ""))
+        parsed = _parse_issue_ref(issue_raw)
+        if parsed is None:
+            continue
+        repo, number = parsed
+        state = states.get(node.subplot_id, "blocked")
+        for op_kind, target_state in _candidate_ops(state, status_map):
+            payload = {
+                "project": project,
+                "repo": repo,
+                "number": number,
+                "op_kind": op_kind,
+                "target_state": target_state,
+                "subplot_id": node.subplot_id,
+                "spec_revision": spec.spec_revision,
+            }
+            action_id = "board-" + hashlib.sha256(
+                json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()[:24]
+            planned.append(
+                {
+                    "payload": payload,
+                    "intent": contract.build_intent(
+                        action_id=action_id,
+                        workspace_id=workspace_id,
+                        adapter="mission-control",
+                        operation=op_kind,
+                        target=f"{repo}#{number}",
+                        payload_sha256=contract.canonical_sha256(payload),
+                        requested_by=requested_by,
+                    ),
+                    "authority_required": True,
+                    "executed": False,
+                }
+            )
+    return planned
+
+
+def execute_board_intent(
+    planned: dict[str, Any],
+    authority: dict[str, Any],
+    *,
+    board_writer: Callable[..., None],
+) -> dict[str, Any]:
+    """Execute one injected adapter only after exact U4 authority validation."""
+
+    import external_action_contract as contract  # noqa: PLC0415
+
+    intent = planned.get("intent")
+    payload = planned.get("payload")
+    if not isinstance(intent, dict) or not isinstance(payload, dict):
+        raise ValueError("planned board intent is malformed")
+    if contract.canonical_sha256(payload) != intent.get("payload_sha256"):
+        raise ValueError("planned board payload no longer matches its intent")
+    contract.validate_authority(authority, intent=intent)
+    board_writer(
+        op_kind=payload["op_kind"],
+        repo=payload["repo"],
+        number=payload["number"],
+        payload={"target_state": payload["target_state"]},
+    )
+    return cast(
+        dict[str, Any],
+        contract.build_result(
+            result_id=f"result-{intent['action_id']}",
+            intent=intent,
+            authority=authority,
+            status="ok",
+            observed_target=str(intent["target"]),
+            evidence_sha256=contract.canonical_sha256(
+                {"action_id": intent["action_id"], "status": "ok"}
+            ),
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

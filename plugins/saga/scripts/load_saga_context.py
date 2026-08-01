@@ -20,14 +20,83 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 # Ensure the sibling ``saga.py`` engine is importable whether this script is run
 # directly (its dir is already ``sys.path[0]``) or loaded via importlib from an
 # arbitrary cwd (the test harness does not add the script dir to ``sys.path``).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import lifecycle_obligations  # noqa: E402
 import saga  # noqa: E402  (path bootstrap must run before this import)
+import transition_receipts  # noqa: E402
+
+
+def route_earliest_unsettled_required_obligation(
+    contract: lifecycle_obligations.ObligationContract,
+    receipts: Iterable[transition_receipts.TransitionReceipt],
+    *,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    """Route deterministically from the canonical obligation order and verified receipts."""
+
+    contract = lifecycle_obligations.ObligationContract.from_dict(contract.to_dict())
+    receipts = tuple(
+        transition_receipts.TransitionReceipt.from_dict(receipt.to_dict())
+        for receipt in receipts
+    )
+    contract.validate()
+    by_obligation: dict[str, list[transition_receipts.TransitionReceipt]] = {}
+    for receipt in receipts:
+        receipt.validate_shape()
+        by_obligation.setdefault(receipt.obligation_id, []).append(receipt)
+
+    for obligation in contract.obligations:
+        if obligation.requirement != lifecycle_obligations.RequirementLevel.REQUIRED:
+            continue
+        evaluations = [
+            transition_receipts.evaluate_transition_receipt(
+                receipt,
+                contract,
+                repo_root=repo_root,
+            )
+            for receipt in by_obligation.get(obligation.obligation_id, [])
+        ]
+        if any(
+            result.state is lifecycle_obligations.SettlementState.CONFLICTING
+            for result in evaluations
+        ):
+            state = lifecycle_obligations.SettlementState.CONFLICTING
+        elif any(
+            result.state is lifecycle_obligations.SettlementState.SATISFIED
+            for result in evaluations
+        ):
+            continue
+        elif evaluations:
+            state = evaluations[-1].state
+        else:
+            state = lifecycle_obligations.SettlementState.UNSATISFIED
+        destination = (
+            f"/{obligation.command}"
+            if obligation.command
+            else f"/{obligation.phase}"
+            if obligation.phase
+            else obligation.producer
+        )
+        return {
+            "complete": False,
+            "obligation_id": obligation.obligation_id,
+            "settlement_state": state.value,
+            "destination": destination,
+        }
+    return {
+        "complete": True,
+        "obligation_id": "",
+        "settlement_state": lifecycle_obligations.SettlementState.SATISFIED.value,
+        "destination": "",
+    }
 
 
 def parse_args() -> argparse.Namespace:

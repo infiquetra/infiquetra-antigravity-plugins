@@ -29,10 +29,15 @@ is still Initiative -> Objective -> work item, with Initiative and Objective rep
 project fields when the board exposes them. Milestones are useful for repo-level due dates,
 GitHub progress rollups, and release coordination.
 
+Listing and progress checks are read-only evidence. Milestone creation and issue linking are
+separate remote mutations: first resolve the repository, Objective, due date, linked work,
+progress, and risk evidence; show the proposed mutation; and obtain explicit operator approval.
+Never infer approval from a progress report.
+
 ## Script Location
 
 ```bash
-$INFIQUETRA_SDLC_PATH/../infiquetra-claude-plugins/plugins/mission-control/scripts/sdlc_manager.py
+$INFIQUETRA_SDLC_PATH/../infiquetra-antigravity-plugins/plugins/mission-control/scripts/sdlc_manager.py
 ```
 
 If `$INFIQUETRA_SDLC_PATH` is unset, use `~/workspace/infiquetra/infiquetra-sdlc` as the default base path.
@@ -108,7 +113,7 @@ Milestone title:
 Example field update:
 
 ```bash
-python3 sdlc_manager.py flow set-field --project mount-olympus \
+python3 sdlc_manager.py flow set-field --project campps \
   --repo <repo> --number <N> \
   --field Objective --option "<Objective name>"
 ```
@@ -151,7 +156,8 @@ An Objective is complete when:
 ## Natural Language Examples
 
 **"Create an objective for the platform launch"**
--> Create the Objective issue, create a milestone if useful, add to board, and set fields.
+-> Prepare the Objective issue and milestone plan with progress and risk evidence, then obtain
+explicit operator approval before creating or linking anything remotely.
 
 **"How's the platform launch going?"**
 -> Find the milestone number and run `milestones progress`.

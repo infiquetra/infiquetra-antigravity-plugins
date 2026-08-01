@@ -1,4 +1,6 @@
+import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -14,6 +16,16 @@ if str(scripts_dir) not in sys.path:
     sys.path.insert(0, str(scripts_dir))
 
 import fleet_commons_shim  # noqa: E402
+
+
+def test_fleet_core_version_matches_newest_changelog_heading() -> None:
+    manifest = json.loads((fleet_core_dir / "plugin.json").read_text())
+    changelog = (fleet_core_dir / "CHANGELOG.md").read_text()
+    heading = re.search(r"^## \[([^]]+)]", changelog, re.MULTILINE)
+
+    assert manifest["version"] == "0.10.0"
+    assert heading is not None
+    assert heading.group(1) == manifest["version"]
 
 
 def test_tier_palette():

@@ -1,21 +1,28 @@
-# Visual Handoff Failure Matrix
+# Handoff Failure Matrix
 
-The Saga plugin orchestration relies entirely on visual markdown layout parsing (by LLM-based tools) rather than strict regex or explicit checkpointing databases. When an artifact is malformed visually, downstream plugins silently fail or misinterpret the state machine. 
+Saga handoff is a typed local boundary, not visual Markdown inference. The
+`saga.handoff-envelope.v1` packet is validated by
+`plugins/saga/scripts/handoff_envelope.py`; producing it performs no GitHub, board, merge, or deploy
+action.
 
-This matrix documents explicit "visually valid but parse-failing" layouts vs "correct" visual states.
+| Failure | Validator response | Operator action | External effect |
+|---|---|---|---|
+| Envelope is not an object | Reject with `handoff envelope must be an object` | Rebuild the packet as the closed schema | None |
+| Required field is absent or an unknown field is present | Reject the closed field set | Use only the documented v1 fields | None |
+| Schema is not `saga.handoff-envelope.v1` | Reject the schema | Regenerate with the current helper | None |
+| `artifacts`, `evidence`, `risks`, or `still_unauthorized` is empty or malformed | Reject the named list | Supply at least one non-empty string for each category | None |
+| Artifact path is absolute, empty, or escapes with `..` | Reject the repository reference | Use a repository-relative artifact path | None |
+| `still_unauthorized` names an unsupported action | Reject the action | Use only `issue-create`, `board-update`, `pr-create`, `merge`, or `deploy` | None |
+| Issue artifact ownership is not `mission-control` | Reject ownership | Restore `mission-control` as issue artifact owner | None |
+| Source is missing or multiple durable sources are plausible | Refuse to guess | Ask the operator to select the durable source | None |
+| Prepared issue or later action lacks separate confirmation | Preserve `still_unauthorized` | Stop at the owning workflow's authority gate | None |
 
-## The Matrix
+## Required handoff contents
 
-| Artifact | Downstream Consumer | Visually Valid but Parse-Failing | Correct Visual State | Why it Fails |
-|----------|---------------------|----------------------------------|----------------------|--------------|
-| `implementation_plan.md` | `/plan`, `/work` | Wrapping the file path in backticks: ``[NEW] `path/to/file.py` `` | Markdown linked path: `[NEW] [basename](file:///path/to/file.py)` | Markdown link parsers strip formatting differently. Backticks break the Antigravity URL extraction logic. |
-| `implementation_plan.md` | `/plan`, `/work` | Grouping without boundaries: `### Auth Changes` | Grouping with visual breaks: `--- \n\n ### Auth Changes` | Visual breaks (horizontal rules) tell the parser where a component cluster ends. Without them, unrelated files bleed into context windows. |
-| `task.md` | `/work` | Nested checkboxes without parent state: <br>`- Task Group`<br>&nbsp;&nbsp;`- [ ] Subtask` | Flat or explicitly state-mapped parents: <br>`- [ ] Task Group`<br>&nbsp;&nbsp;`- [ ] Subtask` | The parser looks for leading `[ ]`, `[/]`, or `[x]` tokens to determine node completeness. Missing tokens break progress rollup. |
-| `task.md` | `/work` | Using `[-]` or `[~]` for in-progress. | Using `[/]` for in-progress. | `[/]` is the only token registered by the native state tracker for WIP states. |
-| `walkthrough.md` | `/qa` | Emitting a dump of git diffs under an `## All Code` header. | Grouping by feature: `## Changes Made` and `## Verification`. | The QA agent looks for explicit human-readable verification steps, not raw diffs. |
+- `artifacts` names the repository-relative durable outputs being transferred.
+- `evidence` names the proof already produced; it is not a completion claim by itself.
+- `risks` tells the recipient what still needs validation.
+- `still_unauthorized` preserves the external-action boundary after handoff.
 
-## Protective Rules for Operators
-
-1. **Do not format paths:** If you manually edit the `implementation_plan.md`, never wrap the `[file basename](path)` link in backticks.
-2. **Respect the Tokens:** Only use `[ ]`, `[/]`, and `[x]` in `task.md`.
-3. **Keep Headers Predictable:** While the layout is visual, the top-level section headers (`## Proposed Changes`, `## Verification Plan`) act as anchors. Do not rename them.
+The receiving workflow must revalidate current repository and remote state. A valid envelope routes
+information; it does not grant authority.

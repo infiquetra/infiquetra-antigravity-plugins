@@ -1,6 +1,6 @@
 # Saga Command Selection
 
-Saga has 21 command files and 20 routable commands. `/ceo-review` is an alias for `/founder-review`, so it is documented separately but does not add a lifecycle node.
+Saga has 23 command files and 22 routable commands. `/ceo-review` is an alias for `/founder-review`, so it is documented separately but does not add a lifecycle node.
 
 ![Command Matrix](assets/command-matrix.svg)
 
@@ -245,6 +245,44 @@ Cross-repo journal feeder — lifts the select few transcendent learnings into t
 | Boundary | Owns the cross-repo journal feed into context-library, not source-repo or SDLC mutation. |
 | Common mistakes | Treating it as a bulk copy of every generalizable rule; writing back to a source repo. |
 | Example | `/promote ~/workspace/infiquetra` |
+
+### /fleet-doctor
+
+Capability and dependency diagnosis before Saga dispatches work.
+
+| Field | Value |
+|-------|-------|
+| Purpose | Diagnose whether required runtime capabilities and target plugins are proven before Saga dispatches work. |
+| Use when | A required capability or plugin may be missing, unknown, unavailable, or failed; a resumed workstream needs fresh host capability evidence. |
+| Do not use when | The operator wants Fleet Doctor to install or repair a dependency, or the work can proceed without the named optional capability. |
+| Inputs | Required capability roles, target plugin names, and current capability receipts. |
+| Outputs | A sanitized diagnostic report with source lineage and blocking reasons. |
+| Saga state | Diagnostic only; it does not approve, execute, or settle lifecycle work. |
+| Routes in | `/loop`, `/resume`, `/work`. |
+| Routes out | `/loop`, `/resume`, operator remediation. |
+| Gates | Required unknown, unavailable, or failed evidence blocks readiness; optional evidence cannot satisfy a required role. |
+| Boundary | Diagnoses target dependencies and capabilities without installing, repairing, or executing them. |
+| Common mistakes | Treating optional capability evidence as proof of a required role; reporting a diagnostic as a repair or successful execution. |
+| Example | `/fleet-doctor` |
+
+### /pulse
+
+Read-only provider quality and drift reporting from supplied sanitized receipts.
+
+| Field | Value |
+|-------|-------|
+| Purpose | Report provider quality and drift without live calls or automatic routing. |
+| Use when | Existing engine receipts need deterministic quality, latency, cost, or disagreement analysis. |
+| Do not use when | Receipts are missing, stale, future-dated, malformed, sensitive, or below the sample floor; the operator wants provider execution or automatic model selection. |
+| Inputs | A caller-supplied JSON list of sanitized `run_fact.v1` engine receipts and an explicit as-of time. |
+| Outputs | A deterministic `pulse_snapshot.v1` report with `routing_authority=false` and `recommended_provider=null`. |
+| Saga state | Read-only evidence consumer; writes no Saga state or telemetry cache. |
+| Routes in | Provider telemetry ask, supplied engine receipts. |
+| Routes out | Operator investigation, collect more evidence, or no change. |
+| Gates | Reject sensitive, malformed, sparse, stale, or future-dated receipts; never auto-route. |
+| Boundary | Owns advisory telemetry derivation, not provider execution, model selection, or routing policy. |
+| Common mistakes | Treating sparse telemetry as proof; turning advisory evidence into routing authority. |
+| Example | `/pulse --receipts-json receipts.json --as-of 2026-07-31T00:00:00Z` |
 
 ### /resume
 

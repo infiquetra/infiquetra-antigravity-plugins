@@ -116,6 +116,7 @@ candidates:
       maintenance_cost: 2
     evidence_expectation:
       - Focused planning contract tests pass.
+      - Ordinary validation continues to accept this decision-only version 1 fixture.
     decision:
       state: approved-survivor
       rationale: The operator selected this semantic contract.

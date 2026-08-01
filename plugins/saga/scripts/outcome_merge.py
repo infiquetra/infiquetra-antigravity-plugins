@@ -38,9 +38,11 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import lifecycle_obligations  # noqa: E402
 import outcome_github  # noqa: E402  (after the sys.path shim, by design)
 import outcome_orchestrator  # noqa: E402
 import outcome_store  # noqa: E402
+import transition_receipts  # noqa: E402
 
 # Base-churn cap: how many times a sibling-merge can move the base out from under us before we stop
 # and page the operator instead of spinning (R12 "no starvation spin").
@@ -95,6 +97,87 @@ class MergeOutcome:
             "reason": self.reason,
             "cycles": self.cycles,
         }
+
+
+def settle_from_verified_integration_receipt(
+    node: Any,
+    receipt: transition_receipts.TransitionReceipt,
+    contract: lifecycle_obligations.ObligationContract,
+    *,
+    repo_root: Path,
+) -> dict[str, Any]:
+    """Interpret integration as settled only from the canonical U4 receipt contract."""
+
+    receipt.validate_shape()
+    contract.validate()
+    if not node.leaf_saga_id:
+        raise ValueError("integration receipt cannot settle an unowned leaf")
+    if contract.workstream_id != node.leaf_saga_id or receipt.workstream_id != node.leaf_saga_id:
+        raise ValueError("integration receipt owner does not match leaf_saga_id")
+    contract = lifecycle_obligations.ObligationContract.from_dict(contract.to_dict())
+    obligation = contract.obligation(receipt.obligation_id)
+    if obligation.kind not in {
+        lifecycle_obligations.ObligationKind.CHECK,
+        lifecycle_obligations.ObligationKind.GATE,
+    }:
+        raise ValueError("integration receipt must settle a check or gate obligation")
+    if receipt.contract_id != contract.contract_id:
+        result = lifecycle_obligations.SettlementResult(
+            receipt.obligation_id,
+            lifecycle_obligations.SettlementState.CONFLICTING,
+            reasons=("receipt contract_id does not match the supplied contract",),
+        )
+    else:
+        evidence = tuple(
+            lifecycle_obligations.Evidence.from_dict(item.to_dict())
+            for item in receipt.all_evidence()
+        )
+        computed = lifecycle_obligations.evaluate_obligation(
+            contract,
+            receipt.obligation_id,
+            evidence,
+            repo_root=repo_root,
+        )
+        expected = (
+            computed.state
+            if receipt.claimed_settlement.value == computed.state.value
+            else lifecycle_obligations.SettlementState.CONFLICTING
+        )
+        if receipt.settlement_state.value != expected.value:
+            result = lifecycle_obligations.SettlementResult(
+                receipt.obligation_id,
+                lifecycle_obligations.SettlementState.CONFLICTING,
+                evidence_ids=computed.evidence_ids,
+                reasons=(
+                    f"receipt settlement_state {receipt.settlement_state.value!r} does not match "
+                    f"recomputed state {expected.value!r}",
+                ),
+            )
+        elif (
+            expected is lifecycle_obligations.SettlementState.CONFLICTING
+            and receipt.claimed_settlement.value != computed.state.value
+        ):
+            result = lifecycle_obligations.SettlementResult(
+                receipt.obligation_id,
+                expected,
+                evidence_ids=computed.evidence_ids,
+                reasons=(
+                    *computed.reasons,
+                    f"claimed settlement {receipt.claimed_settlement.value!r} disagrees with "
+                    f"computed settlement {computed.state.value!r}",
+                ),
+            )
+        else:
+            result = computed
+    settled = result.state is lifecycle_obligations.SettlementState.SATISFIED
+    return {
+        "subplot_id": node.subplot_id,
+        "leaf_saga_id": node.leaf_saga_id,
+        "settled": settled,
+        "settlement_state": result.state.value,
+        "receipt_id": receipt.receipt_id,
+        "reasons": list(result.reasons),
+    }
 
 
 def auto_merge_one(node: Any, ops: MergeOps, *, max_cycles: int = MERGE_CAP) -> MergeOutcome:

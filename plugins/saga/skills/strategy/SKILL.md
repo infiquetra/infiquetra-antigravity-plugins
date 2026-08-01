@@ -6,6 +6,12 @@ argument-hint: "[optional: section to revisit, e.g. 'metrics' or 'approach']"
 
 # Strategy
 
+## Migration evidence contract
+
+The strategy records the operator's chosen direction, considered alternatives, constraints, and
+revisit conditions. Rejected alternatives remain visible. The strategy is a decision artifact, not
+delivery approval or implementation authority.
+
 Ported from Compound-Engineering ce-strategy; CE downstream ce-ideate / ce-brainstorm / ce-plan map to infiquetra /ideate / /brainstorm / /plan.
 
 `/strategy` produces and maintains the repository root `STRATEGY.md` — a short, durable anchor that

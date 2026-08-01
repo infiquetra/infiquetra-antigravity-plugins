@@ -324,7 +324,7 @@ def render_command_matrix(model: dict[str, Any]) -> str:
 def render_ownership_boundary_map(model: dict[str, Any]) -> str:
     parts = _svg_open(
         "Ownership Boundary Map",
-        "Saga ownership beside mission-control, deploy, and team-execution.",
+        "Saga ownership beside mission-control, deploy, and multi-agent-consensus.",
     )
     _text(parts, 70, 80, "Ownership Boundary Map", cls="title")
     _text(
@@ -340,7 +340,7 @@ def render_ownership_boundary_map(model: dict[str, Any]) -> str:
         ("saga", "teal"),
         ("mission-control", "blue"),
         ("deploy", "green"),
-        ("team-execution", "violet"),
+        ("multi-agent-consensus", "violet"),
     ]
     x = 70
     for owner, color in owners:

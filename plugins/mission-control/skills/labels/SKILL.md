@@ -53,6 +53,12 @@ when_to_use: |
 
 Manage Infiquetra issue labels and synchronize them with the GitHub Projects board fields.
 
+`labels audit` and field discovery are read-only. Their output does not authorize a change.
+Before `labels deploy`, `labels auto-label`, direct label edits, or field-option creation, validate
+every requested name against the declared taxonomy (or the explicit new-option workflow), show the
+mutation plan, and obtain explicit operator approval. Reject unknown labels; never create one
+implicitly from free-form text.
+
 ## Script Location
 
 ```
@@ -85,6 +91,7 @@ python3 sdlc_manager.py labels audit --repo infiquetra-core
 ```
 
 Output shows: present labels, missing labels, and extra (non-SDLC) labels.
+Audit stops at this report. Apply changes only through a separately approved mutation command.
 
 ### Deploy Labels to Repo
 
@@ -96,6 +103,7 @@ python3 sdlc_manager.py labels deploy --repo infiquetra-core
 
 Safe to re-run — creates missing labels, updates color/description on existing ones,
 does not delete extra labels.
+Run it only after the operator approves the target repository and rendered taxonomy changes.
 
 ### Auto-Label an Issue
 

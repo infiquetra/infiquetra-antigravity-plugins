@@ -7,12 +7,12 @@ JSON file under a manifest-namespace directory (``<git-common-dir>/saga-manifest
 ``manifest_store.MANIFEST_NAMESPACE``) and surfaces three advisory signals, all optional
 consumers of ``provenance_manifest.py``'s schema:
 
-* **parroting_count** (R7) — claims that were producer-claimed ``verified`` but Claude's
+* **parroting_count** (R7) — claims that were producer-claimed ``verified`` but Antigravity's
   adjudication refuted them or found them unsupported. Delegates to
   ``provenance_manifest.is_parroting`` — the taxonomy predicate lives there, not here
   (KTD5), so this reader can never drift from the schema's own definition.
 * **disposition_rate** (R18) — the fraction of manifests landing in each ``Disposition``
-  bucket (``ran-as-requested`` / ``fell-back-to-claude`` / ``substituted-engine``), mirroring
+  bucket (``ran-as-requested`` / ``fell-back-to-inline`` / ``substituted-engine``), mirroring
   ``override_rate_reader``'s rate semantics: a bucket's rate is ``None`` only when there are
   zero manifests total (not zero for that bucket — an empty bucket is a legitimate 0.0%,
   distinct from "no data yet").

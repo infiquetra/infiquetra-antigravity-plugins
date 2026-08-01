@@ -82,6 +82,7 @@ MANUAL_PAGES = [
     SAGA_ROOT / "docs" / "state-readiness.md",
     SAGA_ROOT / "docs" / "scenarios.md",
     SAGA_ROOT / "docs" / "boundaries.md",
+    SAGA_ROOT / "docs" / "portability.md",
     SAGA_ROOT / "docs" / "visuals.md",
 ]
 
@@ -110,14 +111,125 @@ def _resolve_repo_path(path_text: str) -> Path:
     return (REPO_ROOT / path_text).resolve()
 
 
+def _portability_errors(model: dict[str, Any]) -> list[str]:
+    portability = model.get("portability")
+    if not isinstance(portability, dict):
+        return ["missing portability contract"]
+    errors: list[str] = []
+    if portability.get("canonical_authority") != "repository-documents":
+        errors.append("canonical authority must be repository-documents")
+    if portability.get("projection_authority") != "advisory":
+        errors.append("projection authority must be advisory")
+    if portability.get("native_backends") != ["inline", "multi-agent-consensus"]:
+        errors.append("native backends must be inline and multi-agent-consensus")
+
+    allowed = set(portability.get("allowed_classifications", []))
+    if portability.get("packet_mapping_candidate") != "codex-portability-contracts":
+        errors.append("packet mappings must bind the canonical ledger candidate")
+    mappings = portability.get("packet_mappings")
+    if not isinstance(mappings, dict):
+        errors.append("packet mappings must be a mapping")
+        mappings = {}
+    if portability.get("packet_inventory_count") != len(mappings):
+        errors.append("packet inventory count must equal exact mapping rows")
+    ledger = yaml.safe_load(
+        (REPO_ROOT / "docs/ports/2026-07-30-saga-reliability/ledger.yaml").read_text()
+    )
+    candidate = next(
+        row for row in ledger["candidates"] if row["id"] == "codex-portability-contracts"
+    )
+    packets = {row["id"]: row for row in ledger["campaign"]["edit_packets"]}
+    if set(mappings) != set(candidate["edit_packet_ids"]):
+        errors.append("packet mappings must exactly cover all candidate-owned packets")
+    for packet_id, mapping in mappings.items():
+        if not isinstance(mapping, list) or len(mapping) != 4:
+            errors.append(f"packet mapping {packet_id}: invalid shape")
+            continue
+        source_path, source_commit, target, classification = mapping
+        packet = packets.get(packet_id)
+        if packet is None or source_path != packet["path"] or source_commit != packet["commit"]:
+            errors.append(f"packet mapping {packet_id}: stale source provenance")
+        if classification not in allowed:
+            errors.append(f"packet mapping {packet_id}: unsupported classification")
+        if not isinstance(target, str) or not target.startswith("plugins/") or not _resolve_repo_path(target).is_file():
+            errors.append(f"packet mapping {packet_id}: target boundary is missing")
+    contracts = portability.get("runtime_contracts")
+    if not isinstance(contracts, dict) or not contracts:
+        errors.append("runtime contracts must be a non-empty mapping")
+        return errors
+
+    for contract_id, contract in contracts.items():
+        if not isinstance(contract, dict):
+            errors.append(f"{contract_id}: contract must be a mapping")
+            continue
+        lineage = contract.get("source_lineage")
+        if not isinstance(lineage, list) or not lineage:
+            errors.append(f"{contract_id}: source lineage is required")
+        classification = contract.get("classification")
+        if classification not in allowed:
+            errors.append(f"{contract_id}: unsupported classification")
+        target = contract.get("target_boundary")
+        if not isinstance(target, str) or not target.startswith("plugins/saga/"):
+            errors.append(f"{contract_id}: target boundary must stay inside Saga")
+            continue
+        if any(part in {".claude", ".gemini", "brain"} for part in Path(target).parts):
+            errors.append(f"{contract_id}: target boundary cannot be runtime state")
+            continue
+        if not _resolve_repo_path(target).is_file():
+            errors.append(f"{contract_id}: target boundary does not exist")
+    return errors
+
+
+def test_portability_page_maps_every_runtime_specific_contract_to_antigravity() -> None:
+    model = _load_model()
+
+    assert set(model["execution_backends"]) == {"inline", "multi-agent-consensus"}
+    assert _portability_errors(model) == []
+    portability_text = (SAGA_ROOT / "docs" / "portability.md").read_text(encoding="utf-8")
+    for contract_id in model["portability"]["runtime_contracts"]:
+        label = contract_id.replace("-", " ")
+        assert label in portability_text.lower()
+    assert len(model["portability"]["packet_mappings"]) == 45
+    mappings = list(model["portability"]["packet_mappings"].values())
+    assert {mapping[1] for mapping in mappings} == {
+        "0c2072446c7e136caa274b5f637ca2c8c03725e4"
+    }
+    classifications = [mapping[3] for mapping in mappings]
+    assert classifications.count("adapted") == 26
+    assert classifications.count("preserved") == 15
+    assert classifications.count("shed") == 4
+    assert "packets: 26 adapted, 15 preserved, and 4 shed" in portability_text
+    assert "0c2072446c7e136caa274b5f637ca2c8c03725e4" in portability_text
+    assert "does not consume them as source-oracle behavior" in portability_text
+
+
+def test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases() -> None:
+    model = _load_model()
+    portability = model["portability"]
+
+    portability["native_backends"] = ["inline", "source-workflow"]
+    portability["runtime_contracts"]["capability-evidence"]["classification"] = "copied"
+    portability["runtime_contracts"]["runtime-state-projections"]["target_boundary"] = (
+        ".gemini/saga/state.json"
+    )
+    portability["packet_mappings"].pop(next(iter(portability["packet_mappings"])))
+
+    errors = _portability_errors(model)
+    assert "native backends must be inline and multi-agent-consensus" in errors
+    assert "capability-evidence: unsupported classification" in errors
+    assert "runtime-state-projections: target boundary must stay inside Saga" in errors
+    assert "packet inventory count must equal exact mapping rows" in errors
+    assert "packet mappings must exactly cover all candidate-owned packets" in errors
+
+
 def test_docs_model_matches_command_surface() -> None:
     model = _load_model()
     wrappers = _command_wrapper_names()
     commands = set(model["commands"])
     aliases = set(model["aliases"])
 
-    assert model["command_surface"]["command_files"] == 21
-    assert model["command_surface"]["routable_commands"] == 20
+    assert model["command_surface"]["command_files"] == 23
+    assert model["command_surface"]["routable_commands"] == 22
     assert wrappers == commands | aliases
     assert aliases == {"ceo-review"}
     assert model["aliases"]["ceo-review"]["aliases"] == "/founder-review"

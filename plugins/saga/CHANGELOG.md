@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0 - 2026-07-31
+
+- Add exact semantic contract tests for the fourteen approved Saga method survivors.
+- Add receipt-driven provider quality, drift, and disagreement telemetry without live provider
+  calls or automatic routing authority.
+- Require typed external review and quality-assurance evidence, distinct producer and validator
+  identities, explicit operator choices, and capability-gated host-originated independence.
+
 ## 1.5.0 - 2026-07-30
 
 - Add strict `saga.lifecycle-obligation.v1` contracts with required, optional,

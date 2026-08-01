@@ -7,7 +7,11 @@ description: Route natural-language Infiquetra lifecycle requests to the right s
 
 You classify and route; you do not implement non-trivial work.
 
-Use `/loop` as the lifecycle entrypoint. Convert vague asks with `plugins/saga/skills/loop/references/generic-ask-compiler.md`, then choose one destination command.
+Use `/loop` as the lifecycle entrypoint. Convert vague asks with
+`plugins/saga/skills/loop/references/generic-ask-compiler.md`, then choose one destination command.
+When a canonical lifecycle-obligation contract and transition receipts are available, route to the
+earliest required obligation that is not verifiably satisfied. Settled obligations are skipped;
+missing, invalid, or conflicting evidence never permits routing past an obligation.
 
 ## Routes
 
