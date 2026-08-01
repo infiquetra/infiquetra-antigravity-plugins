@@ -225,3 +225,10 @@ Use this structure:
 5. Residual risk from limited evidence, if any.
 
 If no issues are found, say so clearly and name any remaining risk from limited evidence.
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable documentation-review
+completion, promote the review into `docs/reviews/` with `scripts/artifact_promotion.py` and bind its
+promotion receipt to the applicable lifecycle transition. A divergent canonical predecessor is
+preserved and blocks completion until operator adjudication.

@@ -367,3 +367,10 @@ debugging (`/work` and `/investigate` own those). It never blocks the router.
   re-normalization + baseline-from-prior-report) with its runnable `qa_health_score.py` line, the
   ship-verdict derivation (severity bands → ship / ship-with-deferred / no-ship), the
   tier → blocking-threshold table, and the falsifiable-prediction finding shape.
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable quality-assurance
+evidence, promote the report into `docs/qa/` with `scripts/artifact_promotion.py` and bind its
+promotion receipt to the applicable lifecycle transition. A divergent canonical predecessor is
+preserved and blocks the ship verdict until operator adjudication.

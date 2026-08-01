@@ -497,3 +497,10 @@ gate, record, coordinate the PR loop under confirmation — then stop.
 - `references/pr-continuation-loop.md` — the total PR-state transition table (the `gh pr view --json`
   reads, the per-state actions, round-bump via `rounds_seen`, merge-under-confirmation, and the
   qa/resume advisory routing + the qa-deferral). "How the round-N loop runs after PR-ready."
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable work-session evidence,
+promote it into `docs/work-sessions/` with `scripts/artifact_promotion.py` and bind its promotion
+receipt to the applicable lifecycle transition. A divergent canonical predecessor is preserved and
+blocks advancement until operator adjudication.

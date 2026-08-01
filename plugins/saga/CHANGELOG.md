@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0 - 2026-08-01
+
+- Add a local-only, receipt-backed transaction for promoting staged Antigravity artifacts into
+  canonical repository `docs/` evidence.
+- Preserve divergent canonical and staged content without choosing a winner, and require operator
+  adjudication before settlement.
+- Reject unsafe promoted content, keep historical imports honest about missing evidence, and retain
+  terminal no-save only for explicitly abandoned unfinished exploration.
+
 ## 1.6.0 - 2026-07-31
 
 - Add exact semantic contract tests for the fourteen approved Saga method survivors.

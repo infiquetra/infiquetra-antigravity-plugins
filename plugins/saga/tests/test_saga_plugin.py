@@ -82,7 +82,7 @@ def test_infiquetra_lifecycle_commands_are_packaged() -> None:
         assert (PLUGIN_ROOT / "commands" / f"{command}.md").exists()
 
 
-def test_lifecycle_obligation_contracts_are_packaged_and_versioned() -> None:
+def test_lifecycle_evidence_contracts_are_packaged_and_versioned() -> None:
     plugin_json = json.loads(_read(PLUGIN_ROOT / "plugin.json"))
     obligation_schema = json.loads(
         _read(PLUGIN_ROOT / "references" / "lifecycle-obligation-schema.json")
@@ -91,7 +91,7 @@ def test_lifecycle_obligation_contracts_are_packaged_and_versioned() -> None:
         _read(PLUGIN_ROOT / "references" / "transition-receipt-schema.json")
     )
 
-    assert plugin_json["version"] == "1.6.0"
+    assert plugin_json["version"] == "1.7.0"
     newest_heading = next(
         line.removeprefix("## ").split(" - ", maxsplit=1)[0]
         for line in _read(PLUGIN_ROOT / "CHANGELOG.md").splitlines()
@@ -102,6 +102,8 @@ def test_lifecycle_obligation_contracts_are_packaged_and_versioned() -> None:
     assert receipt_schema["$id"] == "saga.transition-receipt.v1"
     assert (PLUGIN_ROOT / "scripts" / "lifecycle_obligations.py").exists()
     assert (PLUGIN_ROOT / "scripts" / "transition_receipts.py").exists()
+    assert (PLUGIN_ROOT / "scripts" / "artifact_promotion.py").exists()
+    assert (PLUGIN_ROOT / "references" / "artifact-promotion-contract.md").exists()
 
 
 def test_infiquetra_lifecycle_skills_document_required_lifecycle_behavior() -> None:

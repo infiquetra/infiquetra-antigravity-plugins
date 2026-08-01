@@ -572,3 +572,11 @@ and the quality bar live there, not in this file. Do not improvise them from mem
 - `saga/references/formatting-style.md` — the canonical formatting contract that governs how the
   presented survivors and the persisted artifact look (lead-in summaries, short prose, compact fields
   as a table).
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable ideation completion,
+promote the artifact into `docs/ideation/` with `scripts/artifact_promotion.py` and bind its promotion
+receipt to the applicable lifecycle transition. A conflict blocks completion and requires operator
+adjudication. Terminal no-save is valid only for explicitly abandoned unfinished exploration and is
+never resumable, handoffable, or settled.
