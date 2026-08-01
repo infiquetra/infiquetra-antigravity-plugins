@@ -16,6 +16,9 @@ fully offline (no live GitHub call), sidecar read back as JSON.
 import json
 import sys
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -267,3 +270,78 @@ def test_validator_gates_agent_output(tmp_path) -> None:
     passing_sidecar = _sidecar(passing)
     assert passing_sidecar["readiness"]["passed"] is True
     assert passing_sidecar["approval_state"] == "needs_operator_approval"
+
+
+def test_issue_preparation_requires_review_and_approval_before_mutation(tmp_path) -> None:
+    artifact = sdlc_manager.SourceArtifact(
+        ref="docs/plans/mission-control.md",
+        kind="plan",
+        title="Mission Control plan",
+        content=OLYMPUS_BODY,
+        inferred_maturity="plan-ready",
+        path="docs/plans/mission-control.md",
+    )
+    draft = sdlc_manager.issue_prepare(
+        repo="mission-control",
+        issue_type="capability",
+        team="campps",
+        project="campps",
+        source=OLYMPUS_BODY,
+        title="Preserve source evidence",
+        status=None,
+        risk="medium",
+        mode=None,
+        source_artifact=artifact,
+        draft_dir=tmp_path,
+    )
+    sidecar = _sidecar(draft)
+    assert sidecar["source_artifact"]["ref"] == artifact.ref
+    assert sidecar["approval_state"] == "needs_operator_approval"
+
+    result = sdlc_manager.prepared_approve_batch([draft], fmt="text")
+    assert result["approved"] == [str(draft)]
+    assert _sidecar(draft)["approval_state"] == "approved"
+
+
+def test_issue_preparation_requires_review_and_approval_before_mutation_rejects_negative_cases(
+    tmp_path,
+) -> None:
+    draft = _prepare_olympus(tmp_path, title="Unapproved")
+    with (
+        patch.object(sdlc_manager, "load_config") as load_config,
+        patch.object(sdlc_manager, "_create_github_issue") as create_issue,
+        pytest.raises(RuntimeError, match="awaits operator approval"),
+    ):
+        sdlc_manager.issue_create_prepared(draft, fmt="text", auto_confirm=True)
+    load_config.assert_not_called()
+    create_issue.assert_not_called()
+
+    artifact = sdlc_manager.SourceArtifact(
+        ref="docs/plans/source.md",
+        kind="plan",
+        title="Source plan",
+        content=OLYMPUS_BODY,
+        inferred_maturity="plan-ready",
+        path="docs/plans/source.md",
+    )
+    sourced = sdlc_manager.issue_prepare(
+        repo="mission-control",
+        issue_type="capability",
+        team="campps",
+        project="campps",
+        source=OLYMPUS_BODY,
+        title="Tampered source evidence",
+        status=None,
+        risk="medium",
+        mode=None,
+        source_artifact=artifact,
+        draft_dir=tmp_path,
+    )
+    sidecar_path = sourced.with_suffix(".json")
+    sidecar = _sidecar(sourced)
+    sidecar["source_artifact"] = None
+    sidecar_path.write_text(json.dumps(sidecar), encoding="utf-8")
+
+    result = sdlc_manager.prepared_approve_batch([sourced], fmt="text")
+    assert result["approved"] == []
+    assert result["skipped"] == [{"draft": str(sourced), "reason": "fails validation"}]

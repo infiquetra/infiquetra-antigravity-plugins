@@ -1,8 +1,19 @@
-# Changelog — team-execution
+# Changelog — Multi-Agent Consensus
 
 All notable changes to this plugin are documented here.
 
 ---
+
+## [2.4.0] — 2026-07-30
+
+### Changed
+
+- Define a closed application-security audit request and evidence packet with bounded paths,
+  identity-bound reviewers, explicit findings, checks, and source evidence.
+- Fail closed when Antigravity is asked to originate an independent reviewer without a current
+  Fleet Core receipt reporting `agy.agent.execution=passed`; imported typed evidence makes no host
+  independence claim.
+- Resolve reviewer model and effort through the current Fleet Core registry and honoring seam.
 
 ## [2.3.0] — 2026-07-26
 

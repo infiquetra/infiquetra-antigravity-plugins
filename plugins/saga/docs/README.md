@@ -13,11 +13,12 @@ The source model for command coverage and visuals is [model/saga-docs-model.yaml
 | Interpret saga state or artifact maturity | [State and readiness](state-readiness.md) |
 | Start from a real user situation | [Scenarios](scenarios.md) |
 | Know which plugin owns what | [Boundaries](boundaries.md) |
+| Understand source-lineage portability | [Portability](portability.md) |
 | Maintain or regenerate diagrams | [Visuals](visuals.md) |
 
 ## Operating Model
 
-Saga has 20 command files and 19 routable commands. `/ceo-review` is a compatibility alias for `/founder-review`.
+Saga has 23 command files and 22 routable commands. `/ceo-review` is a compatibility alias for `/founder-review`.
 
 The main chain is a reviewed-work spine:
 
@@ -26,6 +27,10 @@ idea/requirements-ready -> /plan -> /doc-review -> /work -> /code-review -> /qa 
 ```
 
 Several commands intentionally sit off the linear spine. `/spec`, `/investigate`, `/optimize`, and `/strategy` are not stored lifecycle phases; they produce artifacts or decisions that route back into the chain.
+
+Repository documents are the canonical Saga record. Runtime state and native
+brain artifacts are advisory projections; see [Portability](portability.md) for
+the mapped host contracts and provenance rules.
 
 ## Maintainer Path
 

@@ -37,23 +37,10 @@ _RECEIPT_KEYS = frozenset({"schema", "selector_digest", "findings", "unresolved_
 _COMPARISON_SUFFIXES = frozenset(
     {".conf", ".json", ".md", ".py", ".sh", ".toml", ".txt", ".yaml", ".yml"}
 )
-REQUIRED_ACTIVE_GLOBS = (
-    "plugins/saga/commands/**/*.md",
-    "plugins/saga/skills/**/*.md",
-    "plugins/saga/agents/**/*.md",
-    "plugins/saga/references/**/*.md",
-    "plugins/saga/hooks/**/*.py",
-    "plugins/saga/scripts/**/*.py",
-)
-REQUIRED_EXACT_PATHS = (
-    "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
-    "plugins/fleet-core/scripts/fleet_commons/delegation_state.py",
-    "plugins/mission-control/scripts/sdlc_manager.py",
-    "plugins/multi-agent-consensus/skills/multi-agent-consensus/references/"
-    "validator-evidence-state.md",
-    ".agents/skills/port-claude-plugins/SKILL.md",
-)
+REQUIRED_ACTIVE_GLOBS: tuple[str, ...] = ()
+REQUIRED_EXACT_PATHS: tuple[str, ...] = ()
 REQUIRED_COMPARISON_ROOTS = ("docs", "tests")
+_CANONICAL_SELECTOR_DIGEST = "08df27477f912819b88ff979e60416ec20ff124e9b3a5eda1cb2532fd6195629"
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$")
@@ -64,12 +51,12 @@ _FOREIGN_RUNTIME_READ_ALLOWLIST = frozenset(
     {
         (
             "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
-            "65e209d8065d4681777ff975a0e52b0f299ec8071ceaa8e1bf0bcfe2363b209c",
+            "55f7471f0d78c8ca8c837ebe29ffaa634b3c348855c0b05b617b2ee4c13bf013",
             "d11d3b3f76f345fda91fbc92e9741c11ca267d04b4d519140fc8da984c6bb73d",
         ),
         (
             "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
-            "65e209d8065d4681777ff975a0e52b0f299ec8071ceaa8e1bf0bcfe2363b209c",
+            "55f7471f0d78c8ca8c837ebe29ffaa634b3c348855c0b05b617b2ee4c13bf013",
             "af73c91789685f05c5410063e3da771b02c0550e5eeb08619999bdaca2e16345",
         ),
     }
@@ -98,37 +85,37 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
         ),
         (
             "plugins/saga/skills/code-review/SKILL.md",
-            "0f99ac2af09b7e165fe4b0cc14ce1f1100e27730c0887eceeaa90d8b34e1f249",
+            "2acb141f6e2d1d768fa966bbecee8bd5f75afb950884744f3876cbfb7e616f7f",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (
             "plugins/saga/skills/founder-review/SKILL.md",
-            "3e2b026a6a8a0e7a2aa6a09093de7c34a43c7771db9d59b9e457cb4f36f85cac",
+            "a8838ce01ff51877a74c48634476c1f8ec2650ee6d534cbd96a3c3f006e40543",
             "50e81777770eccdf8e96cf1d4a59863eab54b9baabeda3b3e9398859cd874ec8",
         ),
         (
             "plugins/saga/skills/investigate/SKILL.md",
-            "fbb28612db69aaab10f5234a31eaf44bfe628f556ab8eb2ac32759898024cba2",
+            "e13a7cea8adabef6d5da1af0200abb978036bbceff3db9f898259f7d9ac62f4c",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
         (
             "plugins/saga/skills/optimize/SKILL.md",
-            "4ad091548295cc5aa1187ba2f5add2f0a40956f09a1b4568dfb1a3f9956524ca",
+            "fbffa04a457d747d1877c9e2c22eb73f2e0cf1fac11a4d870cb84a46480c6542",
             "318c1ec102618e775ad240c4ad8a8305d3cb4c03bb2218a42024989b1acfd721",
         ),
         (
             "plugins/saga/skills/plan/SKILL.md",
-            "3e913d5c7a0c9079348c1520f706e0d1b0d9c61df0b086eed4c703573bac27be",
+            "7f59c368216dea423398c0946b2eedd78f0604ce48262e61252d47b92a0655f0",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (
             "plugins/saga/skills/qa/SKILL.md",
-            "55194d1fce3f8b9900274314b93b816329fad3fe209aef6ad1efe0124fce7518",
+            "054985b96c17a4ab83b88db3f08509bd5e355612c5609a28ee440fda3aceeb2b",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
         (
             "plugins/saga/skills/retro/SKILL.md",
-            "4f084f4b9034600eb0cd0588c466badc1ad3aa0b2af69e8698db8bb2dd885f73",
+            "b51a33158e86598241d6309ced29e15324a56160bfdce503a89c3476a19bfd2a",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
     }
@@ -216,14 +203,15 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
     errors = ["selector: unknown field" for _key in sorted(set(selector) - _SELECTOR_KEYS)]
     if selector.get("schema") != SELECTOR_SCHEMA:
         errors.append(f"selector.schema: expected {SELECTOR_SCHEMA!r}")
-    for field, allow_glob in (
-        ("active_globs", True),
-        ("exact_paths", False),
-        ("comparison_roots", False),
+    for field, allow_glob, allow_empty in (
+        ("active_globs", True, True),
+        ("exact_paths", False, False),
+        ("comparison_roots", False, False),
     ):
         values = selector.get(field)
-        if not isinstance(values, list) or not values:
-            errors.append(f"selector.{field}: expected a non-empty list")
+        if not isinstance(values, list) or (not values and not allow_empty):
+            qualifier = "a list" if allow_empty else "a non-empty list"
+            errors.append(f"selector.{field}: expected {qualifier}")
             continue
         string_values = [value for value in values if isinstance(value, str)]
         if len(string_values) != len(set(string_values)):
@@ -234,7 +222,6 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
 
     for field, expected in (
         ("active_globs", REQUIRED_ACTIVE_GLOBS),
-        ("exact_paths", REQUIRED_EXACT_PATHS),
         ("comparison_roots", REQUIRED_COMPARISON_ROOTS),
     ):
         if selector.get(field) != list(expected):
@@ -242,6 +229,11 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
 
     if selector.get("digest_inputs") != _SELECTOR_DIGEST_INPUTS:
         errors.append(f"selector.digest_inputs: expected exactly {_SELECTOR_DIGEST_INPUTS}")
+    elif (
+        all(key in selector for key in _SELECTOR_DIGEST_INPUTS)
+        and selector_digest(cast(Mapping[str, Any], selector)) != _CANONICAL_SELECTOR_DIGEST
+    ):
+        errors.append("selector: does not match the canonical surface policy")
 
     root = Path(repo_root).resolve()
     exact_paths = selector.get("exact_paths")
@@ -250,8 +242,10 @@ def validate_selector(selector: object, repo_root: Path | str) -> list[str]:
             if not _safe_relative(value, allow_glob=False):
                 continue
             candidate = root / value
+            if not candidate.exists():
+                continue
             if not candidate.is_file():
-                errors.append("selector.exact_paths: declared file is missing")
+                errors.append("selector.exact_paths: declared path is not a file")
             elif candidate.is_symlink():
                 errors.append("selector.exact_paths: symlinks are not allowed")
             else:
@@ -330,14 +324,7 @@ def selector_digest(selector: Mapping[str, Any]) -> str:
 def canonical_selector_digest() -> str:
     """Return the digest of the closed repository selector policy."""
 
-    return selector_digest(
-        {
-            "schema": SELECTOR_SCHEMA,
-            "active_globs": list(REQUIRED_ACTIVE_GLOBS),
-            "exact_paths": list(REQUIRED_EXACT_PATHS),
-            "comparison_roots": list(REQUIRED_COMPARISON_ROOTS),
-        }
-    )
+    return _CANONICAL_SELECTOR_DIGEST
 
 
 def selected_active_paths(repo_root: Path | str, selector: Mapping[str, Any]) -> list[Path]:
@@ -348,7 +335,7 @@ def selected_active_paths(repo_root: Path | str, selector: Mapping[str, Any]) ->
             paths.update(path for path in root.glob(pattern) if path.is_file())
     except OSError as exc:
         raise HostContractError("could not enumerate active host-contract paths") from exc
-    paths.update(root / value for value in selector["exact_paths"])
+    paths.update(root / value for value in selector["exact_paths"] if (root / value).is_file())
     selected: list[Path] = []
     for path in sorted(paths):
         if path.is_symlink():

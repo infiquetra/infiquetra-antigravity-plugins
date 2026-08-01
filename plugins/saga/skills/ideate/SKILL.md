@@ -5,6 +5,16 @@ description: Generate and critically evaluate grounded Infiquetra product, archi
 
 # Ideate
 
+## Perspective evidence contract
+
+Every durable ideation artifact separately identifies `seed`, `alternative`, `disagreement`, and
+`convergence` records and names who supplied each record. Distinct records are not called independent.
+Operator-supplied perspectives may be compared inline. Host-originated independent perspectives require
+`agy.agent.execution=passed`; sequential-isolation mode requires
+`agy.sequential.isolation=passed`. If the selected mode lacks its capability, stop that mode and offer
+an inline comparison or externally supplied records. Never replace missing capability evidence with
+self-issued fixtures or narration.
+
 Generate and critically evaluate grounded Infiquetra ideas. The engine generates many
 candidates across parallel frames, critiques all of them, and explains only the survivors —
 with their rejection reasons preserved and revivable.

@@ -18,13 +18,16 @@ command that owns the next phase. It does not execute the phase work itself.
      handoff.
    - **Resume** — `scan` the saga, `restore` the work-thread, re-enter where it left off; on a cold
      cache, reconstruct inline from committed `docs/*` and `load_saga_context.py`.
-2. Scan the saga at entry, tick it on every routing decision, and pick the next command from
-   `skills/loop/references/dispatch-table.md`. Volatile saga state lives under
+2. Scan the saga at entry and evaluate any canonical lifecycle-obligation contract against its
+   transition receipts. Route to the earliest unsettled required obligation; retrying the same
+   evidence must produce the same route. Use `skills/loop/references/dispatch-table.md` only when no
+   proof-carrying obligation contract applies. Tick the saga on every routing decision. Volatile
+   saga state lives under
    `.gemini/saga/`; the committed `docs/*` and issue/PR state are the durable source
    of truth.
 3. Apply the one HARD gate (doc-review P0/P1 before `/work`); routes to stub targets
    (`/qa`, `/retro`, `/resume`, `/strategy`, `/optimize`) are advisory and never block `/loop`.
-4. `/loop` owns the handoff envelope (`handoff_envelope.py`). It does **not** implement code (`/work`),
+4. `/loop` owns the typed handoff envelope (`handoff_envelope.py`). It does **not** implement code (`/work`),
    plan (`/plan`), review (`/doc-review` / `/code-review` / `/founder-review`), run QA (`/qa`), file
    SDLC issues (`mission-control`), deploy (`deploy`), **instruct a routed command's
    backend**, or do heavy forensic reconstruction (opt-in `/resume`).

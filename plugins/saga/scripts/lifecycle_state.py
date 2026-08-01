@@ -83,15 +83,6 @@ def should_offer_consensus(
     return (code_shaped and has_code_surface) or cross_repo
 
 
-def should_offer_team_execution(**signals: object) -> bool:
-    """Compatibility alias for the historical Claude source helper.
-
-    Active Antigravity routing calls :func:`should_offer_consensus`.
-    """
-
-    return should_offer_consensus(**signals)  # type: ignore[arg-type]
-
-
 def should_prompt_for_issue(*, has_issue: bool, is_trivial: bool, user_declined: bool) -> bool:
     """Ask whether to file an SDLC issue for non-trivial ad-hoc work."""
 
@@ -122,9 +113,9 @@ def recommend_execution_backend(
 ) -> dict[str, object]:
     """Recommend one of the two active Antigravity execution backends.
 
-    Claude ``team-execution`` and Workflow routes both map to
-    ``multi-agent-consensus``. The gated/advisory distinction remains useful to
-    that skill's review policy, but it does not select a different backend.
+    Imported orchestration concepts map to ``multi-agent-consensus``. The
+    gated/advisory distinction remains useful to that skill's review policy,
+    but it does not select a different backend.
     """
 
     escalation = (

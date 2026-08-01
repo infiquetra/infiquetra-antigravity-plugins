@@ -5,6 +5,11 @@ Quick reference for Infiquetra board-flow metrics. Source of truth:
 `$INFIQUETRA_SDLC_PATH/docs/process/metrics-guide.md`, and
 `$INFIQUETRA_SDLC_PATH/docs/process/kanban-workflow.md`.
 
+These targets support description and operator judgment only. They never authorize automatic
+routing, Status changes, executor selection, or completion. Every calculation must name its
+window and use a complete, count-reconciled census and timeline history; incomplete history is
+reported as incomplete rather than extrapolated.
+
 ---
 
 ## Cycle Time

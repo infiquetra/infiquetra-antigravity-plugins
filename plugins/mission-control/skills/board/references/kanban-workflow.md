@@ -40,6 +40,10 @@ Idea -> Shaping -> Ready -> Active -> Verify -> Done
 | Verify | Outcome is being checked before closure or promotion. |
 | Done | Completed or intentionally closed for this board. |
 
+Before a move, verify the current status's exit criteria in the issue or plan evidence. A status
+name alone is not completion evidence. If the exit criteria are absent or unresolved, stop and
+ask the operator instead of moving the card.
+
 Asgard modes:
 
 | Mode | Use |
@@ -61,6 +65,9 @@ Idea -> Committed -> In Progress -> Done   (pause: Parked)
 | In Progress | Component slices are being built and verified. |
 | Done | Work is completed for this initiative slice. |
 | Parked | Intentionally paused initiative work. |
+
+Before a CAMPPS move, verify the current slice's exit criteria and the target Status option.
+Moving to `Done` requires validated completion evidence; activity or elapsed time is insufficient.
 
 Deployment state belongs in deployment fields and GitHub Deployments/Environments, not in
 the core Status workflow.

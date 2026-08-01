@@ -316,6 +316,46 @@ def test_full_ceremony_throwaway_branch(ceremony_repo) -> None:
     assert "feat/pf-throwaway-345" not in branches
 
 
+def test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation(
+    ceremony_repo,
+) -> None:
+    repo, fake_gh = ceremony_repo
+    saga = SC.resolve_saga(repo_root=repo, issue_ref="org/repo#345", runner=fake_gh)
+    planned = SC.build_transition_intent(saga, workspace_id="repo-15", requested_by="operator")
+    authority = SC.external_action_contract.build_authority(
+        receipt_id="ship-authority",
+        intent=planned["intent"],
+        authority="operator",
+    )
+    status = SC.execute_authorized_transition(
+        planned,
+        authority,
+        repo_root=repo,
+        issue_ref="org/repo#345",
+        runner=fake_gh,
+    )
+    assert "commit" in status
+    assert planned["payload"]["reversibility_receipt_required"] is True
+    assert planned["executed"] is False
+
+
+def test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation_rejects_negative_cases(
+    ceremony_repo,
+) -> None:
+    repo, fake_gh = ceremony_repo
+    saga = SC.resolve_saga(repo_root=repo, issue_ref="org/repo#345", runner=fake_gh)
+    planned = SC.build_transition_intent(saga, workspace_id="repo-15", requested_by="operator")
+    with pytest.raises(SC.external_action_contract.ExternalActionContractError):
+        SC.execute_authorized_transition(
+            planned,
+            {},
+            repo_root=repo,
+            issue_ref="org/repo#345",
+            runner=fake_gh,
+        )
+    assert _restore(repo)["ceremony_transition"] == ""
+
+
 def test_resume_from_state(ceremony_repo) -> None:
     repo, fake_gh = ceremony_repo
     for _ in range(3):  # commit, open_pr, request_review

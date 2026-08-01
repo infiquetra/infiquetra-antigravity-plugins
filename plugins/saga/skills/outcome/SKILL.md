@@ -38,6 +38,16 @@ a leaf hands-on, then you come back up to `/outcome`.
    parent-close.
 4. **The committed spec is canonical for structure; GitHub for completion; the cache holds nothing
    canonical (R26/R27).** Deleting the git-common-dir cache loses nothing — `resume` rebuilds it.
+5. **Proof-carrying completion is parent-owned.** When a leaf declares lifecycle evidence, its
+   `leaf_saga_id` must own the obligation contract and manifest. The manifest must attest the same
+   owner and assignment, and every required transition receipt must verify as satisfied. Missing,
+   conflicting, unattested, or wrong-owner evidence refuses completion.
+6. **Telemetry is evidence, never authority.** Cost, progress, retry, heartbeat, and liveness records
+   may explain activity or reclaim a stalled leaf, but they cannot settle an obligation or mark the
+   outcome complete.
+7. **Remote mutations remain separately authorized.** Board reconciliation, merge, ship, and deploy
+   paths first build typed local intents. An external adapter may run only after a separate authority
+   receipt binds the unchanged intent payload.
 
 ## The thin surface (KTD11)
 
@@ -73,12 +83,15 @@ Leaf work is **always** the native verbs on the leaf's own saga: `/resume <leaf-
 1. Load the canonical spec (branch) and open the store (git-common-dir cache).
 2. Acquire the **coordinator lease** — a second concurrent `advance` no-ops on a held lease and reclaims
    a stale one (R13), so an externally triggered tick overlapping a manual one never both mutate.
-3. Recompute `completed` from the store's completion events and the **ready frontier** from the spec
-   (`ready_frontier`, the level-triggered read).
+3. Recompute `completed` from parent-verified evidence and the **ready frontier** from the spec
+   (`ready_frontier`, the level-triggered read). For proof-carrying leaves, verify owner binding,
+   manifest attestation, and every required transition receipt before materializing completion.
 4. For each ready, not-yet-dispatched, not-completed leaf: take its per-subplot dispatch lock and
    **dispatch** it to its backend (record the handoff in the ledger). Already-dispatched leaves are
    skipped — repeated ticks never double-dispatch (idempotent).
-5. Return the derived status. Pages only on exceptions.
+5. Report cost, progress, and Fleet Core liveness classifications without converting activity into
+   completion.
+6. Return the derived status. Pages only on exceptions.
 
 The execution backends a leaf can be dispatched to — inline / fork / subagent /
 multi-agent-consensus / `/goal` / manual — are wired in later units; the dispatch *seam* and the

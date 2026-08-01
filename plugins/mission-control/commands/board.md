@@ -23,6 +23,8 @@ and blockers.
 ## What This Does
 
 1. Fetches items from the selected GitHub Project.
+   The read is complete only after every cursor page is fetched and its item count reconciles
+   with GitHub's reported total. A missing or repeated cursor stops the command.
 2. Groups items by schema-backed Status.
 3. Shows WIP counts and violations where configured.
 4. Flags aging and blocked items.
@@ -39,7 +41,7 @@ and blockers.
 ## Script Commands
 
 ```bash
-SCRIPT=~/.gemini/plugins/cache/infiquetra-plugins/mission-control/1.6.0/scripts/sdlc_manager.py
+SCRIPT=~/.gemini/plugins/cache/infiquetra-plugins/mission-control/2.8.0/scripts/sdlc_manager.py
 
 python3 $SCRIPT board view --project operations
 python3 $SCRIPT board wip --project operations
@@ -57,6 +59,10 @@ When the user invokes `/board --project <project>`:
 3. Run `board wip --project <project>`.
 4. Summarize items by status, WIP violations, blockers, and aging work.
 5. Suggest concrete follow-up actions when useful: standup prep, move cards, or dry-run archive.
+
+This command is read-only. Adding, moving, or archiving a card is a separate operation: resolve
+the project, item, field, option, and applicable exit criteria; show the proposed mutation; and
+obtain explicit operator approval before sending it.
 
 Use the `board` skill for detailed board operations or the `sdlc-operator` agent for
 multi-step workflows.

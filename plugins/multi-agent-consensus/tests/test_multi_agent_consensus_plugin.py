@@ -1,6 +1,7 @@
 """Contract tests for the multi-agent-consensus plugin package."""
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent.parent.parent
@@ -54,7 +55,13 @@ def _frontmatter_name(path: Path) -> str:
 
 def test_multi_agent_consensus_metadata_matches_current_release() -> None:
     plugin_json = json.loads(_read(PLUGIN_ROOT / "plugin.json"))
-    assert plugin_json["version"] == "2.3.0"
+    changelog = _read(PLUGIN_ROOT / "CHANGELOG.md")
+    latest_heading = next(line for line in changelog.splitlines() if line.startswith("## ["))
+    latest_match = re.fullmatch(r"## \[([^\]]+)\] — \d{4}-\d{2}-\d{2}", latest_heading)
+
+    assert plugin_json["version"] == "2.4.0"
+    assert latest_match is not None
+    assert latest_match.group(1) == plugin_json["version"]
     assert "validator" in plugin_json["description"].lower()
     assert "nonprod" in plugin_json["description"].lower()
     assert {"validators", "automation", "nonprod"} <= set(plugin_json["keywords"])

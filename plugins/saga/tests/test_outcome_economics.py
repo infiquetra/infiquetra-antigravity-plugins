@@ -16,6 +16,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+import pytest
+
 ROOT = Path(__file__).parent.parent
 SCRIPTS = ROOT / "scripts"
 
@@ -51,6 +53,41 @@ def _store(tmp_path: Path) -> Any:
 
 def _spec(nodes: list[dict[str, Any]]) -> Any:
     return SPEC.OutcomeSpec.from_dict({"outcome_id": "o", "objective": "x", "nodes": nodes})
+
+
+def test_outcome_telemetry_never_converts_activity_or_spend_to_completion(
+    tmp_path: Path,
+) -> None:
+    spec = _spec([{"subplot_id": "a", "title": "a", "kind": "code"}])
+    store = _store(tmp_path)
+    C.record_cost(store, "a", executor="inline", tokens=1_000_000, wall_seconds=1)
+    report = C.telemetry_assessment(
+        spec,
+        store,
+        liveness={"stalled": [], "cascade_paused": []},
+        settlement_state="unsatisfied",
+    )
+    assert report["cost"]["tokens"] == 1_000_000
+    assert report["complete"] is False
+    assert report["completion_authority"] == "canonical lifecycle settlement only"
+
+
+def test_outcome_telemetry_never_converts_activity_or_spend_to_completion_rejects_negative_cases(
+    tmp_path: Path,
+) -> None:
+    spec = _spec([{"subplot_id": "a", "title": "a", "kind": "code"}])
+    store = _store(tmp_path)
+    C.record_cost(store, "a", executor="inline", tokens=50, wall_seconds=5)
+    stalled = C.telemetry_assessment(
+        spec,
+        store,
+        liveness={"stalled": ["a"], "cascade_paused": []},
+        settlement_state="unsatisfied",
+    )
+    assert stalled["complete"] is False
+    assert stalled["liveness"]["stalled"] == ["a"]
+    with pytest.raises(ValueError, match="canonical"):
+        C.telemetry_assessment(spec, store, liveness={}, settlement_state="active-and-expensive")
 
 
 # --------------------------------------------------------------------------- producer <-> consumer (R24)

@@ -1,5 +1,24 @@
 # Changelog — mission-control
 
+## [2.8.0] — 2026-07-30
+
+### Added
+
+- Added a typed, count-reconciled project census that rejects missing or repeated cursors,
+  duplicate items, malformed pages, changing totals, and partial results before reporting or
+  mutation.
+- Added deterministic acceptance coverage for the Mission Control runtime, board operations,
+  executor profiles, issue contracts and preparation, project flow, labels, milestones, metrics,
+  and rollout workflows.
+
+### Changed
+
+- Kept board, issue, label, milestone, project-flow, and rollout mutations behind explicit
+  operator approval after complete target resolution.
+- Made flow metrics descriptive-only and fail closed when board or timeline history is incomplete.
+- Aligned active project guidance with Operations, Asgard, and CAMPPS and resolved executor models
+  and effort values through Fleet Core's Gemini registry.
+
 ## [2.7.0] — 2026-07-26
 
 ### Changed

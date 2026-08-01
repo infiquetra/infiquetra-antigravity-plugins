@@ -26,6 +26,7 @@ functions over injectable readers, no I/O at import.
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -34,10 +35,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import lifecycle_obligations  # noqa: E402
 import manifest_store  # noqa: E402
 import outcome_github  # noqa: E402  (after the sys.path shim, by design)
 import outcome_spec  # noqa: E402
 import outcome_store  # noqa: E402
+import transition_receipts  # noqa: E402
 
 # Per-subplot completion contracts (R11) — the thing the parent barrier verifies.
 CONTRACT_CODE = "code:pr-merged"
@@ -71,16 +74,160 @@ class BarrierVerdict:
         }
 
 
+def _repository_json(repo_root: Path, reference: str) -> dict[str, Any]:
+    root = repo_root.resolve()
+    target = (root / reference).resolve(strict=True)
+    if target != root and root not in target.parents:
+        raise ValueError("lifecycle evidence reference escapes the repository")
+    loaded = json.loads(target.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise ValueError("lifecycle evidence document must be an object")
+    return loaded
+
+
+def verified_lifecycle_settlement(node: Any, *, repo_root: Path) -> BarrierVerdict | None:
+    """Verify U4 contract, transition receipts, manifest attestation, and leaf ownership."""
+
+    if not node.obligation_contract_ref and not node.transition_receipt_refs:
+        return None
+    sid = node.subplot_id
+    if not node.leaf_saga_id:
+        return BarrierVerdict(
+            sid,
+            False,
+            "lifecycle:settlement",
+            "orphan",
+            "proof-carrying node has no owning leaf_saga_id",
+        )
+    if not node.obligation_contract_ref or not node.transition_receipt_refs:
+        return BarrierVerdict(
+            sid,
+            False,
+            "lifecycle:settlement",
+            "incomplete",
+            "contract and transition receipt references must be present together",
+        )
+    try:
+        contract = lifecycle_obligations.ObligationContract.from_dict(
+            _repository_json(repo_root, node.obligation_contract_ref)
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return BarrierVerdict(
+            sid, False, "lifecycle:settlement", "invalid", f"contract invalid: {exc}"
+        )
+    if contract.workstream_id != node.leaf_saga_id:
+        return BarrierVerdict(
+            sid,
+            False,
+            "lifecycle:settlement",
+            "wrong-owner",
+            "contract workstream does not match leaf_saga_id",
+        )
+
+    manifest = node.evidence.get("manifest")
+    owner_id = str(node.evidence.get("manifest_owner_id", ""))
+    assignment_id = str(node.evidence.get("manifest_assignment_id", ""))
+    if owner_id != node.leaf_saga_id or not assignment_id or not isinstance(manifest, dict):
+        return BarrierVerdict(
+            sid,
+            False,
+            "lifecycle:settlement",
+            "unattested",
+            "leaf requires a canonical manifest bound to its owner and assignment",
+        )
+    manifest_errors = manifest_store.validate_evidence_manifest(
+        manifest,
+        assignment_id=assignment_id,
+        owner_id=owner_id,
+        input_value=node.evidence.get("manifest_input"),
+        output_value=node.evidence.get("manifest_output"),
+    )
+    if manifest_errors:
+        return BarrierVerdict(
+            sid,
+            False,
+            "lifecycle:settlement",
+            "unattested",
+            "manifest invalid: " + "; ".join(manifest_errors),
+        )
+
+    results: dict[str, lifecycle_obligations.SettlementResult] = {}
+    try:
+        for reference in node.transition_receipt_refs:
+            receipt = transition_receipts.TransitionReceipt.from_dict(
+                _repository_json(repo_root, reference)
+            )
+            result = transition_receipts.evaluate_transition_receipt(
+                receipt, contract, repo_root=repo_root
+            )
+            previous = results.get(receipt.obligation_id)
+            if (
+                previous is None
+                or result.state is lifecycle_obligations.SettlementState.CONFLICTING
+            ):
+                results[receipt.obligation_id] = result
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return BarrierVerdict(
+            sid, False, "lifecycle:settlement", "invalid", f"receipt invalid: {exc}"
+        )
+
+    required = [
+        obligation
+        for obligation in contract.obligations
+        if obligation.requirement is lifecycle_obligations.RequirementLevel.REQUIRED
+    ]
+    unsettled = [
+        obligation.obligation_id
+        for obligation in required
+        if results.get(obligation.obligation_id) is None
+        or results[obligation.obligation_id].state
+        is not lifecycle_obligations.SettlementState.SATISFIED
+    ]
+    if unsettled:
+        return BarrierVerdict(
+            sid,
+            False,
+            "lifecycle:settlement",
+            "unsettled",
+            "required obligations are not settled: " + ", ".join(unsettled),
+        )
+    return BarrierVerdict(
+        sid,
+        True,
+        "lifecycle:settlement",
+        "satisfied",
+        "owned leaf has attested manifest and verified required receipts",
+        evidence={
+            "leaf_saga_id": node.leaf_saga_id,
+            "manifest_execution_id": manifest.get("execution_id", ""),
+            "receipt_refs": list(node.transition_receipt_refs),
+        },
+    )
+
+
 def barrier_satisfied(
     node: Any,
     *,
     store: Any,
     github_runner: Callable[..., Any] | None = None,
     child_state_reader: ChildStateReader | None = None,
+    repo_root: Path | None = None,
 ) -> BarrierVerdict:
     """The parent-owned barrier predicate (R9/R11). Returns satisfied=False (a HALT) on an unmet
     contract — never a child's self-report, always evidence the parent can re-verify on GitHub."""
     sid = node.subplot_id
+    if node.obligation_contract_ref or node.transition_receipt_refs:
+        if repo_root is None:
+            return BarrierVerdict(
+                sid,
+                False,
+                "lifecycle:settlement",
+                "unresolved",
+                "proof-carrying completion requires repo_root",
+            )
+        lifecycle = verified_lifecycle_settlement(node, repo_root=repo_root)
+        if lifecycle is not None and not lifecycle.satisfied:
+            return lifecycle
 
     if node.is_outcome:  # child_spec_ref -> recurse into the child outcome's terminal state (KTD10)
         child = node.child_spec_ref
@@ -148,6 +295,7 @@ def harvest(
     store: Any,
     github_runner: Callable[..., Any] | None = None,
     child_state_reader: ChildStateReader | None = None,
+    repo_root: Path | None = None,
     at: str = "",
 ) -> list[str]:
     """Run the barrier over the spec and materialize each newly-satisfied contract as a success
@@ -164,7 +312,11 @@ def harvest(
         if sid in already:
             continue
         verdict = barrier_satisfied(
-            node, store=store, github_runner=github_runner, child_state_reader=child_state_reader
+            node,
+            store=store,
+            github_runner=github_runner,
+            child_state_reader=child_state_reader,
+            repo_root=repo_root,
         )
         if not verdict.satisfied:
             continue
@@ -232,11 +384,16 @@ def barrier_report(
     store: Any,
     github_runner: Callable[..., Any] | None = None,
     child_state_reader: ChildStateReader | None = None,
+    repo_root: Path | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Every node's barrier verdict (derived-on-read, for the cockpit/report). No writes."""
     return {
         node.subplot_id: barrier_satisfied(
-            node, store=store, github_runner=github_runner, child_state_reader=child_state_reader
+            node,
+            store=store,
+            github_runner=github_runner,
+            child_state_reader=child_state_reader,
+            repo_root=repo_root,
         ).to_dict()
         for node in spec.nodes
     }

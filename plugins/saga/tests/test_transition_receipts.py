@@ -35,7 +35,29 @@ def _repository_evidence(
     reference = Path("docs") / f"{evidence_id}.json"
     target = tmp_path / reference
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(evidence_id, encoding="utf-8")
+    if kind in {"execution-receipt", "review-finding", "qa-result"}:
+        body = {
+            "schema": O.INDEPENDENCE_RECEIPT_SCHEMA,
+            "evidence_kind": kind,
+            "subject": subject,
+            "producer_id": producer,
+            "attester_id": "external-attester",
+            "origin": "imported-external",
+            "host_capability": None,
+            "host_capability_state": None,
+            "artifact_sha256": hashlib.sha256(evidence_id.encode()).hexdigest(),
+        }
+        receipt = {
+            **body,
+            "receipt_id": hashlib.sha256(
+                json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest(),
+        }
+        target.write_text(
+            json.dumps(receipt, sort_keys=True, separators=(",", ":")), encoding="utf-8"
+        )
+    else:
+        target.write_text(evidence_id, encoding="utf-8")
     return O.Evidence.from_dict(
         {
             "evidence_id": evidence_id,

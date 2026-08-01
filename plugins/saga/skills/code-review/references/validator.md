@@ -1,6 +1,7 @@
 # Validator
 
-The independent per-finding validator. After Stage A merges and confidence-gates findings, a **fresh**
+The identity-bound per-finding validator. After Stage A merges and confidence-gates findings, a
+separately identified reviewer
 agent re-checks each survivor with no commitment to the original lens's analysis. This is a second
 opinion, not a critique — false positives are common, and a review that cries wolf is worse than none.
 The validator is the operational form of the verify-don't-guess principle.
@@ -54,6 +55,12 @@ Read, Grep, Glob, and `git blame` to inspect the cited code, its callers, guards
 If it cannot access the cited file, it returns a no-vote rather than guessing.
 
 ## Return contract
+
+Programmatic validation imports `reviewer-result.v1` with the exact reviewed plan digest,
+implementation digest, reviewer identity, typed findings, checks, verdict, and hard-stop flag. The
+reviewer identity must differ from the implementation producer. Originating that reviewer through the
+host requires `agy.agent.execution=passed`; external evidence records that host independence was not
+performed. An operator disposition is explicit authority, not independent validation.
 
 The validator returns ONLY this JSON, no prose:
 

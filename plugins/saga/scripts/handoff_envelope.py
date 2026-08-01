@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from typing import Any
 
 STATE_DIR = Path(".gemini/saga")
 SOURCE_DIRS = (
@@ -85,16 +86,69 @@ def discover_active_source(root: Path) -> str | None:
     return latest.relative_to(root).as_posix()
 
 
-def current_git_state(root: Path) -> dict[str, str]:
-    def run(args: list[str]) -> str:
-        result = subprocess.run(args, cwd=root, capture_output=True, text=True, timeout=10)
-        if result.returncode != 0:
-            return ""
-        return result.stdout.strip()
+def _repository_reference(value: str) -> str:
+    path = PurePosixPath(value.replace("\\", "/"))
+    if path.is_absolute() or ".." in path.parts or not value.strip():
+        raise ValueError("handoff artifact references must be non-empty repository-relative paths")
+    return path.as_posix()
 
-    branch = run(["git", "branch", "--show-current"])
-    head = run(["git", "rev-parse", "--short", "HEAD"])
-    return {"branch": branch, "head": head}
+
+def validate_handoff_envelope(value: object) -> list[str]:
+    """Validate the closed local handoff packet; this function performs no external action."""
+
+    if not isinstance(value, dict):
+        return ["handoff envelope must be an object"]
+    required = {
+        "schema",
+        "created_at",
+        "source",
+        "artifacts",
+        "evidence",
+        "risks",
+        "still_unauthorized",
+        "lifecycle_phase",
+        "handoff_maturity",
+        "handoff_reason",
+        "target_team",
+        "target_repo",
+        "issue_type",
+        "blockers",
+        "open_questions",
+        "suggested_command",
+        "lifecycle_owner",
+        "issue_artifact_owner",
+        "body_template_owner",
+    }
+    errors: list[str] = []
+    if set(value) != required:
+        errors.append("handoff envelope has unknown or missing fields")
+    if value.get("schema") != "saga.handoff-envelope.v1":
+        errors.append("handoff envelope schema is invalid")
+    for name in ("artifacts", "evidence", "risks", "still_unauthorized"):
+        rows = value.get(name)
+        if (
+            not isinstance(rows, list)
+            or not rows
+            or any(not isinstance(item, str) or not item.strip() for item in rows)
+        ):
+            errors.append(f"handoff envelope {name} must be a non-empty string list")
+    artifacts = value.get("artifacts")
+    if isinstance(artifacts, list):
+        for artifact in artifacts:
+            if isinstance(artifact, str):
+                try:
+                    _repository_reference(artifact)
+                except ValueError as exc:
+                    errors.append(str(exc))
+    unauthorized = value.get("still_unauthorized")
+    if isinstance(unauthorized, list) and any(
+        action not in {"issue-create", "board-update", "pr-create", "merge", "deploy"}
+        for action in unauthorized
+    ):
+        errors.append("handoff envelope still_unauthorized contains an unsupported action")
+    if value.get("issue_artifact_owner") != "mission-control":
+        errors.append("mission-control must own the issue artifact")
+    return errors
 
 
 def build_handoff_envelope(
@@ -107,6 +161,11 @@ def build_handoff_envelope(
     blockers: str = "",
     open_questions: str = "",
     root: Path | None = None,
+    artifacts: Sequence[str] | None = None,
+    evidence: Sequence[str] | None = None,
+    risks: Sequence[str] | None = None,
+    still_unauthorized: Sequence[str] | None = None,
+    now: Callable[[], datetime] | None = None,
 ) -> dict[str, object]:
     root = root or Path.cwd()
     selected_source = source or discover_active_source(root)
@@ -120,10 +179,18 @@ def build_handoff_envelope(
     if target_repo:
         suggested_command += f" in {target_repo}"
 
-    return {
-        "schema_version": "1.0",
-        "created_at": datetime.now(UTC).isoformat(),
-        "source": selected_source,
+    source_ref = _repository_reference(selected_source)
+    artifact_refs = [_repository_reference(item) for item in (artifacts or [source_ref])]
+    packet: dict[str, Any] = {
+        "schema": "saga.handoff-envelope.v1",
+        "created_at": (now or (lambda: datetime.now(UTC)))().isoformat(),
+        "source": source_ref,
+        "artifacts": artifact_refs,
+        "evidence": list(evidence or [f"durable-source:{source_ref}"]),
+        "risks": list(risks or ["recipient must validate current repository state"]),
+        "still_unauthorized": list(
+            still_unauthorized or ["issue-create", "board-update", "pr-create", "merge", "deploy"]
+        ),
         "lifecycle_phase": infer_lifecycle_phase(selected_source),
         "handoff_maturity": maturity,
         "handoff_reason": reason,
@@ -136,8 +203,11 @@ def build_handoff_envelope(
         "lifecycle_owner": "saga",
         "issue_artifact_owner": "mission-control",
         "body_template_owner": "mission-control",
-        "git": current_git_state(root),
     }
+    errors = validate_handoff_envelope(packet)
+    if errors:
+        raise ValueError("invalid handoff envelope: " + "; ".join(errors))
+    return packet
 
 
 def parse_args() -> argparse.Namespace:

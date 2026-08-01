@@ -6,8 +6,10 @@ optional subrecords:
 
 - ``OutputCompleteness`` — declared vs produced (R3), field-compatible with what
   ``completeness_gate.Contract`` + ``classify()`` already compute.
-- ``ClaimProvenance`` — source-attributed claims with the two-layer producer-*claimed* vs
-  Claude-*adjudicated* tag (R4-R7), plus an attested ``Adjudication`` record (R6).
+- ``ClaimProvenance`` — source-attributed claims with separate producer-*claimed* and
+  Antigravity-*adjudicated* tags (R4-R7), plus an attested ``Adjudication`` record (R6).
+- ``EvidenceBinding`` — input/output digests, owner identity, and the Fleet Core
+  output-attestation receipt needed to reconstruct ownership.
 
 Design decisions recorded here (load-bearing for tests):
 
@@ -18,7 +20,7 @@ Design decisions recorded here (load-bearing for tests):
   field on any dataclass is named ``verdict`` or ``authority``, no method mutates gates,
   and consumers treat every field as advisory (R8).
 - **Parroting taxonomy** (KTD5/R7): a claim counts as parroting iff it was
-  producer-claimed ``verified`` AND Claude adjudication lands in {``refuted``,
+  producer-claimed ``verified`` AND Antigravity adjudication lands in {``refuted``,
   ``unsupported``}. ``refuted`` is an adjudicated status; ``unsupported`` is expressed
   through ``mismatch_reason`` (a claimed-verified claim the adjudicator could not
   support). ``not-adjudicated``, ``scope-excluded``, and ``source-stale`` never count.
@@ -32,6 +34,8 @@ Pure Python, stdlib only, no I/O at import — same house pattern as
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from enum import StrEnum
 from typing import Any
@@ -47,26 +51,26 @@ class ProducerKind(StrEnum):
     """Who produced the delegated output (R2)."""
 
     EXTERNAL_ENGINE = "external-engine"
-    TEAM_EXECUTION = "team-execution"
-    CC_WORKFLOWS = "cc-workflows"
+    INLINE = "inline"
+    MULTI_AGENT_CONSENSUS = "multi-agent-consensus"
 
 
 class Disposition(StrEnum):
     """How the delegation actually ran vs how it was requested (R18)."""
 
     RAN_AS_REQUESTED = "ran-as-requested"
-    FELL_BACK_TO_CLAUDE = "fell-back-to-claude"
+    FELL_BACK_TO_INLINE = "fell-back-to-inline"
     SUBSTITUTED_ENGINE = "substituted-engine"
     # A dispatch reported "ok" but carried no schema-valid `bridge_receipt.v1` proof of
     # execution (plan `2026-07-06-...pair-plan.md` U6, KTD8, #383 DoD 2). Distinct from
-    # `FELL_BACK_TO_CLAUDE` -- nothing fell back, the engine ran -- and distinct from
+    # `FELL_BACK_TO_INLINE` -- nothing fell back, the engine ran -- and distinct from
     # `RAN_AS_REQUESTED` -- derived truth must not assert proof that doesn't exist.
     UNPROVEN = "unproven"
     # Two-signal divergence (#384 U5, KTD6/R4): the engine's self-report and the independent
     # observer signal (bundle launch flag + schema-valid receipt) DISAGREE about whether the
     # delegation genuinely ran. Named at the dispatch/manifest layer -- the only place both
     # signals meet -- never silently resolved in either direction. Distinct from `UNPROVEN`
-    # (single missing proof, no contradiction) and from `FELL_BACK_TO_CLAUDE` (an admitted
+    # (single missing proof, no contradiction) and from `FELL_BACK_TO_INLINE` (an admitted
     # failure, not a disputed success).
     DELEGATION_INTEGRITY = "delegation-integrity"
 
@@ -80,7 +84,7 @@ class ClaimedStatus(StrEnum):
 
 
 class AdjudicatedStatus(StrEnum):
-    """Claude-adjudicated verification status (KTD5/R6)."""
+    """Antigravity-adjudicated verification status (KTD5/R6)."""
 
     VERIFIED = "verified"
     INFERRED = "inferred"
@@ -152,7 +156,7 @@ class Attribution:
 
 @dataclass(frozen=True)
 class Adjudication:
-    """Attested record of a Claude adjudication pass (D5/R6)."""
+    """Attested record of an Antigravity adjudication pass (D5/R6)."""
 
     adjudicator: str
     sources_read: tuple[str, ...] = ()
@@ -326,6 +330,62 @@ class ClaimProvenance:
         return cls(claims=tuple(Claim.from_dict(c) for c in claims_raw))
 
 
+_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+_ATTESTATION_FIELDS = frozenset(
+    {
+        "schema",
+        "attester",
+        "run_id",
+        "assignment_id",
+        "worker_id",
+        "output_sha256",
+        "binding_sha256",
+    }
+)
+
+
+@dataclass(frozen=True)
+class EvidenceBinding:
+    """Content-addressed input, output, and owner binding for one run manifest."""
+
+    input_sha256: str
+    output_sha256: str
+    owner_id: str
+    attestation: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "input_sha256": self.input_sha256,
+            "output_sha256": self.output_sha256,
+            "owner_id": self.owner_id,
+            "attestation": dict(self.attestation),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EvidenceBinding:
+        _reject_unknown_keys(
+            data,
+            {"input_sha256", "output_sha256", "owner_id", "attestation"},
+            "evidence_binding",
+        )
+        for name in ("input_sha256", "output_sha256"):
+            value = data.get(name)
+            if not isinstance(value, str) or not _DIGEST_RE.fullmatch(value):
+                raise ManifestError(f"evidence_binding.{name} must be a SHA-256 digest")
+        owner = data.get("owner_id")
+        if not isinstance(owner, str) or not owner.strip():
+            raise ManifestError("evidence_binding.owner_id must be non-empty")
+        attestation = data.get("attestation")
+        if not isinstance(attestation, Mapping) or set(attestation) != _ATTESTATION_FIELDS:
+            raise ManifestError("evidence_binding.attestation has unknown or missing fields")
+        return cls(
+            input_sha256=data["input_sha256"],
+            output_sha256=data["output_sha256"],
+            owner_id=owner,
+            attestation=dict(attestation),
+        )
+
+
 @dataclass(frozen=True)
 class Manifest:
     """The saga.manifest.v1 envelope — one per delegated execution (R1).
@@ -341,6 +401,7 @@ class Manifest:
     disposition_note: str = ""
     output_completeness: OutputCompleteness | None = None
     claim_provenance: ClaimProvenance | None = None
+    evidence_binding: EvidenceBinding | None = None
     schema: str = field(default=SCHEMA_VERSION)
 
     def to_dict(self) -> dict[str, Any]:
@@ -358,6 +419,9 @@ class Manifest:
             "claim_provenance": (
                 self.claim_provenance.to_dict() if self.claim_provenance else None
             ),
+            "evidence_binding": (
+                self.evidence_binding.to_dict() if self.evidence_binding else None
+            ),
         }
 
     @classmethod
@@ -374,6 +438,7 @@ class Manifest:
                 "created_at",
                 "output_completeness",
                 "claim_provenance",
+                "evidence_binding",
             },
             "manifest",
         )
@@ -395,6 +460,7 @@ class Manifest:
             raise ManifestError(f"manifest requires a valid disposition (R18): {exc}") from exc
         oc_raw = data.get("output_completeness")
         cp_raw = data.get("claim_provenance")
+        binding_raw = data.get("evidence_binding")
         return cls(
             execution_id=execution_id,
             saga_ref=str(data.get("saga_ref", "") or ""),
@@ -404,6 +470,7 @@ class Manifest:
             created_at=str(data.get("created_at", "") or ""),
             output_completeness=OutputCompleteness.from_dict(oc_raw) if oc_raw else None,
             claim_provenance=ClaimProvenance.from_dict(cp_raw) if cp_raw else None,
+            evidence_binding=EvidenceBinding.from_dict(binding_raw) if binding_raw else None,
         )
 
 
@@ -461,7 +528,11 @@ def parroting_count(manifest: Manifest) -> int:
 
 def tier_of(manifest: Manifest) -> Tier:
     """Derive the payload tier: full when any subrecord is present, else lightweight."""
-    if manifest.output_completeness is not None or manifest.claim_provenance is not None:
+    if (
+        manifest.output_completeness is not None
+        or manifest.claim_provenance is not None
+        or manifest.evidence_binding is not None
+    ):
         return Tier.FULL
     return Tier.LIGHTWEIGHT
 
@@ -504,6 +575,14 @@ def _reject_unknown_keys(data: dict[str, Any], allowed: set[str], where: str) ->
 def _no_verdict_surface() -> list[str]:
     """Introspection helper for R20 tests: field names across all schema dataclasses."""
     names: list[str] = []
-    for cls in (Manifest, Attribution, Adjudication, Claim, OutputCompleteness, ClaimProvenance):
+    for cls in (
+        Manifest,
+        Attribution,
+        Adjudication,
+        Claim,
+        OutputCompleteness,
+        ClaimProvenance,
+        EvidenceBinding,
+    ):
         names.extend(f.name for f in fields(cls))
     return names

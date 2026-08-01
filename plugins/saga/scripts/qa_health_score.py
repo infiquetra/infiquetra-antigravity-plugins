@@ -54,6 +54,14 @@ CLASS_WEIGHTS: dict[str, int] = {
 
 def class_score(severity_counts: dict[str, int]) -> int:
     """Score one risk class: 100 minus the summed per-finding deductions, floored at 0."""
+    unknown = sorted(set(severity_counts) - set(DEDUCTIONS))
+    if unknown:
+        raise ValueError(f"unknown severities: {unknown}")
+    if any(
+        isinstance(count, bool) or not isinstance(count, int) or count < 0
+        for count in severity_counts.values()
+    ):
+        raise ValueError("severity counts must be non-negative integers")
     deducted = sum(DEDUCTIONS[sev] * count for sev, count in severity_counts.items())
     return max(0, 100 - deducted)
 
@@ -68,6 +76,13 @@ def score_findings(
     counts as in-scope and scores 100). Overall re-normalizes CLASS_WEIGHTS over the
     in-scope classes only; empty input is vacuously healthy (100).
     """
+    unknown_classes = sorted(set(findings) - set(CLASS_WEIGHTS))
+    if unknown_classes:
+        raise ValueError(f"unknown risk classes: {unknown_classes}")
+    if any(not isinstance(counts, dict) for counts in findings.values()):
+        raise ValueError("each risk class must map to severity counts")
+    if baseline is not None and (isinstance(baseline, bool) or not 0 <= baseline <= 100):
+        raise ValueError("baseline must be between 0 and 100")
     in_scope = list(findings.keys())
     per_class = {cls: class_score(findings[cls]) for cls in in_scope}
 

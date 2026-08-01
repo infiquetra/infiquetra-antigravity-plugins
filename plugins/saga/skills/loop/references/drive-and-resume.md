@@ -83,6 +83,12 @@ Resume is the saga round trip:
    in the scan candidate.
 3. **route** from the restored `lifecycle_phase` / `phase_status` via `dispatch-table.md`.
 
+When the restored workstream includes a canonical lifecycle-obligation contract and transition
+receipts, insert a proof check between restore and route: evaluate the receipts, select the earliest
+required obligation that is not satisfied, and route to its declared command, phase, or producer.
+This proof-carrying route takes precedence over the cached phase. Repeating the check with unchanged
+evidence is idempotent; missing, invalid, or conflicting evidence cannot advance the route.
+
 ### The routing-tick `save` shape
 
 Every routing decision writes a tick (creation tick on first entry, then one per decision):

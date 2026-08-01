@@ -39,7 +39,7 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Make sibling scripts importable when loaded by path (tests, CLI).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -136,7 +136,7 @@ def spec_path(repo_root: Path, outcome_id: str) -> Path:
 
 def _safe(outcome_id: str) -> str:
     # Reuse the store's path-traversal guard so ids are validated identically everywhere.
-    return outcome_store._safe_name(outcome_id, what="outcome_id")
+    return cast(str, outcome_store._safe_name(outcome_id, what="outcome_id"))
 
 
 def load_spec(repo_root: Path, outcome_id: str) -> outcome_spec.OutcomeSpec:
@@ -600,7 +600,10 @@ def _default_board_writer(
     """
     import board_progression as _m  # noqa: PLC0415
 
-    return _m.default_board_writer(repo_root, project=project, runner=runner)
+    return cast(
+        Callable[..., None],
+        _m.default_board_writer(repo_root, project=project, runner=runner),
+    )
 
 
 def advance(
@@ -1134,6 +1137,7 @@ def production_harvester(
             store=child_store,
             github_runner=github_runner,
             child_state_reader=lambda cid: child_state_reader(cid, nxt),
+            repo_root=repo_root,
         )
         done_set = outcome_store.completed_subplots(child_store)
         all_done = all(n.subplot_id in done_set for n in child_spec.nodes)
@@ -1141,7 +1145,11 @@ def production_harvester(
 
     def harvester(spec: Any, store: Any) -> list[str]:
         return outcome_orchestrator.harvest(
-            spec, store=store, github_runner=github_runner, child_state_reader=child_state_reader
+            spec,
+            store=store,
+            github_runner=github_runner,
+            child_state_reader=child_state_reader,
+            repo_root=repo_root,
         )
 
     return harvester
@@ -1508,7 +1516,7 @@ def main(argv: list[str] | None = None) -> int:
             store = _store(root, args.outcome_id)
 
             def _br(ref: str) -> str:
-                return outcome_github.board_status(ref, project=args.project)
+                return cast(str, outcome_github.board_status(ref, project=args.project))
 
             drift = outcome_reconcile.detect(
                 spec,

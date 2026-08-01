@@ -1,0 +1,10 @@
+{
+  "schema": "antigravity.saga-acceptance-contract.v1",
+  "contract_id": "saga-bounded-semantic-canary",
+  "required_facts": [
+    "outcome",
+    "authority",
+    "evidence_sha256"
+  ],
+  "max_age_s": 300
+}

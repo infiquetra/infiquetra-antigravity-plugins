@@ -5,6 +5,12 @@ description: Create durable Infiquetra implementation plans with issue, review, 
 
 # Plan
 
+## Migration evidence contract
+
+A decision-complete plan names decisions, literal write paths, unit dependencies, positive and negative
+test node IDs, stop conditions, and authority gates. The operator approves unresolved material choices
+before the plan is called executable. Planning never grants mutation, merge, or deployment authority.
+
 `/plan` answers **"How should it be built?"** It takes a settled WHAT — from `/brainstorm`'s
 requirements doc, a handoff issue, or a clear ad-hoc request — and interrogates it into a durable,
 agent-consumable implementation plan. It does **not** invent product behavior (that came from

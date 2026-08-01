@@ -551,15 +551,18 @@ Manifest
 ├── created_at
 ├── output_completeness: OutputCompleteness | None
 │   {declared_keys, target_count, produced_keys, produced_count, missing_keys}
-└── claim_provenance: ClaimProvenance | None
-    {claims: [Claim {text, claimed, source_ref, source_revision, adjudicated,
-                      mismatch_reason, adjudication: Adjudication | None
-                      {adjudicator, sources_read, scope, revision, decision}}]}
+├── claim_provenance: ClaimProvenance | None
+│   {claims: [Claim {text, claimed, source_ref, source_revision, adjudicated,
+│                     mismatch_reason, adjudication: Adjudication | None
+│                     {adjudicator, sources_read, scope, revision, decision}}]}
+└── evidence_binding: EvidenceBinding | None
+    {input_sha256, output_sha256, owner_id, attestation}
 ```
 
-A *lightweight* manifest carries the envelope with both subrecords `None` (attribution + disposition
-+ existence bit only, R9); a *full* manifest adds one or both subrecords. `validate()` enforces the
-subrecord is present wherever a gate or contract-bearing unit needs it.
+A *lightweight* manifest carries the envelope with all optional subrecords `None`
+(attribution + disposition + existence bit only, R9); a *full* manifest adds one
+or more subrecords. `validate()` enforces the subrecord is present wherever a
+gate or contract-bearing unit needs it.
 
 ### 13.3 Producer / consumer matrix (R17)
 
@@ -586,12 +589,12 @@ here may be absent from the `provenance_manifest.py` dataclasses (drift, both di
 | `output_completeness.produced_keys` | `manifest_store.py` (`record-completeness`) | `/work` SKILL.md post-run step | live |
 | `output_completeness.produced_count` | `manifest_store.py` (`record-completeness`) | `/work` SKILL.md post-run step | live |
 | `output_completeness.missing_keys` | `manifest_store.py` (`record-completeness`) | `/work` SKILL.md post-run step (missing-output trip, R10) | live |
-| `claim_provenance` / `claims` | `engine_dispatch.py` (claimed-layer at dispatch; adjudicated layer written by Claude via a `manifest_store` update helper, D5) | `manifest_reader.py` (parroting count, verified ratio); `code-review/SKILL.md` B.0 (skip re-verify) | live |
+| `claim_provenance` / `claims` | `engine_dispatch.py` (claimed layer at dispatch; adjudicated layer written through a `manifest_store` update helper, D5) | `manifest_reader.py` (parroting count, verified ratio); `code-review/SKILL.md` B.0 (skip re-verify) | live |
 | `claims[].text` | `engine_dispatch.py` | `manifest_reader.py` | live |
 | `claims[].claimed` | `engine_dispatch.py` | `manifest_reader.py`, gate adjudication ranking (KTD4) | live |
 | `claims[].source_ref` | `engine_dispatch.py` | `code-review/SKILL.md` B.0 | live |
 | `claims[].source_revision` | `engine_dispatch.py` | `code-review/SKILL.md` B.0 | live |
-| `claims[].adjudicated` | `engine_dispatch.py` (Claude adjudication write path) | `manifest_reader.py` (R16 ratio), `engine_dispatch.satisfy_gate()` (R11) | live |
+| `claims[].adjudicated` | `engine_dispatch.py` (Antigravity adjudication write path) | `manifest_reader.py` (R16 ratio), `engine_dispatch.satisfy_gate()` (R11) | live |
 | `claims[].mismatch_reason` | `provenance_manifest.py` (`mismatch_reason_for`), `engine_dispatch.py` | `manifest_reader.py` (parroting count, R7) | live |
 | `claims[].adjudication` | `engine_dispatch.py` | `manifest_reader.py`, `code-review/SKILL.md` B.0 (attested-adjudication check) | live |
 | `claims[].adjudication.adjudicator` | `engine_dispatch.py` | `code-review/SKILL.md` B.0 | live |
@@ -599,6 +602,11 @@ here may be absent from the `provenance_manifest.py` dataclasses (drift, both di
 | `claims[].adjudication.scope` | `engine_dispatch.py` | `code-review/SKILL.md` B.0 | live |
 | `claims[].adjudication.revision` | `engine_dispatch.py` | `code-review/SKILL.md` B.0 | live |
 | `claims[].adjudication.decision` | `engine_dispatch.py` | `manifest_reader.py`, `retro/SKILL.md` Phase 1.8 | live |
+| `evidence_binding` | `manifest_store.py` (`build_evidence_manifest`) | `manifest_store.py` (`validate_evidence_manifest`) | live |
+| `evidence_binding.input_sha256` | `fleet-core/output_attestation.canonical_digest` through `manifest_store.py` | `manifest_store.py` (input tamper check) | live |
+| `evidence_binding.output_sha256` | `fleet-core/output_attestation.canonical_digest` through `manifest_store.py` | `manifest_store.py` (output tamper check) | live |
+| `evidence_binding.owner_id` | `manifest_store.py` | `manifest_store.py` (attribution and attestation owner match) | live |
+| `evidence_binding.attestation` | `fleet-core/output_attestation.attest_output` through `manifest_store.py` | `fleet-core/output_attestation.validate_attestation` through `manifest_store.py` | live |
 
 Repeated manifest production requires an explicit external caller. Saga does not
 claim that Antigravity schedules a producer. A

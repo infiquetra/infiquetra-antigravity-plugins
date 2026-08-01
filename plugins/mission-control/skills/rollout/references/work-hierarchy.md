@@ -4,6 +4,10 @@ Practical reference for the Infiquetra work hierarchy. Source of truth:
 `$INFIQUETRA_SDLC_PATH/docs/process/work-hierarchy.md` and
 `$INFIQUETRA_SDLC_PATH/config/sdlc-schema.json`.
 
+Rollout census and gap analysis are read-only views of this hierarchy. They do not authorize
+template or label deployment, issue changes, board movement, or tracking-file updates. Render
+those changes separately and obtain explicit operator approval before mutation.
+
 ---
 
 ## The Model

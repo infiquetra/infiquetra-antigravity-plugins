@@ -5,7 +5,7 @@ One JSON file per delegated invocation at
 ``<git-common-dir>/saga-manifests/<saga-id>/<execution-id>.json``, resolved through the same
 ``resolve_common_dir()`` ``outcome_store.py`` uses for the outcome cache — the only candidate
 that satisfies R19 for delegations that never emit a ``CompletionEvent`` (agy runs during plain
-``/work``, team-execution outside an outcome). Rejected carriers (KTD1): ``CompletionEvent.payload``
+``/work``, multi-agent-consensus outside an outcome). Rejected carriers (KTD1): ``CompletionEvent.payload``
 alone (outcome leaves only), a saga tick pointer (per-checkout, git-ignored, worktree-local).
 
 This module also owns the typed ``manifest_ref`` pointer helper for the outcome-leaf case: a
@@ -25,8 +25,8 @@ CLI::
     python3 manifest_store.py record-completeness --repo-root <path> --saga-id <id> \\
         --spec <spec.json> --results <results.json>
 
-``record-completeness`` (U4/KTD7) is the driver-materialized path for cc-workflows runs: a
-Workflow script cannot touch the filesystem, so the *driving session* persists one manifest per
+``record-completeness`` (U4/KTD7) is the driver-materialized path for
+multi-agent-consensus runs: the *driving session* persists one manifest per
 spec-declared unit after the run, deriving the declared side of ``output_completeness`` from
 ``completeness_gate.Contract.from_unit`` and the produced side from ``--results`` (a JSON object
 mapping ``unit_id`` -> that unit's returned result, the same shape ``completeness_gate.classify``
@@ -49,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import completeness_gate  # noqa: E402  (after the sys.path shim, by design)
 import execution_spec  # noqa: E402
+import fleet_commons_shim  # noqa: E402
 import outcome_store  # noqa: E402
 import provenance_manifest  # noqa: E402
 
@@ -74,7 +75,7 @@ def _safe_name(name: str, *, what: str = "id") -> str:
     ``_atomic_write``), translated into this store's error type.
     """
     try:
-        return outcome_store._safe_name(name, what=what)
+        return str(outcome_store._safe_name(name, what=what))
     except outcome_store.OutcomeStoreError as exc:
         raise ManifestStoreError(str(exc)) from exc
 
@@ -122,10 +123,105 @@ def write_manifest(store: Store, execution_id: str, manifest: dict[str, Any]) ->
     Overwrites any prior manifest for the same execution id (a manifest may be updated in place,
     e.g. an adjudication written after the claimed-layer manifest, D5/U3) — never write-once.
     """
+    parsed = provenance_manifest.Manifest.from_dict(manifest)
+    if parsed.execution_id != execution_id:
+        raise ManifestStoreError("manifest execution_id does not match store identity")
     path = store.manifest_path(execution_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     outcome_store._atomic_write(path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return path
+
+
+def build_evidence_manifest(
+    *,
+    execution_id: str,
+    saga_ref: str,
+    assignment_id: str,
+    owner_id: str,
+    input_value: Any,
+    output_value: Any,
+    created_at: str,
+) -> dict[str, Any]:
+    """Build a manifest using Fleet Core's canonical output attestation."""
+
+    attestation = fleet_commons_shim.load("output_attestation")
+    output_receipt = attestation.attest_output(
+        run_id=saga_ref,
+        assignment_id=assignment_id,
+        worker_id=owner_id,
+        output=output_value,
+    )
+    manifest = provenance_manifest.Manifest(
+        execution_id=execution_id,
+        saga_ref=saga_ref,
+        attribution=provenance_manifest.Attribution(
+            kind=provenance_manifest.ProducerKind.MULTI_AGENT_CONSENSUS,
+            identity=owner_id,
+        ),
+        disposition=provenance_manifest.Disposition.RAN_AS_REQUESTED,
+        created_at=created_at,
+        evidence_binding=provenance_manifest.EvidenceBinding(
+            input_sha256=attestation.canonical_digest(input_value),
+            output_sha256=attestation.canonical_digest(output_value),
+            owner_id=owner_id,
+            attestation=output_receipt,
+        ),
+    )
+    return manifest.to_dict()
+
+
+def validate_evidence_manifest(
+    manifest: object,
+    *,
+    assignment_id: str,
+    owner_id: str,
+    input_value: Any,
+    output_value: Any,
+) -> list[str]:
+    """Validate schema, content digests, ownership, and Fleet Core attestation."""
+
+    if not isinstance(manifest, dict):
+        return ["manifest must be an object"]
+    try:
+        parsed = provenance_manifest.Manifest.from_dict(manifest)
+    except provenance_manifest.ManifestError as exc:
+        return [str(exc)]
+    binding = parsed.evidence_binding
+    if binding is None:
+        return ["manifest is missing evidence_binding"]
+    attestation = fleet_commons_shim.load("output_attestation")
+    errors: list[str] = []
+    if binding.input_sha256 != attestation.canonical_digest(input_value):
+        errors.append("manifest input digest does not match")
+    if binding.output_sha256 != attestation.canonical_digest(output_value):
+        errors.append("manifest output digest does not match")
+    if binding.owner_id != owner_id or parsed.attribution.identity != owner_id:
+        errors.append("manifest owner does not match")
+    errors.extend(
+        attestation.validate_attestation(
+            binding.attestation,
+            run_id=parsed.saga_ref,
+            assignment_id=assignment_id,
+            worker_id=owner_id,
+            output=output_value,
+        )
+    )
+    return errors
+
+
+def write_evidence_manifest(
+    store: Store,
+    execution_id: str,
+    manifest: dict[str, Any],
+) -> Path:
+    """Write once by execution identity; an exact replay is idempotent."""
+
+    existing = read_manifest(store, execution_id)
+    if existing is not None and existing != manifest:
+        raise ManifestStoreError("duplicate execution identity has different evidence")
+    if existing == manifest:
+        return store.manifest_path(execution_id)
+    return write_manifest(store, execution_id, manifest)
 
 
 def read_manifest(store: Store, execution_id: str) -> dict[str, Any] | None:
@@ -269,7 +365,7 @@ def record_completeness(
             execution_id=unit.unit_id,
             saga_ref=saga_id,
             attribution=provenance_manifest.Attribution(
-                kind=provenance_manifest.ProducerKind.CC_WORKFLOWS,
+                kind=provenance_manifest.ProducerKind.MULTI_AGENT_CONSENSUS,
                 identity=unit.label or unit.unit_id,
                 effort=unit.tier.effort,
                 protocol="",

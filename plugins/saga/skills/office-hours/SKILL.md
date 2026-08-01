@@ -5,6 +5,12 @@ description: The two-mode frame-finding front door for early Infiquetra thinking
 
 # Office Hours
 
+## Migration evidence contract
+
+Return a settled decision frame, assumptions, and one recommended route. Let the operator override the
+route. The result is advisory: it never claims implementation, delivery approval, or lifecycle
+completion.
+
 Office-hours is the **frame-finding front door**. It answers the one question that sits upstream of
 every other Think-phase command: *"What is even the right frame here?"* It does not generate idea
 lists, write requirements, or build anything. It pressure-tests a half-formed ask until you can name

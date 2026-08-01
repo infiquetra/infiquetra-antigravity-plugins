@@ -5,6 +5,12 @@ description: The Infiquetra systematic-debugging engine. Find the ROOT CAUSE of 
 
 # Investigate
 
+## Migration evidence contract
+
+The debug report separates observed facts, hypotheses, experiments, the supported root cause, and
+unresolved uncertainty. The operator explicitly chooses diagnosis-only or a separately authorized fix
+route. A passing reproduction by the diagnosing producer is evidence, not independent certification.
+
 `/investigate` answers **"What is the ROOT CAUSE — and is there a fix small enough to apply safely here?"**
 It investigates a bug systematically, traces the full causal chain from trigger to symptom **before**
 proposing anything, and treats the **diagnosis as the deliverable**. The fix is optional, gated, and

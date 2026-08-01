@@ -159,18 +159,18 @@ def test_reader_lightweight_manifest_no_claims_counts_zero_parroting(
 def test_reader_disposition_rate_over_mixed_manifests(tmp_path: Path, mr: ModuleType) -> None:
     _write(tmp_path, "saga-1", "exec-1", _manifest("exec-1", disposition="ran-as-requested"))
     _write(tmp_path, "saga-1", "exec-2", _manifest("exec-2", disposition="ran-as-requested"))
-    _write(tmp_path, "saga-1", "exec-3", _manifest("exec-3", disposition="fell-back-to-claude"))
+    _write(tmp_path, "saga-1", "exec-3", _manifest("exec-3", disposition="fell-back-to-inline"))
     _write(tmp_path, "saga-2", "exec-4", _manifest("exec-4", disposition="substituted-engine"))
 
     summary, _manifests = mr.read_manifest_summary(tmp_path)
 
     assert summary.total_manifests == 4
     assert summary.disposition_counts["ran-as-requested"] == 2
-    assert summary.disposition_counts["fell-back-to-claude"] == 1
+    assert summary.disposition_counts["fell-back-to-inline"] == 1
     assert summary.disposition_counts["substituted-engine"] == 1
     rate = summary.disposition_rate
     assert rate["ran-as-requested"] == pytest.approx(0.5)
-    assert rate["fell-back-to-claude"] == pytest.approx(0.25)
+    assert rate["fell-back-to-inline"] == pytest.approx(0.25)
     assert rate["substituted-engine"] == pytest.approx(0.25)
 
 
@@ -283,7 +283,7 @@ def test_reader_fallback_reason_propagation_halted_dispatch(tmp_path: Path, mr: 
         "exec-halted",
         _manifest_with_note(
             "exec-halted",
-            disposition="fell-back-to-claude",
+            disposition="fell-back-to-inline",
             disposition_note="resolver: requested engine unavailable, halted dispatch",
         ),
     )
@@ -293,7 +293,7 @@ def test_reader_fallback_reason_propagation_halted_dispatch(tmp_path: Path, mr: 
     assert len(summary.fallback_reasons) == 1
     reason = summary.fallback_reasons[0]
     assert reason.execution_id == "exec-halted"
-    assert reason.disposition == "fell-back-to-claude"
+    assert reason.disposition == "fell-back-to-inline"
     assert "requested engine unavailable" in reason.disposition_note
     report = mr.format_report(summary)
     assert "resolver: requested engine unavailable, halted dispatch" in report

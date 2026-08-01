@@ -32,6 +32,7 @@ SCHEMA_CLASSES = [
     "Claim",
     "OutputCompleteness",
     "ClaimProvenance",
+    "EvidenceBinding",
     "Manifest",
 ]
 

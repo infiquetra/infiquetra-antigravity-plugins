@@ -5,6 +5,12 @@ description: CEO/founder-mode scope and ambition review. Rethink the problem, fi
 
 # Founder Review
 
+## Migration evidence contract
+
+The review records product clarity, user value, strategic coherence, challenged premises, accepted
+scope, and deferred scope. The operator explicitly chooses the scope disposition. This advisory result
+never constitutes delivery approval or lifecycle completion.
+
 `/founder-review` (alias `/ceo-review`) answers **"Is this the right, ambitious-enough thing to build
 at all?"** It is the **scope / ambition / direction** review **lens** — the third member of the review
 trio:

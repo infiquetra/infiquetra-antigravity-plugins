@@ -150,8 +150,11 @@ query($org: String!, $number: Int!, $cursor: String) {
 }
 ```
 
-**Pagination**: Uses cursor-based pagination with `pageInfo.hasNextPage` / `pageInfo.endCursor`.
-The `get_project_items()` function loops until all pages are fetched.
+**Pagination**: Uses cursor-based pagination with `totalCount`,
+`pageInfo.hasNextPage`, and `pageInfo.endCursor`. `get_project_census()` fetches every page,
+rejects a missing or repeated cursor, duplicate item, changing project or total, and malformed
+response, then reconciles the collected item count with `totalCount`. `get_project_items()`
+exposes items only after that complete census succeeds.
 
 **Key field paths**:
 - Item status: `fieldValues.nodes[].name` where `field.name == "Status"`
@@ -304,7 +307,9 @@ No personal access tokens are required.
 - REST: `https://api.github.com`
 
 ### Pagination Pattern
-All list queries use cursor-based pagination:
+All list queries use cursor-based pagination. A loop is not sufficient proof by itself:
+the terminal page must reconcile the collected node count with `totalCount`, and a missing or
+repeated cursor must fail rather than return a partial result.
 ```python
 cursor = None
 while True:
@@ -328,4 +333,5 @@ REST API and are not supported by this script.
 
 ### Error Handling
 GraphQL errors are returned in `data["errors"]` even with HTTP 200. The `_graphql()` wrapper
-raises a `RuntimeError` if the `errors` key is present.
+raises the typed `ApiResponseError` if the `errors` key is present or the JSON response is
+malformed. Project traversal raises `ProjectCensusError` when completeness cannot be proved.

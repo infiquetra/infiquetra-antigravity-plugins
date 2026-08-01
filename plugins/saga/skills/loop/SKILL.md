@@ -51,20 +51,25 @@ not a competitor to any of them.
    decision**; `restore` to re-enter a thread. `/loop`'s saga rows are the creation tick + a tick per
    routing decision; `status=handed-off` when routing to `/handoff` (saga-spec §11). Never set
    `next_round` — it is derived (saga-spec §6.1).
-3. **Recommend the backend ONLY for what `/loop` itself drives.** Use
+3. **Route from obligations when proof is available.** A canonical lifecycle-obligation contract plus
+   transition receipts outranks phase narration. Evaluate receipts and select the earliest required
+   obligation that is not satisfied. A repeated evaluation over unchanged evidence returns the same
+   destination; missing, invalid, or conflicting evidence never skips work. Fall back to the dispatch
+   table only when no proof-carrying obligation contract applies.
+4. **Recommend the backend ONLY for what `/loop` itself drives.** Use
    `lifecycle_state.py recommend-backend` for `/loop`'s own Drive sequencing or a router-level sweep.
    Routed-to commands choose their own backend at their own offer; `/loop` never auto-hands a backend
    into them.
-4. **Durable lives in the artifacts, not the cache.** The volatile saga points at committed `docs/*`
+5. **Durable lives in the artifacts, not the cache.** The volatile saga points at committed `docs/*`
    plus issue/PR state. A cold resume reconstructs from those committed artifacts
    (`load_saga_context.py` + reading `docs/*`), never from the git-ignored cache as the authority. The
    saga in `.gemini/saga/` is for offline match and the resume anchor; the committed
    docs and GitHub state are the source of truth.
-5. **Own only the handoff envelope.** `/loop` owns routing + the handoff envelope
+6. **Own only the handoff envelope.** `/loop` owns routing + the handoff envelope
    (`handoff_envelope.py`). `mission-control` owns issues / boards / comments; `deploy` owns
    deploy mutation; the journal owns durable decisions. `/loop` points at those owners; it never
    reimplements them.
-6. **Gate before routing, never block on a stub.** The one HARD gate routes to `/doc-review`
+7. **Gate before routing, never block on a stub.** The one HARD gate routes to `/doc-review`
    (shipped) — block routing to `/work` on unresolved P0/P1 unless overridden with a recorded
    rationale. The route to shipped **`/qa`** is **advisory** (it is a gate-only node that produces a
    verdict but never blocks the router), and routes to **stub** targets (`/retro`, `/resume`, and
@@ -182,6 +187,11 @@ wants the heavy forensic dig. (`/resume` is a stub today; routing to it is advis
 Decide the destination class and apply the gates **before** picking the next command.
 
 ### 2.1 Normalize the destination
+
+Before phase-based normalization, use
+`load_saga_context.route_earliest_unsettled_required_obligation` when the workstream supplies a
+canonical obligation contract and transition receipts. Route to its returned destination when
+`complete` is false. Only a `complete=true` result permits the lifecycle horizon to advance.
 
 Normalize the routing intent to the canonical set with the helper, so the saga `--destination` stores
 a clean enum:

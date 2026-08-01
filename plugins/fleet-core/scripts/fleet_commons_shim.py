@@ -12,8 +12,8 @@ Resolution ladder (first rung that succeeds wins; provenance is part of the retu
    through.
 2. Repo-checkout walk-up from this file: an ancestor holding both
    ``ANTIGRAVITY.md`` and ``plugins/fleet-core/``.
-3. ``~/.gemini/config/plugins/fleet-core``: the local install directory of fleet-core.
-4. Cache-sibling scan: ``$AGY_PLUGIN_ROOT/../../fleet-core/<highest semver>/``.
+3. Active-plugin sibling: ``$AGY_PLUGIN_ROOT/../fleet-core``.
+4. Versioned cache sibling derived from ``$AGY_PLUGIN_ROOT``.
 5. Fail loud with an actionable message.
 
 Set ``FLEET_COMMONS_DEBUG=1`` to print ``fleet-commons: rung=<n> (<name>) root=<path>`` to
@@ -25,15 +25,17 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from types import ModuleType
 
-RUNG_NAMES = {1: "env-override", 2: "repo-walk-up", 3: "installed-plugins", 4: "cache-sibling"}
+RUNG_NAMES = {1: "env-override", 2: "repo-walk-up", 3: "plugin-sibling", 4: "cache-sibling"}
+_MODULE_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 _FAIL_MESSAGE = (
     "fleet-commons: could not resolve a fleet-core root (tried FLEET_COMMONS_ROOT, repo walk-up, "
-    "~/.gemini/config/plugins/fleet-core, cache-sibling scan). Fix: install the fleet-core "
+    "AGY_PLUGIN_ROOT sibling and versioned cache sibling). Fix: install the fleet-core "
     "plugin from the infiquetra-plugins marketplace, or set FLEET_COMMONS_ROOT to a checkout's "
     "plugins/fleet-core directory."
 )
@@ -50,15 +52,16 @@ def _semver_key(name: str) -> tuple[int, ...] | None:
         return None
 
 
-def _rung_installed_plugins() -> Path | None:
-    plugin_dir = Path.home() / ".gemini" / "config" / "plugins" / "fleet-core"
-    if plugin_dir.is_dir() and _is_valid_root(plugin_dir):
-        return plugin_dir
-    return None
+def _rung_plugin_sibling() -> Path | None:
+    plugin_root = os.environ.get("AGY_PLUGIN_ROOT")
+    if not plugin_root:
+        return None
+    candidate = Path(plugin_root).resolve().parent / "fleet-core"
+    return candidate if _is_valid_root(candidate) else None
 
 
 def _rung_cache_sibling() -> Path | None:
-    plugin_root = os.environ.get("AGY_PLUGIN_ROOT") or os.environ.get("CLAUDE_PLUGIN_ROOT")
+    plugin_root = os.environ.get("AGY_PLUGIN_ROOT")
     if not plugin_root:
         return None
     versions_dir = Path(plugin_root).resolve().parent.parent / "fleet-core"
@@ -94,10 +97,12 @@ def resolve_root() -> tuple[Path, int]:
             if antigravity_marker.is_file() and _is_valid_root(candidate):
                 resolved = (candidate, 2)
                 break
-    if resolved is None and (root := _rung_installed_plugins()) is not None:
-        resolved = (root, 3)
-    if resolved is None and (root := _rung_cache_sibling()) is not None:
-        resolved = (root, 4)
+    plugin_sibling = _rung_plugin_sibling() if resolved is None else None
+    if plugin_sibling is not None:
+        resolved = (plugin_sibling, 3)
+    cache_sibling = _rung_cache_sibling() if resolved is None else None
+    if cache_sibling is not None:
+        resolved = (cache_sibling, 4)
     if resolved is None:
         raise RuntimeError(_FAIL_MESSAGE)
     if os.environ.get("FLEET_COMMONS_DEBUG") == "1":
@@ -126,6 +131,8 @@ def load(module: str) -> ModuleType:
     keyed by ``(module, root)`` so a changed resolution input (e.g. ``FLEET_COMMONS_ROOT``
     re-pointed mid-process, as tests do) re-loads instead of returning a stale module.
     """
+    if not _MODULE_RE.fullmatch(module):
+        raise RuntimeError("fleet-commons: module must be a logical Python module name")
     root, _ = resolve_root()
     cache_key = f"_fleet_commons_{module}@{root}"
     cached = sys.modules.get(cache_key)

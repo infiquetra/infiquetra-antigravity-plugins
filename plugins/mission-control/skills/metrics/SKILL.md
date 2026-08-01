@@ -29,6 +29,11 @@ Flow metrics for Infiquetra's GitHub Projects boards. Metrics use GitHub timelin
 for Status changes. Deployment state is intentionally separate from workflow Status; use
 deployment records and deployment fields for environment promotion questions.
 
+Metrics are descriptive evidence, not routing, mutation, or completion authority. Calculate them
+only from a complete, count-reconciled board census and complete issue histories. A missing or
+repeated cursor, malformed page, or item/event count mismatch makes the result incomplete; stop
+instead of presenting partial history as a complete metric.
+
 ## Script Location
 
 ```bash

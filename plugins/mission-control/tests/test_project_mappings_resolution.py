@@ -10,6 +10,7 @@ _VENDORED_PROJECT_MAPPINGS_PATH constant — no renaming the real vendored
 file (which would be racy under pytest-xdist + leave orphans on crash).
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -250,3 +251,37 @@ def test_legacy_status_hint_points_to_current_status() -> None:
     hint = sdlc_manager._legacy_status_hint("E2E Testing", ["Assigned", "In Review", "Done"])
 
     assert hint == "'E2E Testing' is legacy; use 'In Review' on this board."
+
+
+def test_flow_resolves_project_field_issue_and_repository_before_mutation() -> None:
+    data = json.loads(sdlc_manager._VENDORED_PROJECT_MAPPINGS_PATH.read_text(encoding="utf-8"))
+    assert set(data["projects"]) == {"operations", "asgard", "campps"}
+    assert all(project["repositories"] == [] for project in data["projects"].values())
+
+    flow_skill = (Path(__file__).resolve().parents[1] / "skills" / "flow" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    assert "normalize the repository" in flow_skill
+    assert "resolve the explicitly named active project, issue, field, and option" in flow_skill
+    assert "obtain explicit operator approval" in flow_skill
+
+
+def test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases() -> (
+    None
+):
+    with pytest.raises(argparse.ArgumentTypeError):
+        sdlc_manager._normalize_repo_arg("other-org/mission-control")
+
+    ambiguous = {
+        "project_mappings": {
+            "projects": {
+                "first": {"number": 1, "repositories": ["mission-control"]},
+                "second": {"number": 2, "repositories": ["mission-control"]},
+            }
+        }
+    }
+    with pytest.raises(sdlc_manager.ProjectMappingResolutionError, match="ambiguous"):
+        sdlc_manager.get_single_project_for_repo(ambiguous, "mission-control")
+
+    with pytest.raises(SystemExit):
+        sdlc_manager.get_project_config(ambiguous, "missing")

@@ -19,6 +19,13 @@ Two invariants the surface enforces:
   `attend` just prints the native re-entry handoff for a leaf you want hands-on (R16 altitude seam).
 - **Status is derived on read** (R17). There is no operator-writable status field; the cockpit is
   recomputed every read from the committed spec + completion events, so it cannot drift.
+- **Completion requires owned, verifiable evidence.** A proof-carrying leaf completes only when its
+  owner matches the lifecycle-obligation contract, its evidence manifest is attested, and every
+  required transition receipt verifies as satisfied. Activity, cost, heartbeats, issue motion, or a
+  child self-report never substitutes for settlement evidence.
+- **External effects require separate authority.** Board changes, ship transitions, merges, and
+  deployment are first represented as local typed intents. Saga may execute an injected adapter only
+  after a separate authority receipt binds the unchanged intent payload.
 - **The spec is committed + pushed to the outcome's own branch** (R26/R27), never `main` mid-run, so a
   different machine reconstructs the whole outcome by pulling the repo (then re-harvesting completion from
   GitHub) — no dependence on the local cache. The mechanism is explicit: `commit <id> --push` after
@@ -26,7 +33,8 @@ Two invariants the surface enforces:
   yours.
 
 It does **not** author the graph from scratch (that is `/plan` + the decompose flow), run leaf
-implementations, file SDLC issues (`mission-control`), or deploy (`deploy`).
+implementations, file SDLC issues (`mission-control`), or deploy (`deploy`). Cost, progress, and
+liveness are reportable evidence only; they cannot mark an outcome complete.
 
 Arguments provided to the command:
 

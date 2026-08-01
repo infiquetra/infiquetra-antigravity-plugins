@@ -5,6 +5,12 @@ description: The Infiquetra lifecycle META-IMPROVEMENT ENGINE. The TERMINAL, ADV
 
 # Retro
 
+## Migration evidence contract
+
+Every learning cites delivery evidence and separates observation from proposed system change. The
+operator explicitly accepts, skips, or modifies non-additive edits. Retrospective analysis never writes
+Saga lifecycle state or certifies delivery.
+
 `/retro` answers **"What did this work teach us — and how does the system get smarter because of it?"**
 It is the lifecycle's **meta-improvement engine**: the terminal phase that turns a finished thread (or a
 time window of work) into durable knowledge, curated journal state, and concrete, gated proposals to

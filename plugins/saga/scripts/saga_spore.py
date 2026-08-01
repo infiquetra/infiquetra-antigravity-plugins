@@ -30,16 +30,19 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Import the sibling scripts by path so the spore reuses the single source of truth for the DAG
 # (``outcome``), the git-common-dir cache mechanics (``outcome_store``), and the saga envelope
 # (``saga``) rather than re-deriving any of them. Mirrors the shim ``outcome_store`` itself uses.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import lifecycle_obligations  # noqa: E402
+import manifest_store  # noqa: E402
 import outcome  # noqa: E402  (after the sys.path shim, by design)
 import outcome_store  # noqa: E402
 import saga  # noqa: E402
+import transition_receipts  # noqa: E402
 
 SCHEMA = "saga.spore.v1"
 
@@ -135,10 +138,10 @@ def _store_mtime(common_dir: Path, outcome_id: str) -> float:
     root = Path(common_dir) / outcome_store.STORE_NAMESPACE / outcome_id
     ledger = root / "ledger.jsonl"
     try:
-        return ledger.stat().st_mtime
+        return cast(float, ledger.stat().st_mtime)
     except OSError:
         try:
-            return root.stat().st_mtime
+            return cast(float, root.stat().st_mtime)
         except OSError:
             return 0.0
 
@@ -180,7 +183,7 @@ def resolve_outcome_id(
         rest = active_saga_id[len("leaf-") :]
         candidates = [oid for oid in existing if rest == oid or rest.startswith(oid + "-")]
         if candidates:
-            return max(candidates, key=len)
+            return cast(str, max(candidates, key=len))
 
     # Scan newest-first; collect non-complete. Stop once a second non-complete proves ambiguity.
     non_complete: list[str] = []
@@ -476,3 +479,46 @@ def load_and_validate(text: str, expected_session_id: str, expected_repo_root: s
     if not isinstance(block, str) or not block:
         return None
     return block
+
+
+def reconstruct_session_packet(
+    text: str,
+    *,
+    expected_session_id: str,
+    repo_root: Path,
+    contract: lifecycle_obligations.ObligationContract,
+    receipt: transition_receipts.TransitionReceipt,
+    manifest: dict[str, Any],
+    assignment_id: str,
+    owner_id: str,
+    input_value: Any,
+    output_value: Any,
+) -> dict[str, Any]:
+    """Reconstruct bounded session context from U4 evidence; local projection is never authority."""
+
+    block = load_and_validate(text, expected_session_id, str(repo_root))
+    if block is None:
+        raise ValueError("spore is stale, malformed, or bound to another session/repository")
+    manifest_errors = manifest_store.validate_evidence_manifest(
+        manifest,
+        assignment_id=assignment_id,
+        owner_id=owner_id,
+        input_value=input_value,
+        output_value=output_value,
+    )
+    if manifest_errors:
+        raise ValueError("manifest invalid: " + "; ".join(manifest_errors))
+    if receipt.workstream_id != owner_id or contract.workstream_id != owner_id:
+        raise ValueError("session evidence owner does not match the canonical workstream")
+    settlement = transition_receipts.evaluate_transition_receipt(
+        receipt, contract, repo_root=repo_root
+    )
+    return {
+        "session_id": expected_session_id,
+        "repo_root": str(repo_root),
+        "context": block,
+        "manifest_execution_id": manifest.get("execution_id", ""),
+        "settlement_state": settlement.state.value,
+        "complete": settlement.state is lifecycle_obligations.SettlementState.SATISFIED,
+        "status_source": "canonical transition receipt",
+    }

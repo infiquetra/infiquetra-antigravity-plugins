@@ -153,16 +153,15 @@ The high-signal checklist categories ground the always-on checks: enum-and-value
 **requires reading code OUTSIDE the diff**), LLM-output trust boundary, SQL and shell injection, and
 race conditions.
 
-**Announce the team** before spawning: list the selected lenses with a one-line justification for each
-conditional lens (e.g., "data-migration — diff adds a DynamoDB GSI and a backfill script"). Do not spawn
-a lens that has no real work on this diff.
+**Announce the lens set** before review: list the selected lenses with a one-line justification for
+each conditional lens. Do not claim that listing lenses created independent execution.
 
 ---
 
 ## Phase 3 — Review (fan-out)
 
-Spawn the selected lenses as **generic agents** (`Explore`/`Task` — this plugin has no `agents/` dir, so
-do **not** reference named `ce-*` agents). Each lens returns findings in the schema defined by
+Run selected lenses inline, consume separately identified operator-supplied reviewer results, or use
+the capability-gated backend below. Each lens returns findings in the schema defined by
 `references/findings-schema.md`.
 
 **Operator-choice backend.** Offer the execution backend per `../../references/operator-choice.md` (the
@@ -202,15 +201,11 @@ proceed with in-distribution knowledge.
 
 ### Stage B — validator pass (mode-based right-sizing)
 
-Run CE's independent per-finding validator (`references/validator.md`) — a fresh agent re-checks each
-survivor: is it real in the code, introduced by THIS diff, and not handled elsewhere? -> `{validated,
-reason}`. Right-sizing is **mode-based**, matching CE's actual mechanism:
-
-- **Programmatic / report-only mode:** spawn one validator per Stage-A survivor, **capped at 15**
-  (ordered P0 -> P3 by anchor; drop and note the over-budget count beyond 15). Validator-reject or
-  failure -> **drop** the finding (conservative bias).
-- **Interactive mode:** the **operator is the per-finding validator** — skip the pre-dispatch validator
-  pass (per CE). The operator's decisions during routing are the validation.
+Load `references/validator.md`. In report-only mode, consume an imported `reviewer-result.v1` whose
+reviewer identity differs from the implementation producer and whose reviewed plan and implementation
+digests match the committed inputs. If this workflow is asked to originate an independent validator,
+require `agy.agent.execution=passed`; otherwise stop that mode. In interactive mode, the operator
+disposes each finding but that decision is not relabeled as independent review.
 
 There is **no severity carve-out**: the upstream suppress-<75 gate plus the 15-cap are the cost control,
 not a per-severity exemption.

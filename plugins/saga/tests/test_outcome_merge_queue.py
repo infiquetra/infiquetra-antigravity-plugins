@@ -15,6 +15,8 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
+import pytest
+
 ROOT = Path(__file__).parent.parent
 SCRIPTS = ROOT / "scripts"
 
@@ -34,6 +36,8 @@ GH = _load("outcome_github")
 SPEC = _load("outcome_spec")
 STORE = _load("outcome_store")
 M = _load("outcome_merge")
+OBLIGATIONS = _load("lifecycle_obligations")
+RECEIPTS = _load("transition_receipts")
 
 
 def _store(tmp_path: Path):
@@ -318,3 +322,94 @@ def test_cli_describes_policy(capsys: Any) -> None:
     assert M.main(["--cap", "5"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["merge_cap"] == 5 and "squash" in out["policy"]
+
+
+def _integration_receipt(tmp_path: Path):
+    import hashlib
+
+    proof = tmp_path / "docs" / "checks" / "integration.json"
+    proof.parent.mkdir(parents=True)
+    artifact_sha256 = hashlib.sha256(b"verified\n").hexdigest()
+    body = {
+        "schema": OBLIGATIONS.INDEPENDENCE_RECEIPT_SCHEMA,
+        "evidence_kind": OBLIGATIONS.EvidenceKind.CHECK_RESULT.value,
+        "subject": "build",
+        "producer_id": "independent-tester",
+        "attester_id": "external-attester",
+        "origin": "imported-external",
+        "host_capability": None,
+        "host_capability_state": None,
+        "artifact_sha256": artifact_sha256,
+    }
+    receipt_document = {
+        **body,
+        "receipt_id": hashlib.sha256(
+            json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+    }
+    proof.write_text(
+        json.dumps(receipt_document, sort_keys=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    evidence = OBLIGATIONS.Evidence(
+        evidence_id="integration-check",
+        kind=OBLIGATIONS.EvidenceKind.CHECK_RESULT,
+        subject="build",
+        producer="independent-tester",
+        reference="docs/checks/integration.json",
+        digest="sha256:" + hashlib.sha256(proof.read_bytes()).hexdigest(),
+        verification_state=OBLIGATIONS.VerificationState.VERIFIED,
+    )
+    contract = OBLIGATIONS.ObligationContract.from_dict(
+        {
+            "schema": OBLIGATIONS.SCHEMA_VERSION,
+            "contract_id": "merge-contract",
+            "workstream_id": "leaf-build",
+            "stored_lifecycle_phases": [],
+            "off_chain_obligations": [],
+            "obligations": [
+                {
+                    "obligation_id": "integration",
+                    "kind": "check",
+                    "subject": "build",
+                    "requirement": "required",
+                    "producer": "worker",
+                    "required_evidence": [{"kind": "check-result", "independent": True}],
+                }
+            ],
+        }
+    )
+    receipt = RECEIPTS.build_transition_receipt(
+        contract=contract,
+        transition_id="merge",
+        obligation_id="integration",
+        attempt=1,
+        check_results=[evidence],
+        repo_root=tmp_path,
+    )
+    return contract, receipt
+
+
+def test_outcome_merge_settles_only_from_verified_integration_receipt(tmp_path: Path) -> None:
+    contract, receipt = _integration_receipt(tmp_path)
+    node = _node("build", leaf_saga_id="leaf-build")
+    result = M.settle_from_verified_integration_receipt(node, receipt, contract, repo_root=tmp_path)
+    assert result["settled"] is True
+    assert result["settlement_state"] == "satisfied"
+
+
+def test_outcome_merge_settles_only_from_verified_integration_receipt_rejects_negative_cases(
+    tmp_path: Path,
+) -> None:
+    contract, receipt = _integration_receipt(tmp_path)
+    with pytest.raises(ValueError, match="unowned"):
+        M.settle_from_verified_integration_receipt(
+            _node("build"), receipt, contract, repo_root=tmp_path
+        )
+    with pytest.raises(ValueError, match="owner"):
+        M.settle_from_verified_integration_receipt(
+            _node("build", leaf_saga_id="different"),
+            receipt,
+            contract,
+            repo_root=tmp_path,
+        )

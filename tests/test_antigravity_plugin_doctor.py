@@ -140,6 +140,152 @@ def test_invalid_manifest_json_fails(tmp_path: Path) -> None:
     assert "bad: invalid JSON" in result.errors[0]
 
 
+def test_quality_evidence_closed_schema_reports_every_malformed_section() -> None:
+    evidence = {
+        "schema": "wrong",
+        "fixtures": [
+            None,
+            {
+                "path": "",
+                "owner": "",
+                "purpose": "",
+                "provenance": "claimed-real",
+                "sha256": "bad",
+            },
+        ],
+        "ownership": [
+            None,
+            {"path": "duplicate", "stable_ids": []},
+            {"path": "duplicate", "stable_ids": ["owner", "owner"]},
+        ],
+        "journals": [
+            None,
+            {"path": "missing", "status": "wrong", "evidence": None},
+            {"path": "missing", "status": "completed", "evidence": []},
+        ],
+        "tests": [
+            None,
+            {"stable_id": "owner", "kind": "wrong", "node_id": "bad"},
+            {"stable_id": "", "kind": "positive", "node_id": "bad"},
+            {"stable_id": "owner", "kind": "negative", "node_id": "x.py::test_wrong"},
+            {"stable_id": "positive-only", "kind": "positive", "node_id": "x.py::test_ok"},
+        ],
+    }
+    errors = validate_plugins.validate_repository_quality_evidence(evidence)
+    assert "quality evidence schema is invalid" in errors
+    assert any("invalid shape" in error for error in errors)
+    assert any("unverified fixture provenance" in error for error in errors)
+    assert any("missing or duplicated" in error for error in errors)
+    assert any("claims completion without evidence" in error for error in errors)
+    assert any("lack positive or negative coverage" in error for error in errors)
+    assert validate_plugins.validate_repository_quality_evidence(None) == [
+        "quality evidence must be an object"
+    ]
+    missing_lists = {"schema": validate_plugins.QUALITY_EVIDENCE_SCHEMA}
+    list_errors = validate_plugins.validate_repository_quality_evidence(missing_lists)
+    assert any("fixtures must be a list" in error for error in list_errors)
+    assert any("ownership must be a list" in error for error in list_errors)
+    assert any("journals must be a list" in error for error in list_errors)
+    assert any("tests must be a list" in error for error in list_errors)
+
+
+def test_repository_path_and_pytest_node_resolution_fail_closed(tmp_path: Path) -> None:
+    for value in (None, "", "/absolute", "../escape", "with\\slash"):
+        resolved, error = validate_plugins._resolve_repository_file(tmp_path, value, "path")
+        assert resolved is None
+        assert error
+    directory = tmp_path / "directory"
+    directory.mkdir()
+    assert validate_plugins._resolve_repository_file(tmp_path, "directory", "path")[1]
+    source = tmp_path / "test_sample.py"
+    source.write_text("def test_present():\n    pass\n", encoding="utf-8")
+    assert validate_plugins._pytest_node_exists(tmp_path, "test_sample.py::test_present")
+    for node in (
+        "test_sample.py",
+        "test_sample.py::helper",
+        "test_sample.py::test_present::nested",
+        "missing.py::test_missing",
+        "directory::test_missing",
+    ):
+        assert not validate_plugins._pytest_node_exists(tmp_path, node)
+    source.write_text("def broken(", encoding="utf-8")
+    assert not validate_plugins._pytest_node_exists(tmp_path, "test_sample.py::test_present")
+
+
+def test_manifest_install_and_human_output_edge_states(tmp_path: Path, capsys) -> None:
+    plugin = tmp_path / "plugins" / "demo"
+    plugin.mkdir(parents=True)
+    manifest = plugin / "plugin.json"
+    manifest.write_text("[]", encoding="utf-8")
+    status = validate_plugins.inspect_plugin(manifest, tmp_path / "install", True)
+    assert "JSON object" in status.errors[0]
+
+    manifest.write_text(
+        json.dumps({"name": "other", "version": "invalid", "description": ""}),
+        encoding="utf-8",
+    )
+    install = tmp_path / "install"
+    install.mkdir()
+    (install / "other").mkdir()
+    status = validate_plugins.inspect_plugin(manifest, install, True)
+    assert any("does not match directory" in error for error in status.errors)
+    assert any("not semver-like" in error for error in status.errors)
+    assert "repair plugin manifest" in status.next_actions
+
+    copied = validate_plugins.PluginStatus(name="demo", path="plugins/demo")
+    (install / "demo").mkdir()
+    validate_plugins.inspect_install(plugin, install, copied, False)
+    assert copied.install_state == "copied"
+    file_plugin = validate_plugins.PluginStatus(name="file", path="plugins/file")
+    (install / "file").write_text("not-a-directory", encoding="utf-8")
+    validate_plugins.inspect_install(tmp_path / "plugins/file", install, file_plugin, True)
+    assert file_plugin.errors
+
+    result = validate_plugins.DoctorResult(
+        ok=False,
+        plugins=[
+            validate_plugins.PluginStatus(
+                name="demo",
+                path="plugins/demo",
+                errors=["broken"],
+                warnings=["warn"],
+            )
+        ],
+        warnings=["global: warning"],
+        errors=["failure"],
+        next_actions=["repair"],
+        catalog=validate_plugins.CatalogStatus(
+            status="passed", schema="v1", revision=1, capabilities=2
+        ),
+        capability=validate_plugins.CapabilityStatus(
+            status="degraded",
+            source="fixture",
+            evaluation={
+                "blocking_capabilities": ["blocked"],
+                "degraded_capabilities": ["degraded"],
+                "fallbacks": {"blocked": "fallback"},
+            },
+        ),
+    )
+    validate_plugins.print_human(result)
+    output = capsys.readouterr().out
+    assert "blocking: blocked" in output
+    assert "degraded: degraded" in output
+    assert "fallback: blocked -> fallback" in output
+    assert "error: broken" in output
+    assert "warning: global: warning" in output
+    assert "next actions:" in output
+
+
+def test_doctor_cli_renders_json_and_human_results(monkeypatch, capsys) -> None:
+    result = validate_plugins.DoctorResult(True, [], [], [], [])
+    monkeypatch.setattr(validate_plugins, "run_doctor", lambda *args, **kwargs: result)
+    assert validate_plugins.main(["--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+    assert validate_plugins.main([]) == 0
+    assert "Antigravity plugin doctor" in capsys.readouterr().out
+
+
 def test_empty_agent_and_wrong_symlink_warn(tmp_path: Path) -> None:
     plugin_dir = write_plugin(tmp_path)
     (plugin_dir / "agents").mkdir()
@@ -312,7 +458,9 @@ def test_optional_proven_fallback_reports_degraded_without_failure(
 
 
 def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Path, capsys) -> None:
-    selector = contract_repo(tmp_path, "Call AskUserQuestion now.\n")
+    selector = contract_repo(tmp_path)
+    selected_path = "plugins/saga/skills/work/SKILL.md"
+    (tmp_path / selected_path).write_text("Call AskUserQuestion now.\n")
 
     result = validate_plugins.run_doctor(
         tmp_path,
@@ -326,7 +474,7 @@ def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Pat
     assert result.host_contract.unresolved_count == 1
     finding = result.host_contract.findings[0]
     assert finding["path_sha256"] == (
-        "266f3cc721b3b056306e154e7830077bf22d4ad0b1634325e0decb4d1ed6e120"
+        "db5f9b3661ae7b73710ee1fb07f6040fd83af119a8bcecb804b6060c655bb6e7"
     )
     assert finding["rule"] == "AGHC002"
     assert finding["line"] == 1
@@ -334,7 +482,7 @@ def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Pat
     validate_plugins.print_human(result)
     human = capsys.readouterr().out
     assert (
-        "path-sha256=266f3cc721b3b056306e154e7830077bf22d4ad0b1634325e0decb4d1ed6e120 "
+        "path-sha256=db5f9b3661ae7b73710ee1fb07f6040fd83af119a8bcecb804b6060c655bb6e7 "
         "line=1 AGHC002 remediation=use-session-blocking-question"
     ) in human
     encoded = json.dumps(validate_plugins.asdict(result))
@@ -343,8 +491,7 @@ def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Pat
 
 def test_host_contract_read_error_does_not_echo_private_path(tmp_path: Path, capsys) -> None:
     selector = contract_repo(tmp_path)
-    private_path = tmp_path / "plugins/saga/skills/ghp_examplecredential/SKILL.md"
-    private_path.parent.mkdir(parents=True, exist_ok=True)
+    private_path = tmp_path / selector["exact_paths"][0]
     private_path.write_bytes(b"\xff")
 
     result = validate_plugins.run_doctor(
@@ -357,11 +504,9 @@ def test_host_contract_read_error_does_not_echo_private_path(tmp_path: Path, cap
 
     assert result.ok is False
     assert result.host_contract.status == "failed"
-    assert "ghp_examplecredential" not in rendered
     assert private_path.as_posix() not in rendered
     validate_plugins.print_human(result)
     human = capsys.readouterr().out
-    assert "ghp_examplecredential" not in human
     assert private_path.as_posix() not in human
 
 
@@ -371,15 +516,25 @@ def test_host_contract_enumeration_error_does_not_echo_private_path(
 ) -> None:
     selector = contract_repo(tmp_path)
     private_path = f"/Users/alice/ghp_examplecredential-{method}"
-    original_enumeration = getattr(Path, method)
+    if method == "glob":
+        selected_path = tmp_path / selector["exact_paths"][0]
+        original_is_file = Path.is_file
 
-    def fail_enumeration(path: Path, pattern: str):
-        target = tmp_path if method == "glob" else tmp_path / "docs"
-        if path == target:
-            raise PermissionError(13, "permission denied", private_path)
-        return original_enumeration(path, pattern)
+        def fail_exact_path(path: Path):
+            if path == selected_path:
+                raise PermissionError(13, "permission denied", private_path)
+            return original_is_file(path)
 
-    monkeypatch.setattr(Path, method, fail_enumeration)
+        monkeypatch.setattr(Path, "is_file", fail_exact_path)
+    else:
+        original_enumeration = Path.rglob
+
+        def fail_enumeration(path: Path, pattern: str):
+            if path == tmp_path / "docs":
+                raise PermissionError(13, "permission denied", private_path)
+            return original_enumeration(path, pattern)
+
+        monkeypatch.setattr(Path, "rglob", fail_enumeration)
     result = validate_plugins.run_doctor(
         tmp_path,
         tmp_path / "install",

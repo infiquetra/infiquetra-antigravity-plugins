@@ -1,0 +1,876 @@
+schema: antigravity.semantic-port-migration-plan.v1
+campaign_id: 2026-07-30-saga-reliability
+ledger_schema: antigravity.semantic-port-ledger.v2
+candidates:
+  application-security-audit:
+    semantic_contract: Security review requests receive a bounded application-security
+      workflow with explicit findings and validation evidence.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/multi-agent-consensus/skills/appsec-audit/SKILL.md
+    - plugins/multi-agent-consensus/tests/test_appsec_audit.py
+    test_node_ids:
+    - plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation
+    negative_test_node_ids:
+    - plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation_rejects_negative_cases
+    intentional_differences:
+    - Keep reviewer workflow native; do not recreate source `team-execution` or claim
+      unproven worker isolation.
+  bridge-receipt-contract:
+    semantic_contract: Cross-runtime bridge results retain requested versus observed
+      facts in a portable receipt instead of relying on model narration.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/fleet-core/scripts/fleet_commons/bridge_receipt.py
+    - plugins/fleet-core/tests/test_bridge_receipt.py
+    test_node_ids:
+    - plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown
+    negative_test_node_ids:
+    - plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown_rejects_negative_cases
+    intentional_differences:
+    - Keep requested facts distinct from observable facts; unknown stays unknown.
+  codex-portability-contracts:
+    semantic_contract: Codex-only Saga-family behavior remains visible through explicit
+      provenance, target-boundary mappings, and cutover classifications.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/docs/portability.md
+    - plugins/saga/docs/README.md
+    - plugins/saga/docs/model/saga-docs-model.yaml
+    - plugins/saga/scripts/render_docs_visuals.py
+    - plugins/saga/docs/assets/ownership-boundary-map.svg
+    - plugins/saga/tests/test_saga_docs_coverage.py
+    test_node_ids:
+    - plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity
+    negative_test_node_ids:
+    - plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases
+    intentional_differences:
+    - Curate one Antigravity page; do not copy Codex's portability tree or treat Codex
+      paths as target truth.
+  concurrency-lease-policy:
+    semantic_contract: Parallel workers use bounded concurrency, durable leases, and
+      liveness rules that prevent duplicate or abandoned ownership.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/fleet-core/scripts/fleet_commons/concurrency_policy.py
+    - plugins/fleet-core/scripts/fleet_commons/lease_broker.py
+    - plugins/fleet-core/scripts/fleet_commons/liveness_engine.py
+    - plugins/fleet-core/tests/test_concurrency_policy.py
+    - plugins/fleet-core/tests/test_lease_broker.py
+    test_node_ids:
+    - plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership
+    negative_test_node_ids:
+    - plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership_rejects_negative_cases
+    intentional_differences:
+    - Implement deterministic local lease semantics only; do not claim host scheduling
+      or isolation.
+  cross-runtime-acceptance-tools:
+    semantic_contract: Cross-runtime canaries compare the same bounded Saga behavior
+      and produce reviewable compatibility evidence.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/fleet-core/scripts/fleet_commons/saga_acceptance.py
+    - plugins/fleet-core/references/saga-acceptance-contract.json
+    - plugins/fleet-core/tests/test_saga_acceptance.py
+    test_node_ids:
+    - plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts
+    negative_test_node_ids:
+    - plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts_rejects_negative_cases
+    intentional_differences:
+    - Compare semantic receipts, not source files, transcript text, or live host calls.
+  delegation-audit-state:
+    semantic_contract: Delegated work records ownership and completion state so missing
+      or duplicate worker evidence is detectable.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/fleet-core/scripts/fleet_commons/delegation_audit.py
+    - plugins/fleet-core/scripts/fleet_commons/delegation_state.py
+    - plugins/fleet-core/tests/test_delegation_audit_state.py
+    test_node_ids:
+    - plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence
+    negative_test_node_ids:
+    - plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence_rejects_negative_cases
+    intentional_differences:
+    - Extend current target state rather than adding the source audit-store layout.
+  mission-board-census-pagination:
+    semantic_contract: Board inventory reads traverse every page and reconcile a complete
+      card census before reporting or mutation.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/scripts/sdlc_manager.py
+    - plugins/mission-control/tests/test_sdlc_manager.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete_rejects_negative_cases
+    intentional_differences:
+    - First close the existing `sdlc_manager.py` pagination seam. Add repeated-cursor,
+      missing-cursor, and partial-census tests there. Do not add `board_census.py`,
+      `check_pagination.py`, or a second client/source helper unless distinct product
+      ownership is proved and Jeff approves the expanded path set.
+  mission-board-operations:
+    semantic_contract: The operator can inspect, add, move, and archive project cards
+      through explicit board workflow gates.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/commands/board.md
+    - plugins/mission-control/skills/board/SKILL.md
+    - plugins/mission-control/skills/board/references/graphql-queries.md
+    - plugins/mission-control/skills/board/references/kanban-workflow.md
+    - plugins/mission-control/tests/test_board_add_multi_project.py
+    - plugins/mission-control/tests/test_board_move_exit.py
+    - plugins/mission-control/tests/test_graphql_issue_resolution.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status_rejects_negative_cases
+    intentional_differences:
+    - Preserve preparation and confirmation before mutation; tests use injected responses
+      only.
+  mission-control-runtime:
+    semantic_contract: Mission Control centralizes typed GitHub and project operations
+      with normalized repository inputs and explicit failure handling.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/scripts/sdlc_manager.py
+    - plugins/mission-control/tests/test_sdlc_manager.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures_rejects_negative_cases
+    intentional_differences:
+    - Consolidate target behavior in the existing runtime; do not add a second API
+      client.
+  mission-executor-profile-policy:
+    semantic_contract: Issue execution profiles accept only supported model and tier
+      policy values before work is dispatched.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/scripts/executor_profile_lint.py
+    - plugins/mission-control/tests/test_executor_profile_lint.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry_rejects_negative_cases
+    intentional_differences:
+    - Resolve Gemini models and efforts from `fleet-core`; no source-host model literals.
+  mission-flow-metrics:
+    semantic_contract: The operator can measure throughput, cycle time, work age,
+      and per-state flow from project history.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/commands/metrics.md
+    - plugins/mission-control/skills/metrics/SKILL.md
+    - plugins/mission-control/skills/metrics/references/metrics-targets.md
+    - plugins/mission-control/tests/test_metrics_contract.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time_rejects_negative_cases
+    intentional_differences:
+    - Keep metrics descriptive; do not turn them into automatic routing authority.
+  mission-issue-contract:
+    semantic_contract: Prepared issues conform to the shared issue taxonomy, generated
+      contract data, and template parity checks.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/config/sdlc-schema.json
+    - plugins/mission-control/config/generated/check_issue_contract_parity.py
+    - plugins/mission-control/config/generated/issue_contract_data.py
+    - plugins/mission-control/config/generated/issue_contract_data.py.sha256
+    - plugins/mission-control/config/generated/issue_contract_shim.py
+    - plugins/mission-control/config/generated/issue_contract_shim.py.sha256
+    - plugins/mission-control/scripts/sync_template_docs.py
+    - plugins/mission-control/tests/test_issue_contract_parity.py
+    - plugins/mission-control/tests/test_issue_source_artifacts.py
+    - plugins/mission-control/tests/test_prompt_alignment.py
+    - plugins/mission-control/tests/test_template_sync.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates_rejects_negative_cases
+    intentional_differences:
+    - Regenerate target contract data from its schema; do not copy generated source
+      bytes as proof.
+  mission-issue-preparation:
+    semantic_contract: Issue creation separates preparation, review, approval, and
+      remote mutation while preserving source-artifact evidence.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/commands/issue.md
+    - plugins/mission-control/commands/triage.md
+    - plugins/mission-control/scripts/sdlc_manager.py
+    - plugins/mission-control/skills/issues/SKILL.md
+    - plugins/mission-control/skills/issues/references/issue-types.md
+    - plugins/mission-control/skills/issues/references/templates-reference.md
+    - plugins/mission-control/tests/test_issue_create_prepared.py
+    - plugins/mission-control/tests/test_issue_prepare.py
+    - plugins/mission-control/tests/test_issue_prepare_compile_approve.py
+    - plugins/mission-control/tests/test_typed_exceptions.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation_rejects_negative_cases
+    intentional_differences:
+    - Preserve the explicit mutation gate; no issue mutation occurs in acceptance
+      tests.
+  mission-label-operations:
+    semantic_contract: Label audits and changes use the declared taxonomy and preserve
+      an explicit mutation boundary.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/skills/labels/SKILL.md
+    - plugins/mission-control/skills/labels/references/labels-reference.md
+    - plugins/mission-control/tests/test_label_contract.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate_rejects_negative_cases
+    intentional_differences:
+    - Keep audit read-only until separately authorized.
+  mission-milestone-operations:
+    semantic_contract: Objective milestones can be created, linked, and assessed with
+      progress and risk evidence.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/skills/milestones/SKILL.md
+    - plugins/mission-control/skills/milestones/references/objective-workflow.md
+    - plugins/mission-control/tests/test_milestone_contract.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence_rejects_negative_cases
+    intentional_differences:
+    - Separate planning/read evidence from remote creation.
+  mission-project-flow:
+    semantic_contract: Project field, sub-issue, assignment, and repository-mapping
+      operations resolve targets before mutation.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/config/project-mappings.json
+    - plugins/mission-control/skills/flow/SKILL.md
+    - plugins/mission-control/tests/test_flow_subcommands.py
+    - plugins/mission-control/tests/test_project_mappings_resolution.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases
+    intentional_differences:
+    - Preserve current target project names and explicit resolution; no source mapping
+      assumptions.
+  mission-rollout-operations:
+    semantic_contract: Organization rollout status and gaps remain inspectable and
+      mutations occur only through the rollout workflow.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/mission-control/skills/rollout/SKILL.md
+    - plugins/mission-control/skills/rollout/references/work-hierarchy.md
+    - plugins/mission-control/tests/test_rollout_contract.py
+    test_node_ids:
+    - plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation
+    negative_test_node_ids:
+    - plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation_rejects_negative_cases
+    intentional_differences:
+    - Keep census/status read-only and mutation separately authorized.
+  orphan-evidence-attestation:
+    semantic_contract: Worker output is accepted only when ownership, expected shape,
+      and attestation bind it to the originating run.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/fleet-core/scripts/fleet_commons/orphan_evidence.py
+    - plugins/fleet-core/scripts/fleet_commons/output_attestation.py
+    - plugins/fleet-core/tests/fixtures/orphan-evidence/valid.json
+    - plugins/fleet-core/tests/fixtures/orphan-evidence/duplicate-schema.json
+    - plugins/fleet-core/tests/test_orphan_evidence.py
+    test_node_ids:
+    - plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation
+    negative_test_node_ids:
+    - plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation_rejects_negative_cases
+    intentional_differences:
+    - Use Antigravity run and worker identities; no model narration can attest itself.
+  repository-quality-guards:
+    semantic_contract: Repository-specific fixture, ownership, journal, and test-shape
+      checks fail on misleading or incomplete evidence.
+    final_antigravity_state: present
+    target_paths:
+    - scripts/validate_plugins.py
+    - plugins/fleet-core/tests/test_repository_quality_guards.py
+    test_node_ids:
+    - plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps
+    negative_test_node_ids:
+    - plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases
+    intentional_differences:
+    - Add focused Antigravity validation rules to the canonical validator; do not
+      port six standalone source scripts.
+  saga-artifact-promotion:
+    semantic_contract: Transient lifecycle artifacts become authoritative only through
+      a validated repository promotion transaction.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/promote.md
+    - plugins/saga/scripts/promote_scan.py
+    - plugins/saga/skills/promote/SKILL.md
+    - plugins/saga/skills/promote/references/promotion-contract.md
+    - plugins/saga/tests/test_promote_scan.py
+    test_node_ids:
+    - plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict
+    negative_test_node_ids:
+    - plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict_rejects_negative_cases
+    intentional_differences:
+    - Repository documents are canonical; brain state is staging only.
+  saga-code-review:
+    semantic_contract: Code review compares implementation with the approved plan,
+      reports typed findings, and requires evidence-backed disposition.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/code-review.md
+    - plugins/saga/skills/code-review/SKILL.md
+    - plugins/saga/skills/code-review/references/built-vs-planned.md
+    - plugins/saga/skills/code-review/references/findings-schema.md
+    - plugins/saga/skills/code-review/references/lens-catalog.md
+    - plugins/saga/skills/code-review/references/validator.md
+    - plugins/saga/tests/test_code_review_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition
+    negative_test_node_ids:
+    - plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition_rejects_negative_cases
+    intentional_differences:
+    - Use Antigravity reviewers and typed receipts; do not self-certify or assume
+      source workflow APIs.
+  saga-cross-runtime-reconciliation:
+    semantic_contract: Saga reconciles runtime-specific state and gate evidence without
+      allowing one host projection to override canonical repository truth.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/references/outcome-cross-runtime.md
+    - plugins/saga/scripts/override_rate_reader.py
+    - plugins/saga/scripts/reconcile.py
+    - plugins/saga/scripts/reconcile_controller.py
+    - plugins/saga/tests/test_cross_runtime_reconciliation.py
+    test_node_ids:
+    - plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative
+    negative_test_node_ids:
+    - plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative_rejects_negative_cases
+    intentional_differences:
+    - Reconcile receipts and repository facts, not source-host state directories.
+  saga-deploy-strategy:
+    semantic_contract: Deployment intent is detected and handed to the owning deployment
+      workflow without Saga performing an unauthorized release.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/detect_deploy_strategy.py
+    - plugins/saga/tests/test_detect_deploy_strategy.py
+    test_node_ids:
+    - plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release
+    negative_test_node_ids:
+    - plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release_rejects_negative_cases
+    intentional_differences:
+    - Detect and hand off only; no deployment, tag, or credential action.
+  saga-executive-review:
+    semantic_contract: Founder and chief-executive review challenge product clarity,
+      value, and strategic coherence without silently approving delivery.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/ceo-review.md
+    - plugins/saga/commands/founder-review.md
+    - plugins/saga/skills/founder-review/SKILL.md
+    - plugins/saga/skills/founder-review/references/ceo-cognition.md
+    - plugins/saga/skills/founder-review/references/review-modes.md
+    - plugins/saga/tests/test_executive_review_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval
+    negative_test_node_ids:
+    - plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval_rejects_negative_cases
+    intentional_differences:
+    - Keep `/ceo-review` as the documented alias and avoid source-only agent metadata.
+  saga-external-action-boundary:
+    semantic_contract: External mutations require a typed intent, workspace boundary,
+      adapter result, and separate authority receipt.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/external_action_adapters.py
+    - plugins/saga/scripts/external_action_contract.py
+    - plugins/saga/scripts/external_action_egress.py
+    - plugins/saga/scripts/external_action_workspace.py
+    - plugins/saga/tests/test_external_action_adapters.py
+    test_node_ids:
+    - plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority
+    negative_test_node_ids:
+    - plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority_rejects_negative_cases
+    intentional_differences:
+    - Implement a fail-closed local contract only; this issue authorizes no external
+      action.
+  saga-fleet-doctor:
+    semantic_contract: Saga consumes the host capability contract and reports unsupported
+      runtime behavior before dispatch.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/fleet-doctor.md
+    - plugins/saga/docs/commands.md
+    - plugins/saga/references/fleet-doctor-sources.md
+    - plugins/saga/scripts/fleet_doctor.py
+    - plugins/saga/scripts/host_capability_gate.py
+    - plugins/saga/skills/fleet-doctor/SKILL.md
+    - plugins/saga/tests/test_fleet_doctor.py
+    test_node_ids:
+    - plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable
+    negative_test_node_ids:
+    - plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable_rejects_negative_cases
+    intentional_differences:
+    - Consume only sanitized capability states and digests; do not probe or mutate
+      the live host here.
+  saga-handoff:
+    semantic_contract: A completed workstream emits a validated handoff envelope that
+      names artifacts, evidence, risks, and external actions still requiring authority.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/handoff.md
+    - plugins/saga/references/handoff_failure_matrix.md
+    - plugins/saga/scripts/handoff_envelope.py
+    - plugins/saga/skills/handoff/SKILL.md
+    - plugins/saga/tests/test_handoff_envelope.py
+    test_node_ids:
+    - plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority
+    negative_test_node_ids:
+    - plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority_rejects_negative_cases
+    intentional_differences:
+    - Stop at a local validated packet; do not create issues, boards, PRs, merges,
+      or deployments.
+  saga-ideation:
+    semantic_contract: Idea exploration preserves distinct perspectives, alternatives,
+      convergence evidence, and a durable ideation artifact.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/ideate.md
+    - plugins/saga/skills/ideate/SKILL.md
+    - plugins/saga/skills/ideate/references/convergence-and-partnership.md
+    - plugins/saga/skills/ideate/references/ideation-artifact.md
+    - plugins/saga/tests/test_ideate_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact
+    negative_test_node_ids:
+    - plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact_rejects_negative_cases
+    intentional_differences:
+    - Express Gemini deliberation requirements without claiming unavailable independent
+      execution.
+  saga-investigation:
+    semantic_contract: Investigation separates observed facts, hypotheses, experiments,
+      root cause, and unresolved uncertainty in a durable report.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/investigate.md
+    - plugins/saga/skills/investigate/SKILL.md
+    - plugins/saga/skills/investigate/references/debug-report.md
+    - plugins/saga/skills/investigate/references/methodology.md
+    - plugins/saga/skills/investigate/references/pattern-taxonomy.md
+    - plugins/saga/tests/test_investigate_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty
+    negative_test_node_ids:
+    - plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty_rejects_negative_cases
+    intentional_differences:
+    - Preserve evidence categories and durable report; no source-specific tool names.
+  saga-lifecycle-settlement:
+    semantic_contract: Lifecycle advancement is derived from declared obligations
+      and independent receipts rather than narration or a phase label alone.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/references/lifecycle-obligation-contract.md
+    - plugins/saga/references/lifecycle-obligation-schema.json
+    - plugins/saga/references/saga-spec.md
+    - plugins/saga/references/transition-receipt-schema.json
+    - plugins/saga/scripts/lifecycle_obligations.py
+    - plugins/saga/scripts/lifecycle_state.py
+    - plugins/saga/scripts/saga.py
+    - plugins/saga/scripts/transition_receipts.py
+    - plugins/saga/tests/test_lifecycle_obligations.py
+    - plugins/saga/tests/test_saga_saga.py
+    - plugins/saga/tests/test_transition_receipts.py
+    test_node_ids:
+    - plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts
+    negative_test_node_ids:
+    - plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts_rejects_negative_cases
+    intentional_differences:
+    - Extend current obligation/receipt design; narration and GitHub state cannot
+      replace canonical evidence.
+  saga-loop-routing:
+    semantic_contract: Loop routing selects the earliest unsettled required obligation
+      and does not skip or repeat completed lifecycle work.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/agents/lifecycle-router.md
+    - plugins/saga/commands/loop.md
+    - plugins/saga/skills/loop/SKILL.md
+    - plugins/saga/skills/loop/references/dispatch-table.md
+    - plugins/saga/skills/loop/references/drive-and-resume.md
+    - plugins/saga/skills/loop/references/generic-ask-compiler.md
+    - plugins/saga/tests/test_loop_routing.py
+    test_node_ids:
+    - plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently
+    negative_test_node_ids:
+    - plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently_rejects_negative_cases
+    intentional_differences:
+    - Route from canonical settlement; no source backend or unproven scheduler.
+  saga-manifest-provenance-ledgers:
+    semantic_contract: Run manifests and provenance ledgers bind inputs, outputs,
+      digests, and ownership so later checks can reconstruct evidence.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/manifest_reader.py
+    - plugins/saga/scripts/manifest_store.py
+    - plugins/saga/scripts/provenance_manifest.py
+    - plugins/saga/scripts/run_ledger.py
+    - plugins/saga/tests/test_manifest_consumer_matrix.py
+    - plugins/saga/tests/test_manifest_reader.py
+    - plugins/saga/tests/test_manifest_store.py
+    - plugins/saga/tests/test_run_ledger.py
+    test_node_ids:
+    - plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner
+    negative_test_node_ids:
+    - plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner_rejects_negative_cases
+    intentional_differences:
+    - Preserve target schemas and add only fields required for approved evidence;
+      no source manifest copy.
+  saga-office-hours:
+    semantic_contract: Office hours diagnoses the decision frame and returns advice
+      without claiming lifecycle completion.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/office-hours.md
+    - plugins/saga/skills/office-hours/SKILL.md
+    - plugins/saga/skills/office-hours/references/frame-diagnostic.md
+    - plugins/saga/tests/test_office_hours_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim
+    negative_test_node_ids:
+    - plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim_rejects_negative_cases
+    intentional_differences:
+    - Keep the surface advisory and artifact-optional.
+  saga-operator-safety:
+    semantic_contract: Shared Saga controls preserve operator choice, escalation boundaries,
+      safe escape hatches, and consistent artifact formatting.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/references/command_dry_runs.md
+    - plugins/saga/references/escape_hatches.md
+    - plugins/saga/references/formatting-style.md
+    - plugins/saga/references/harness-escalation-policy.md
+    - plugins/saga/references/operator-choice.md
+    - plugins/saga/scripts/journal_triggers.py
+    - plugins/saga/tests/test_operator_safety_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting
+    negative_test_node_ids:
+    - plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting_rejects_negative_cases
+    intentional_differences:
+    - Use Antigravity prompts and repository artifacts; no Claude interaction API.
+  saga-optimization:
+    semantic_contract: Optimization defines a measurable experiment, baseline, change,
+      and stop condition before claiming improvement.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/optimize.md
+    - plugins/saga/skills/optimize/SKILL.md
+    - plugins/saga/skills/optimize/references/experiment-loop.md
+    - plugins/saga/skills/optimize/references/metric-taxonomy.md
+    - plugins/saga/tests/test_optimize_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition
+    negative_test_node_ids:
+    - plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition_rejects_negative_cases
+    intentional_differences:
+    - Keep measurement separate from automatic deployment or completion.
+  saga-outcome-board-integration:
+    semantic_contract: Outcome state reconciles issue and project facts idempotently
+      while keeping remote board changes separately authorized.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/board_progression.py
+    - plugins/saga/scripts/issue_progress.py
+    - plugins/saga/scripts/outcome_board_sync.py
+    - plugins/saga/scripts/outcome_github.py
+    - plugins/saga/scripts/parse_issue.py
+    - plugins/saga/tests/test_outcome_board_sync.py
+    test_node_ids:
+    - plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded
+    negative_test_node_ids:
+    - plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded_rejects_negative_cases
+    intentional_differences:
+    - Keep remote facts as inputs and mutation behind authority; tests are fixture-only.
+  saga-outcome-economics-liveness:
+    semantic_contract: Outcome orchestration reports cost, progress, and liveness
+      without treating activity or spend as completion.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/outcome_costs.py
+    - plugins/saga/scripts/outcome_liveness.py
+    - plugins/saga/tests/test_outcome_liveness.py
+    - plugins/saga/tests/test_outcome_economics.py
+    test_node_ids:
+    - plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion
+    negative_test_node_ids:
+    - plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion_rejects_negative_cases
+    intentional_differences:
+    - Metrics are evidence, not settlement authority.
+  saga-outcome-merge-worktrees:
+    semantic_contract: Outcome worktrees and merge queues preserve branch ownership
+      and settle only from verified integration evidence.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/merge_watcher.py
+    - plugins/saga/scripts/outcome_merge.py
+    - plugins/saga/scripts/outcome_worktrees.py
+    - plugins/saga/tests/test_merge_watcher.py
+    - plugins/saga/tests/test_outcome_merge_queue.py
+    - plugins/saga/tests/test_outcome_worktrees.py
+    test_node_ids:
+    - plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt
+    negative_test_node_ids:
+    - plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt_rejects_negative_cases
+    intentional_differences:
+    - Model local state and verified receipts; do not execute Git outside the Git
+      role.
+  saga-outcome-orchestration:
+    semantic_contract: Outcome graphs decompose objectives, dispatch owned leaves,
+      reconcile evidence, and refuse unsupported completion.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/outcome.md
+    - plugins/saga/scripts/outcome.py
+    - plugins/saga/scripts/outcome_decompose.py
+    - plugins/saga/scripts/outcome_dispatcher.py
+    - plugins/saga/scripts/outcome_edges.py
+    - plugins/saga/scripts/outcome_gate_transport.py
+    - plugins/saga/scripts/outcome_orchestrator.py
+    - plugins/saga/scripts/outcome_projection.py
+    - plugins/saga/scripts/outcome_reconcile.py
+    - plugins/saga/scripts/outcome_report.py
+    - plugins/saga/scripts/outcome_spec.py
+    - plugins/saga/scripts/outcome_store.py
+    - plugins/saga/skills/outcome/SKILL.md
+    - plugins/saga/tests/test_outcome_completion.py
+    - plugins/saga/tests/test_outcome_dispatcher.py
+    - plugins/saga/tests/test_outcome_integration.py
+    - plugins/saga/tests/test_outcome_reconcile.py
+    - plugins/saga/tests/test_outcome_spec.py
+    - plugins/saga/tests/test_outcome_store.py
+    test_node_ids:
+    - plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence
+    negative_test_node_ids:
+    - plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence_rejects_negative_cases
+    intentional_differences:
+    - Preserve the committed outcome spec and receipt hierarchy; no new outcome edge
+      is invented by this migration.
+  saga-planning:
+    semantic_contract: Planning converts approved requirements into a decision-complete,
+      testable implementation plan with explicit boundaries.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/plan.md
+    - plugins/saga/skills/plan/SKILL.md
+    - plugins/saga/skills/plan/references/interrogation.md
+    - plugins/saga/skills/plan/references/plan-sections.md
+    - plugins/saga/tests/test_plan_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority
+    negative_test_node_ids:
+    - plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority_rejects_negative_cases
+    intentional_differences:
+    - Keep decisions, write sets, dependencies, tests, and authority explicit; use
+      target roles and Gemini tiers.
+  saga-plugin-readiness:
+    semantic_contract: Saga verifies that dependent plugin and workflow contracts
+      are available before routing work to them.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/plugin_dependency_resolver.py
+    - plugins/saga/tests/test_plugin_dependency_resolver.py
+    test_node_ids:
+    - plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping
+    negative_test_node_ids:
+    - plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping_rejects_negative_cases
+    intentional_differences:
+    - Resolve actual Antigravity plugin contracts; map source team execution to `multi-agent-consensus`
+      and do not require a target `verified-workflows` plugin.
+  saga-provider-pulse:
+    semantic_contract: Provider telemetry reports capability quality and drift without
+      converting measurements into automatic routing authority.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/pulse.md
+    - plugins/saga/scripts/capability_elo.py
+    - plugins/saga/scripts/provider_control_chart.py
+    - plugins/saga/scripts/pulse.py
+    - plugins/saga/scripts/second_opinion.py
+    - plugins/saga/skills/pulse/SKILL.md
+    - plugins/saga/skills/pulse/references/manual-verification.md
+    - plugins/saga/tests/test_provider_pulse.py
+    test_node_ids:
+    - plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority
+    negative_test_node_ids:
+    - plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority_rejects_negative_cases
+    intentional_differences:
+    - Operate on supplied sanitized receipts only; no live provider calls and no model
+      auto-selection.
+  saga-quality-assurance:
+    semantic_contract: Quality assurance selects risk-based scenarios, executes acceptance
+      checks, and records failures without self-certification.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/qa.md
+    - plugins/saga/scripts/qa_health_score.py
+    - plugins/saga/skills/qa/SKILL.md
+    - plugins/saga/skills/qa/references/qa-report.md
+    - plugins/saga/skills/qa/references/risk-taxonomy.md
+    - plugins/saga/tests/test_qa_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence
+    negative_test_node_ids:
+    - plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence_rejects_negative_cases
+    intentional_differences:
+    - Use deterministic checks and independent evidence; response length is not quality.
+  saga-requirements-brainstorm:
+    semantic_contract: Brainstorming turns an approved idea into testable requirements,
+      assumptions, actors, and acceptance examples.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/brainstorm.md
+    - plugins/saga/skills/brainstorm/SKILL.md
+    - plugins/saga/skills/brainstorm/references/requirements-sections.md
+    - plugins/saga/tests/test_brainstorm_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples
+    negative_test_node_ids:
+    - plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples_rejects_negative_cases
+    intentional_differences:
+    - Preserve requirements depth and operator questions using ordinary interaction,
+      not Claude APIs.
+  saga-retrospective:
+    semantic_contract: Retrospective analysis records evidence-backed learning after
+      delivery without changing Saga lifecycle state.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/retro.md
+    - plugins/saga/skills/retro/SKILL.md
+    - plugins/saga/skills/retro/references/retro-passes.md
+    - plugins/saga/skills/retro/references/retro-report.md
+    - plugins/saga/skills/retro/references/self-edit-safety.md
+    - plugins/saga/tests/test_retro_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation
+    negative_test_node_ids:
+    - plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation_rejects_negative_cases
+    intentional_differences:
+    - Keep retro off-chain and Saga-read-only.
+  saga-session-context-and-spores:
+    semantic_contract: Interrupted work can preserve bounded session context, reconstruct
+      in-flight state, and render a truthful status projection.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/discover_sessions.py
+    - plugins/saga/scripts/extract_session_skeleton.py
+    - plugins/saga/scripts/find_inflight_work.py
+    - plugins/saga/scripts/load_saga_context.py
+    - plugins/saga/scripts/saga_spore.py
+    - plugins/saga/scripts/scaffold_checkpoint.py
+    - plugins/saga/scripts/status_card.py
+    - plugins/saga/tests/test_saga_spore.py
+    - plugins/saga/tests/test_spore_seam_roundtrip.py
+    - plugins/saga/tests/test_state_paths.py
+    test_node_ids:
+    - plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status
+    negative_test_node_ids:
+    - plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status_rejects_negative_cases
+    intentional_differences:
+    - Resolve repository and Antigravity-local paths through current target conventions;
+      no fixed brain root.
+  saga-ship-ceremony:
+    semantic_contract: Shipping uses resumable transitions, hazard checks, reversible
+      receipts, and explicit operator confirmation before consequential steps.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/scripts/ceremony_hazards.py
+    - plugins/saga/scripts/reversibility_certificate.py
+    - plugins/saga/scripts/ship_ceremony.py
+    - plugins/saga/scripts/ship_undo.py
+    - plugins/saga/tests/test_ceremony_hazards.py
+    - plugins/saga/tests/test_ship_ceremony.py
+    - plugins/saga/tests/test_ship_undo.py
+    test_node_ids:
+    - plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation
+    negative_test_node_ids:
+    - plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation_rejects_negative_cases
+    intentional_differences:
+    - Preserve local state and receipts; actual GitHub, merge, or deploy actions stay
+      separately authorized.
+  saga-specification:
+    semantic_contract: Specification defines the required outcome and acceptance behavior
+      without prematurely choosing implementation details.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/spec.md
+    - plugins/saga/skills/spec/SKILL.md
+    - plugins/saga/skills/spec/references/interrogation.md
+    - plugins/saga/skills/spec/references/spec-template.md
+    - plugins/saga/tests/test_spec_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how
+    negative_test_node_ids:
+    - plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how_rejects_negative_cases
+    intentional_differences:
+    - Keep specification off-chain and focused on what, not source implementation
+      layout.
+  saga-strategy:
+    semantic_contract: Strategy records the chosen direction, alternatives, constraints,
+      and revisit conditions before execution planning.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/strategy.md
+    - plugins/saga/skills/strategy/SKILL.md
+    - plugins/saga/skills/strategy/references/interview.md
+    - plugins/saga/skills/strategy/references/strategy-template.md
+    - plugins/saga/tests/test_strategy_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger
+    negative_test_node_ids:
+    - plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger_rejects_negative_cases
+    intentional_differences:
+    - Preserve operator decision and rejected alternatives; no delivery approval.
+  saga-work-execution:
+    semantic_contract: Work follows approved units, preserves unrelated changes, runs
+      required checks, and stops at explicit authority gates.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/saga/commands/work.md
+    - plugins/saga/skills/work/SKILL.md
+    - plugins/saga/skills/work/references/execution-strategy.md
+    - plugins/saga/skills/work/references/pr-continuation-loop.md
+    - plugins/saga/skills/work/references/test-and-gates.md
+    - plugins/saga/tests/test_work_contract.py
+    test_node_ids:
+    - plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates
+    negative_test_node_ids:
+    - plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates_rejects_negative_cases
+    intentional_differences:
+    - Use Antigravity-native assignments and Gemini tiers; no source mechanical executor
+      or automatic lifecycle continuation.
+  shared-runtime-resolution:
+    semantic_contract: Plugins resolve the shared fleet implementation and compatibility
+      contract without machine-specific import assumptions.
+    final_antigravity_state: present
+    target_paths:
+    - plugins/fleet-core/scripts/fleet_commons/plugin_resolution.py
+    - plugins/fleet-core/scripts/fleet_commons/workflow_compat.py
+    - plugins/fleet-core/scripts/fleet_commons_shim.py
+    - plugins/mission-control/scripts/fleet_commons_shim.py
+    - plugins/saga/scripts/fleet_commons_shim.py
+    - plugins/fleet-core/tests/test_fleet_commons.py
+    - plugins/fleet-core/tests/test_fleet_commons_resolution.py
+    - plugins/fleet-core/tests/test_workflow_compat.py
+    test_node_ids:
+    - plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound
+    negative_test_node_ids:
+    - plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound_rejects_negative_cases
+    intentional_differences:
+    - Resolve logical plugin roots and target workflow vocabulary; no absolute home
+      paths or source package assumptions.

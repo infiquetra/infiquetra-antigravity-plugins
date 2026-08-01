@@ -508,6 +508,18 @@ def get_projects_for_repo(config: dict, repo_name: str) -> list[dict]:
     return result
 
 
+def get_single_project_for_repo(config: dict, repo_name: str) -> dict[str, Any]:
+    """Resolve one mapping for a mutation; callers must not guess among matches."""
+    projects = get_projects_for_repo(config, repo_name)
+    if not projects:
+        raise ProjectMappingResolutionError(f"repository {repo_name!r} has no project mapping")
+    if len(projects) > 1:
+        raise ProjectMappingResolutionError(
+            f"repository {repo_name!r} has an ambiguous project mapping"
+        )
+    return cast(dict[str, Any], projects[0])
+
+
 # ===========================
 # GH CLI WRAPPER + TYPED EXCEPTIONS
 # ===========================
@@ -568,6 +580,22 @@ class ApiRateLimitedError(GhApiError):
 
 class ApiAuthError(GhApiError):
     """HTTP 401 or 403 (non-rate-limit)."""
+
+
+class ApiResponseError(GhApiError):
+    """A successful transport returned malformed or incomplete API data."""
+
+
+class ProjectCensusError(ApiResponseError):
+    """A project-item traversal could not prove that its census is complete."""
+
+
+class ProjectItemResolutionError(ApiResponseError):
+    """A board mutation could not resolve exactly one project item."""
+
+
+class ProjectMappingResolutionError(ApiResponseError):
+    """Repository-to-project resolution was missing or ambiguous."""
 
 
 # Status-code parser. gh CLI prints stderr like:
@@ -695,11 +723,22 @@ def _graphql(query: str, variables: dict | None = None) -> dict:
 
     args = ["api", "graphql", "--input", "-"]
     result = _gh(args, input_data=json.dumps(payload))
-    data = json.loads(result)
+    data = _decode_json_response(result, operation="GraphQL")
 
     if "errors" in data:
-        raise RuntimeError(f"GraphQL errors: {data['errors']}")
+        raise ApiResponseError(f"GraphQL errors: {data['errors']}")
     return cast(dict, data.get("data", {}))
+
+
+def _decode_json_response(result: str, *, operation: str) -> dict[str, Any]:
+    """Decode an API object response and preserve malformed data as a typed failure."""
+    try:
+        data = json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise ApiResponseError(f"{operation} returned malformed JSON") from exc
+    if not isinstance(data, dict):
+        raise ApiResponseError(f"{operation} returned a non-object JSON response")
+    return cast(dict[str, Any], data)
 
 
 def _issue_or_pull_request_node(repo_data: dict[str, Any]) -> dict[str, Any] | None:
@@ -713,31 +752,48 @@ def _issue_or_pull_request_node(repo_data: dict[str, Any]) -> dict[str, Any] | N
 def _rest_get(path: str) -> Any:
     """Execute a REST GET via gh CLI."""
     result = _gh(["api", path])
-    return json.loads(result)
+    try:
+        return json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise ApiResponseError("REST GET returned malformed JSON") from exc
 
 
 def _rest_post(path: str, body: dict) -> Any:
     """Execute a REST POST via gh CLI."""
     result = _gh(["api", "--method", "POST", path, "--input", "-"], input_data=json.dumps(body))
-    return json.loads(result)
+    try:
+        return json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise ApiResponseError("REST POST returned malformed JSON") from exc
 
 
 def _rest_patch(path: str, body: dict) -> Any:
     """Execute a REST PATCH via gh CLI."""
     result = _gh(["api", "--method", "PATCH", path, "--input", "-"], input_data=json.dumps(body))
-    return json.loads(result)
+    try:
+        return json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise ApiResponseError("REST PATCH returned malformed JSON") from exc
 
 
 def _rest_put(path: str, body: dict) -> Any:
     """Execute a REST PUT via gh CLI."""
     result = _gh(["api", "--method", "PUT", path, "--input", "-"], input_data=json.dumps(body))
-    return json.loads(result)
+    try:
+        return json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise ApiResponseError("REST PUT returned malformed JSON") from exc
 
 
 def _rest_delete(path: str) -> Any:
     """Execute a REST DELETE via gh CLI. May return empty body (e.g. 204 No Content)."""
     result = _gh(["api", "--method", "DELETE", path])
-    return json.loads(result) if result else ""
+    if not result:
+        return ""
+    try:
+        return json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise ApiResponseError("REST DELETE returned malformed JSON") from exc
 
 
 # ===========================
@@ -811,6 +867,7 @@ query($org: String!, $number: Int!, $cursor: String) {
       id
       title
       items(first: 100, after: $cursor) {
+        totalCount
         pageInfo { hasNextPage endCursor }
         nodes {
           id
@@ -898,6 +955,7 @@ query($org: String!, $repo: String!, $number: Int!, $cursor: String) {
       closedAt
       timelineItems(first: 100, after: $cursor,
         itemTypes: [PROJECT_V2_ITEM_FIELD_VALUE_EVENT]) {
+        totalCount
         pageInfo { hasNextPage endCursor }
         nodes {
           ... on ProjectV2ItemFieldValueEvent {
@@ -922,11 +980,26 @@ query($org: String!, $repo: String!, $number: Int!, $cursor: String) {
 # ===========================
 
 
-def get_project_items(project_number: int) -> tuple[str, list[dict]]:
-    """Fetch all items from a project, returning (project_id, items)."""
-    all_items = []
-    cursor = None
-    project_id = ""
+@dataclass(frozen=True)
+class ProjectCensus:
+    """A complete, count-reconciled traversal of one project board."""
+
+    project_id: str
+    items: tuple[dict[str, Any], ...]
+    total_count: int
+    page_count: int
+    complete: bool = True
+
+
+def get_project_census(project_number: int) -> ProjectCensus:
+    """Fetch every project page or raise before exposing a partial census."""
+    all_items: list[dict[str, Any]] = []
+    cursor: str | None = None
+    project_id: str | None = None
+    expected_total: int | None = None
+    seen_cursors: set[str] = set()
+    seen_item_ids: set[str] = set()
+    page_count = 0
 
     while True:
         data = _graphql(
@@ -937,19 +1010,91 @@ def get_project_items(project_number: int) -> tuple[str, list[dict]]:
                 "cursor": cursor,
             },
         )
-        proj = data.get("organization", {}).get("projectV2", {})
-        if not project_id:
-            project_id = proj.get("id", "")
+        page_count += 1
+        organization = data.get("organization")
+        if not isinstance(organization, dict):
+            raise ProjectCensusError("project census response is missing organization")
+        proj = organization.get("projectV2")
+        if not isinstance(proj, dict):
+            raise ProjectCensusError("project census response is missing projectV2")
 
-        items_data = proj.get("items", {})
-        all_items.extend(items_data.get("nodes", []))
+        current_project_id = proj.get("id")
+        if not isinstance(current_project_id, str) or not current_project_id:
+            raise ProjectCensusError("project census response is missing project id")
+        if project_id is None:
+            project_id = current_project_id
+        elif current_project_id != project_id:
+            raise ProjectCensusError("project id changed during paginated census")
 
-        page_info = items_data.get("pageInfo", {})
-        if not page_info.get("hasNextPage"):
+        items_data = proj.get("items")
+        if not isinstance(items_data, dict):
+            raise ProjectCensusError("project census response is missing items")
+        total_count = items_data.get("totalCount")
+        if not isinstance(total_count, int) or isinstance(total_count, bool) or total_count < 0:
+            raise ProjectCensusError("project census response is missing a valid totalCount")
+        if expected_total is None:
+            expected_total = total_count
+        elif total_count != expected_total:
+            raise ProjectCensusError("project totalCount changed during paginated census")
+
+        nodes = items_data.get("nodes")
+        if not isinstance(nodes, list) or any(not isinstance(node, dict) for node in nodes):
+            raise ProjectCensusError("project census response contains malformed item nodes")
+        for node in nodes:
+            item_id = node.get("id")
+            if not isinstance(item_id, str) or not item_id:
+                raise ProjectCensusError("project census item is missing its node id")
+            if item_id in seen_item_ids:
+                raise ProjectCensusError(f"project census repeated item id {item_id!r}")
+            seen_item_ids.add(item_id)
+            all_items.append(cast(dict[str, Any], node))
+
+        page_info = items_data.get("pageInfo")
+        if not isinstance(page_info, dict) or not isinstance(page_info.get("hasNextPage"), bool):
+            raise ProjectCensusError("project census response has malformed pageInfo")
+        if not page_info["hasNextPage"]:
             break
-        cursor = page_info.get("endCursor")
+        next_cursor = page_info.get("endCursor")
+        if not isinstance(next_cursor, str) or not next_cursor:
+            raise ProjectCensusError("project census page hasNextPage without an endCursor")
+        if next_cursor == cursor or next_cursor in seen_cursors:
+            raise ProjectCensusError(f"project census repeated cursor {next_cursor!r}")
+        seen_cursors.add(next_cursor)
+        cursor = next_cursor
 
-    return project_id, all_items
+    assert project_id is not None
+    assert expected_total is not None
+    if len(all_items) != expected_total:
+        raise ProjectCensusError(
+            f"project census is partial: expected {expected_total} items, received {len(all_items)}"
+        )
+    return ProjectCensus(
+        project_id=project_id,
+        items=tuple(all_items),
+        total_count=expected_total,
+        page_count=page_count,
+    )
+
+
+def get_project_items(project_number: int) -> tuple[str, list[dict]]:
+    """Compatibility wrapper returning items only after a complete census."""
+    census = get_project_census(project_number)
+    return census.project_id, list(census.items)
+
+
+def _resolve_project_item(items: list[dict], repo: str, number: int) -> dict[str, Any]:
+    """Resolve exactly one repository/number pair before a board mutation."""
+    matches = [
+        item
+        for item in items
+        if item.get("content", {}).get("number") == number
+        and item.get("content", {}).get("repository", {}).get("name") == repo
+    ]
+    if not matches:
+        raise ProjectItemResolutionError(f"item {repo}#{number} was not found")
+    if len(matches) > 1:
+        raise ProjectItemResolutionError(f"item {repo}#{number} is ambiguous on the project")
+    return cast(dict[str, Any], matches[0])
 
 
 def get_item_status(item: dict) -> str:
@@ -1147,19 +1292,10 @@ def board_move(
     for proj in projects:
         project_id, items = get_project_items(proj["number"])
 
-        # Find item
-        target_item = None
-        for item in items:
-            content = item.get("content", {})
-            if (
-                content.get("number") == number
-                and content.get("repository", {}).get("name") == repo
-            ):
-                target_item = item
-                break
-
-        if not target_item:
-            results.append(f"Item {repo}#{number} not found in '{proj['name']}'")
+        try:
+            target_item = _resolve_project_item(items, repo, number)
+        except ProjectItemResolutionError as exc:
+            results.append(f"{exc} in '{proj['name']}'")
             continue
 
         # Find Status field ID and option ID via field discovery
@@ -1660,21 +1796,55 @@ def fields_discover(project_name: str, fmt: str) -> None:
 
 def _get_issue_column_times(org: str, repo: str, number: int) -> list[dict]:
     """Get time spent in each column via timeline events."""
-    all_events = []
-    cursor = None
+    all_events: list[dict[str, Any]] = []
+    cursor: str | None = None
+    seen_cursors: set[str] = set()
+    expected_total: int | None = None
 
     while True:
         data = _graphql(
             QUERY_GET_ISSUE_TIMELINE, {"org": org, "repo": repo, "number": number, "cursor": cursor}
         )
-        issue = data.get("repository", {}).get("issue", {})
-        timeline = issue.get("timelineItems", {})
-        all_events.extend(timeline.get("nodes", []))
+        repository = data.get("repository")
+        issue = repository.get("issue") if isinstance(repository, dict) else None
+        timeline = issue.get("timelineItems") if isinstance(issue, dict) else None
+        if not isinstance(timeline, dict):
+            raise ApiResponseError("issue history response is missing timelineItems")
 
-        page_info = timeline.get("pageInfo", {})
-        if not page_info.get("hasNextPage"):
+        total_count = timeline.get("totalCount")
+        if not isinstance(total_count, int) or isinstance(total_count, bool) or total_count < 0:
+            raise ApiResponseError("issue history response is missing a valid totalCount")
+        if expected_total is None:
+            expected_total = total_count
+        elif total_count != expected_total:
+            raise ApiResponseError("issue history totalCount changed during pagination")
+
+        nodes = timeline.get("nodes")
+        if not isinstance(nodes, list) or any(
+            node is not None and not isinstance(node, dict) for node in nodes
+        ):
+            raise ApiResponseError("issue history response contains malformed events")
+        all_events.extend(cast(list[dict[str, Any]], [node for node in nodes if node is not None]))
+
+        page_info = timeline.get("pageInfo")
+        if not isinstance(page_info, dict) or not isinstance(page_info.get("hasNextPage"), bool):
+            raise ApiResponseError("issue history response has malformed pageInfo")
+        if not page_info["hasNextPage"]:
             break
-        cursor = page_info.get("endCursor")
+        next_cursor = page_info.get("endCursor")
+        if not isinstance(next_cursor, str) or not next_cursor:
+            raise ApiResponseError("issue history page hasNextPage without an endCursor")
+        if next_cursor == cursor or next_cursor in seen_cursors:
+            raise ApiResponseError(f"issue history repeated cursor {next_cursor!r}")
+        seen_cursors.add(next_cursor)
+        cursor = next_cursor
+
+    assert expected_total is not None
+    if len(all_events) != expected_total:
+        raise ApiResponseError(
+            f"issue history is incomplete: expected {expected_total} events, "
+            f"received {len(all_events)}"
+        )
 
     # Calculate time in each column
     transitions = []
@@ -3943,6 +4113,8 @@ def _readiness_for_prepared_issue(issue: PreparedIssue) -> PreparedReadiness:
         blocking.append(f"Unknown handoff maturity {issue.handoff_maturity!r}; expected {allowed}")
     elif not issue.handoff_maturity:
         warnings.append("Missing handoff maturity metadata")
+    if re.search(r"^- Source:\s*\S+", issue.body, re.MULTILINE) and not issue.source_artifact:
+        blocking.append("Missing source artifact evidence recorded by the prepared draft")
 
     sections = _split_sections(issue.body)
     if issue.issue_type in _DISPATCH_ACTIONABLE_TYPES:

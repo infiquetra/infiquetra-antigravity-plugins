@@ -5,6 +5,25 @@ All notable changes to the fleet-core plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-07-30
+
+### Added
+
+- Add deterministic requested-versus-observed bridge receipts, assignment
+  evidence auditing, bounded local ownership leases and liveness, run-ledger
+  output attestation, and orphan-evidence validation.
+- Add logical target-plugin resolution, closed Antigravity workflow
+  compatibility, and bounded Saga semantic acceptance receipts.
+- Bind the canonical host-contract selector to the exact migration runtime
+  paths across Fleet Core, Mission Control, Multi-Agent Consensus, and Saga.
+- Add repository quality guards for fixture provenance, target ownership,
+  journal evidence, and exact positive and negative semantic test shapes.
+
+### Changed
+
+- Resolve Fleet Core through repository or Antigravity plugin-root context
+  without a hard-coded user install path or source-runtime environment name.
+
 ## [0.9.0] - 2026-07-26
 
 ### Added

@@ -40,6 +40,8 @@ STORE = _load("outcome_store")
 ORCH = _load("outcome_orchestrator")
 OUTCOME = _load("outcome")
 OBLIGATIONS = _load("lifecycle_obligations")
+RECEIPTS = _load("transition_receipts")
+MANIFESTS = _load("manifest_store")
 
 
 def _store(tmp_path: Path):
@@ -70,6 +72,107 @@ def _gh(
 def _node(sid: str, **kw: Any):
     data = {"subplot_id": sid, "title": sid, **kw}
     return SPEC.Node.from_dict(data)
+
+
+def _proof_node(tmp_path: Path):
+    output = {"changed_paths": ["plugins/saga/scripts/outcome.py"]}
+    manifest = MANIFESTS.build_evidence_manifest(
+        execution_id="build",
+        saga_ref="issue-15",
+        assignment_id="build",
+        owner_id="issue-15",
+        input_value={"objective": "ship"},
+        output_value=output,
+        created_at="2026-07-30T00:00:00+00:00",
+    )
+    contract = OBLIGATIONS.ObligationContract.from_dict(
+        {
+            "schema": OBLIGATIONS.SCHEMA_VERSION,
+            "contract_id": "outcome-build",
+            "workstream_id": "issue-15",
+            "stored_lifecycle_phases": [],
+            "off_chain_obligations": [],
+            "obligations": [
+                {
+                    "obligation_id": "integration",
+                    "kind": "check",
+                    "subject": "build",
+                    "requirement": "required",
+                    "producer": "worker",
+                    "required_evidence": [{"kind": "github-fact"}],
+                }
+            ],
+        }
+    )
+    evidence = OBLIGATIONS.Evidence(
+        evidence_id="integration-fact",
+        kind=OBLIGATIONS.EvidenceKind.GITHUB_FACT,
+        subject="build",
+        producer="fixture",
+        reference="https://example.invalid/receipt",
+        digest="sha256:" + "b" * 64,
+        verification_state=OBLIGATIONS.VerificationState.VERIFIED,
+    )
+    receipt = RECEIPTS.build_transition_receipt(
+        contract=contract,
+        transition_id="integration",
+        obligation_id="integration",
+        attempt=1,
+        external_facts=[evidence],
+    )
+    contract_path = tmp_path / "docs" / "outcomes" / "contract.json"
+    receipt_path = tmp_path / "docs" / "outcomes" / "receipt.json"
+    contract_path.parent.mkdir(parents=True, exist_ok=True)
+    contract_path.write_text(json.dumps(contract.to_dict()), encoding="utf-8")
+    receipt_path.write_text(json.dumps(receipt.to_dict()), encoding="utf-8")
+    node = _node(
+        "build",
+        kind="non-code",
+        leaf_saga_id="issue-15",
+        obligation_contract_ref="docs/outcomes/contract.json",
+        transition_receipt_refs=["docs/outcomes/receipt.json"],
+        evidence={
+            "manifest": manifest,
+            "manifest_assignment_id": "build",
+            "manifest_owner_id": "issue-15",
+            "manifest_input": {"objective": "ship"},
+            "manifest_output": output,
+        },
+    )
+    return node
+
+
+def test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence(
+    tmp_path: Path,
+) -> None:
+    node = _proof_node(tmp_path)
+    store = _store(tmp_path)
+    STORE.write_completion_event(
+        store,
+        STORE.CompletionEvent(
+            subplot_id="build",
+            state="done",
+            idempotency_key="canonical-build",
+            payload={"canonical": True},
+        ),
+    )
+    verdict = ORCH.barrier_satisfied(node, store=store, repo_root=tmp_path)
+    assert verdict.satisfied is True
+    assert verdict.contract == ORCH.CONTRACT_NONCODE
+
+
+def test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence_rejects_negative_cases(
+    tmp_path: Path,
+) -> None:
+    node = _proof_node(tmp_path)
+    store = _store(tmp_path)
+    node.leaf_saga_id = ""
+    assert ORCH.barrier_satisfied(node, store=store, repo_root=tmp_path).state == "orphan"
+    node = _proof_node(tmp_path)
+    node.evidence = {}
+    verdict = ORCH.barrier_satisfied(node, store=store, repo_root=tmp_path)
+    assert verdict.satisfied is False
+    assert verdict.state == "unattested"
 
 
 # --------------------------------------------------------------------------- outcome_github (R10/R34)

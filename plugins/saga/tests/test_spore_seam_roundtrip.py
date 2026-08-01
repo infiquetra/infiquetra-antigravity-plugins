@@ -25,11 +25,14 @@ SESSIONSTART_HOOK = ROOT / "hooks" / "compact_spore_session_hook.py"
 
 # The scripts dir must be on sys.path before importing the sibling saga modules (by-path, not a package).
 sys.path.insert(0, str(SAGA_SCRIPTS))
+import lifecycle_obligations  # noqa: E402
+import manifest_store  # noqa: E402
 import outcome  # noqa: E402
 import outcome_spec  # noqa: E402
 import outcome_store  # noqa: E402
 import saga  # noqa: E402
 import saga_spore  # noqa: E402
+import transition_receipts  # noqa: E402
 
 
 def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -71,6 +74,118 @@ def _common_dir(repo: Path) -> Path:
     if not d.is_absolute():
         d = repo / d
     return d
+
+
+def _session_evidence(tmp_path: Path):
+    owner = "issue-15"
+    contract = lifecycle_obligations.ObligationContract.from_dict(
+        {
+            "schema": lifecycle_obligations.SCHEMA_VERSION,
+            "contract_id": "resume-contract",
+            "workstream_id": owner,
+            "stored_lifecycle_phases": [],
+            "off_chain_obligations": [],
+            "obligations": [
+                {
+                    "obligation_id": "resume",
+                    "kind": "artifact",
+                    "subject": "session",
+                    "requirement": "required",
+                    "producer": "saga",
+                    "required_evidence": [{"kind": "github-fact"}],
+                }
+            ],
+        }
+    )
+    evidence = lifecycle_obligations.Evidence(
+        evidence_id="resume-fact",
+        kind=lifecycle_obligations.EvidenceKind.GITHUB_FACT,
+        subject="session",
+        producer="fixture",
+        reference="https://example.invalid/session",
+        digest="sha256:" + "c" * 64,
+        verification_state=lifecycle_obligations.VerificationState.VERIFIED,
+    )
+    receipt = transition_receipts.build_transition_receipt(
+        contract=contract,
+        transition_id="resume",
+        obligation_id="resume",
+        attempt=1,
+        external_facts=[evidence],
+    )
+    manifest = manifest_store.build_evidence_manifest(
+        execution_id="resume",
+        saga_ref=owner,
+        assignment_id="resume",
+        owner_id=owner,
+        input_value={"session": "sess"},
+        output_value={"status": "restored"},
+        created_at="2026-07-30T00:00:00+00:00",
+    )
+    payload = json.dumps(
+        {
+            "schema": saga_spore.SCHEMA,
+            "session_id": "sess",
+            "repo_root": str(tmp_path),
+            "saga_id": owner,
+            "generated_at": "2026-07-30T00:00:00+00:00",
+            "block": "bounded context",
+        }
+    )
+    return contract, receipt, manifest, payload
+
+
+def test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status(
+    tmp_path: Path,
+) -> None:
+    contract, receipt, manifest, payload = _session_evidence(tmp_path)
+    packet = saga_spore.reconstruct_session_packet(
+        payload,
+        expected_session_id="sess",
+        repo_root=tmp_path,
+        contract=contract,
+        receipt=receipt,
+        manifest=manifest,
+        assignment_id="resume",
+        owner_id="issue-15",
+        input_value={"session": "sess"},
+        output_value={"status": "restored"},
+    )
+    assert packet["context"] == "bounded context"
+    assert packet["complete"] is True
+    assert packet["status_source"] == "canonical transition receipt"
+
+
+def test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status_rejects_negative_cases(
+    tmp_path: Path,
+) -> None:
+    contract, receipt, manifest, payload = _session_evidence(tmp_path)
+    with pytest.raises(ValueError, match="stale"):
+        saga_spore.reconstruct_session_packet(
+            payload,
+            expected_session_id="other",
+            repo_root=tmp_path,
+            contract=contract,
+            receipt=receipt,
+            manifest=manifest,
+            assignment_id="resume",
+            owner_id="issue-15",
+            input_value={"session": "sess"},
+            output_value={"status": "restored"},
+        )
+    with pytest.raises(ValueError, match="manifest invalid"):
+        saga_spore.reconstruct_session_packet(
+            payload,
+            expected_session_id="sess",
+            repo_root=tmp_path,
+            contract=contract,
+            receipt=receipt,
+            manifest=manifest,
+            assignment_id="resume",
+            owner_id="issue-15",
+            input_value={"session": "tampered"},
+            output_value={"status": "restored"},
+        )
 
 
 def test_seam_happy_path_single_saga(repo: Path) -> None:
