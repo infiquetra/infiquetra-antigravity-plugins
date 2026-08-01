@@ -1,0 +1,19 @@
+{
+  "schema": "saga.conformance-baseline-artifact.v1",
+  "artifact_id": "reference-lifecycle-codex-v1",
+  "fixture_id": "reference-lifecycle",
+  "fixture_revision": 1,
+  "provider": "codex",
+  "source_snapshot": "0c2072446c7e136caa274b5f637ca2c8c03725e4",
+  "quality_dimensions": {
+    "depth": "Decomposes the reference lifecycle into buildable units with explicit inputs, outputs, checks, stop conditions, retry behavior, and the final handoff contract.",
+    "evidence_use": "Uses deterministic validators and identity-bound repository evidence for capability, deliberation, transition, promotion, reconciliation, and external-action claims.",
+    "seed_retention": "Carries the reference profile and README contract through implementation planning while preserving scope limits, required lifecycle gates, and the no-live-model deterministic boundary.",
+    "adjudication": "Returns an explicit conflict and preserves both meaningful versions whenever safe automatic reconciliation cannot prove a single canonical result.",
+    "lifecycle_completeness": "Demonstrates every required deterministic stage and refuses outcome advancement or handoff readiness while any required obligation lacks satisfied evidence."
+  },
+  "sanitization": {
+    "state": "sanitized",
+    "raw_source_committed": false
+  }
+}

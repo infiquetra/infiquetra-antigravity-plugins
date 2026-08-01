@@ -1,0 +1,217 @@
+{
+  "schema": "saga.conformance-scenario-set.v1",
+  "fixture_id": "reference-lifecycle",
+  "fixture_revision": 1,
+  "scenarios": [
+    {
+      "scenario_id": "capability-catalog-valid",
+      "scenario_class": "success",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "repository-fixture",
+        "reference": "plugins/fleet-core/references/antigravity-capability-probes.yaml"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/fleet-core/tests/test_antigravity_capabilities.py::test_repository_catalog_is_valid"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "The versioned capability catalog validates with no contract errors."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "optional-capability-fallback",
+      "scenario_class": "success",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/fleet-core/tests/test_antigravity_capabilities.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/fleet-core/tests/test_antigravity_capabilities.py::test_optional_fallback_is_explicitly_degraded"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "An unavailable optional capability uses only its declared proven fallback and reports degraded."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "host-contract-clean",
+      "scenario_class": "success",
+      "requirement_ids": ["R23", "R48"],
+      "input_contract": {
+        "kind": "repository-fixture",
+        "reference": "plugins/fleet-core/references/antigravity-host-contract-surfaces.json"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/fleet-core/tests/test_host_contract_lint.py::test_only_reviewed_historical_lines_are_allowlisted"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "The selected active runtime surface has no unresolved host-contract findings."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "transition-settlement",
+      "scenario_class": "success",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_transition_receipts.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_transition_receipts.py::test_receipt_binds_every_category_and_round_trips"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "A transition receipt binds every evidence category and recomputes as satisfied."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "resume-retry-idempotent",
+      "scenario_class": "success",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_resume_reconciliation.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_resume_reconciliation.py::test_retry_is_read_only_and_does_not_duplicate_canonical_evidence"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Retrying unchanged evidence returns the same route and writes no duplicate artifact or receipt."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "deliberation-complete",
+      "scenario_class": "success",
+      "requirement_ids": ["R33", "R48"],
+      "input_contract": {
+        "kind": "repository-fixture",
+        "reference": "plugins/multi-agent-consensus/tests/fixtures/deliberation/cases.json"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/multi-agent-consensus/tests/test_deliberation.py::test_six_isolated_sequential_results_satisfy_six_strategy_contract"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Six independently identified strategy results satisfy declared deliberation coverage."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "promotion-idempotent",
+      "scenario_class": "success",
+      "requirement_ids": ["R44", "R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_artifact_promotion.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_artifact_promotion.py::test_first_promotion_and_unchanged_retry_are_idempotent"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "An unchanged promotion retry preserves one canonical artifact and one receipt identity."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "promoted-content-sanitized",
+      "scenario_class": "success",
+      "requirement_ids": ["R47", "R48", "AE12"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_artifact_promotion.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_artifact_promotion.py::test_sanitization_rejects_private_promoted_content_without_echo"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Private paths, credentials, hostnames, and transcript payloads are rejected without value echo."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "external-authority-valid",
+      "scenario_class": "success",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_external_action_adapters.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "An external action executes only with matching typed intent, workspace, adapter, and authority."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "impl-spec-profile-valid",
+      "scenario_class": "success",
+      "requirement_ids": ["F6"],
+      "input_contract": {
+        "kind": "repository-fixture",
+        "reference": "plugins/saga/tests/fixtures/impl-spec/valid-profile/profile.json"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_impl_spec.py::test_valid_profile_discovers_contract_waves_and_complete_set"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "The shared profile and folder contract produce deterministic dependency waves and a complete spec set."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    }
+  ]
+}

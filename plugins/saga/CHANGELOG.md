@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.10.0 - 2026-08-01
+
+- Add a sanitized reference-lifecycle conformance fixture that indexes deterministic capability,
+  lifecycle, deliberation, promotion, reconciliation, and mutation-boundary validators.
+- Bind reusable Claude and Codex semantic baselines to fixture, contract, snapshot, artifact, and
+  operator-approval identities.
+- Run deterministic Saga conformance and baseline validation as a blocking CI job without live model
+  calls.
+
 ## 1.9.0 - 2026-08-01
 
 - Reconcile required lifecycle obligations through one deterministic, read-only evaluator shared by

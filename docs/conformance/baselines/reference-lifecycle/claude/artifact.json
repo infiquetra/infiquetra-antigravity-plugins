@@ -1,0 +1,19 @@
+{
+  "schema": "saga.conformance-baseline-artifact.v1",
+  "artifact_id": "reference-lifecycle-claude-v1",
+  "fixture_id": "reference-lifecycle",
+  "fixture_revision": 1,
+  "provider": "claude",
+  "source_snapshot": "0a572448556252c499752e5132617b4c9aa9c1a5",
+  "quality_dimensions": {
+    "depth": "Covers the full profile-backed specification route, lifecycle obligations, independent review, canonical promotion, reconciliation, and handoff boundary with explicit failure handling.",
+    "evidence_use": "Links every completion claim to a named contract, repository artifact, transition receipt, capability result, or external fact instead of relying on completion narration.",
+    "seed_retention": "Retains the reference service profile, folder contract, dependency waves, required review and quality gates, and the operator's prohibition on unauthorized external mutation.",
+    "adjudication": "Preserves conflicting canonical and staged work, identifies the disputed obligation, and stops for an operator decision without choosing by timestamp.",
+    "lifecycle_completeness": "Reaches a validated mission-control handoff only after implementation specification, plan review, work, code review, quality assurance, artifact promotion, and receipt settlement are complete."
+  },
+  "sanitization": {
+    "state": "sanitized",
+    "raw_source_committed": false
+  }
+}

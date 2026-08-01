@@ -1,0 +1,35 @@
+{
+  "schema": "saga.conformance-baseline.v1",
+  "fixture": {
+    "id": "reference-lifecycle",
+    "revision": 1,
+    "path": "plugins/saga/tests/fixtures/conformance/reference-lifecycle/fixture.json",
+    "sha256": "6dd400b5a23955a146647bf6cad1faeb951e97e2289d484e2d36334973d74d01"
+  },
+  "semantic_contract": {
+    "version": "saga-reliability-2026-07-26.v1",
+    "path": "docs/brainstorms/2026-07-26-antigravity-saga-reliability-system-requirements.md",
+    "sha256": "a2f760b8b5112ca6812fbe30e62f0f43e7c13645c67ba017367e98c0e779d11e"
+  },
+  "source_snapshots": {
+    "claude": "0a572448556252c499752e5132617b4c9aa9c1a5",
+    "codex": "0c2072446c7e136caa274b5f637ca2c8c03725e4"
+  },
+  "artifacts": {
+    "claude": {
+      "path": "docs/conformance/baselines/reference-lifecycle/claude/artifact.json",
+      "sha256": "e68bfd18a22d991248ebbfb3c63f64f3701771f2620a9a96b8552e07215f52ea"
+    },
+    "codex": {
+      "path": "docs/conformance/baselines/reference-lifecycle/codex/artifact.json",
+      "sha256": "6b3a5d12e682c940422555aefc1e53452bc00f8e3944431f32e0f6392781fc12"
+    }
+  },
+  "operator_approval": {
+    "state": "approved",
+    "approved_by": "operator",
+    "approved_at": "2026-08-01T02:25:48Z",
+    "reference": "https://github.com/infiquetra/infiquetra-antigravity-plugins/issues/18#issuecomment-5149210308",
+    "binding_sha256": "61a5e306d657de57140b85bbb6b25b6be933a7e761707df605e6de82e4f38b14"
+  }
+}

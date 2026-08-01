@@ -1,0 +1,82 @@
+{
+  "schema": "saga.conformance-fixture.v1",
+  "fixture_id": "reference-lifecycle",
+  "revision": 1,
+  "semantic_contract_version": "saga-reliability-2026-07-26.v1",
+  "scenario_sets": [
+    {
+      "path": "plugins/saga/tests/fixtures/conformance/reference-lifecycle/scenarios.json",
+      "sha256": "d6342524b27dacd485eac1c5a219e7c852d7fc23d69258cec7c670aa86d46596"
+    },
+    {
+      "path": "plugins/saga/tests/fixtures/conformance/failure-scenarios/scenarios.json",
+      "sha256": "54c74761f9474b04f6eb3f6cdfc85710478d85740a9f9b1c7a59299327940893"
+    }
+  ],
+  "validator_sources": [
+    {
+      "path": "plugins/fleet-core/tests/test_antigravity_capabilities.py",
+      "sha256": "4a089e595a0e40094d09c616898e8c97fc2f1fbd58d29ce46cae64100c0260a4"
+    },
+    {
+      "path": "plugins/fleet-core/tests/test_host_contract_lint.py",
+      "sha256": "c6176b454a5f17a2f97cd346dfe8115fad85270bf7cf07e9c658700e013e31b9"
+    },
+    {
+      "path": "plugins/multi-agent-consensus/tests/test_deliberation.py",
+      "sha256": "3049d400e4c2a44ea25be3c612abc16cff274670104fd5b90e26e3978e1723af"
+    },
+    {
+      "path": "plugins/saga/tests/test_artifact_promotion.py",
+      "sha256": "8b004fad05fd68ed4bed6fda456c08ee128c8e7df6facbf0392398cbe9820f47"
+    },
+    {
+      "path": "plugins/saga/tests/test_external_action_adapters.py",
+      "sha256": "318f923f4f026aaecad241ee6ed9c1211637a4607cbc1c2ddb27404589af2201"
+    },
+    {
+      "path": "plugins/saga/tests/test_impl_spec.py",
+      "sha256": "ba5c2b741a3e8b64dc7548534b69371da111d684c8b8783aa678eb7db6fc1fba"
+    },
+    {
+      "path": "plugins/saga/tests/test_resume_reconciliation.py",
+      "sha256": "4fd401ed4c70daf377b00a298777855136d0e95b4153e2deb7296a05f63a4389"
+    },
+    {
+      "path": "plugins/saga/tests/test_transition_receipts.py",
+      "sha256": "cd6e101dbc1b2030b625786db7cbf1e5edb392ef29fc9b11b3944e027e1bbb6b"
+    }
+  ],
+  "reference_inputs": [
+    {
+      "role": "capability-catalog",
+      "path": "plugins/fleet-core/references/antigravity-capability-probes.yaml",
+      "sha256": "b28e5ccea58023c1ed5cb61bd6a9ea24bc59e865cf394d1aba8633c4138293f1"
+    },
+    {
+      "role": "host-contract-selector",
+      "path": "plugins/fleet-core/references/antigravity-host-contract-surfaces.json",
+      "sha256": "89bbcda0e3c555f66deb4fec15d05e51100f936ba3e2231a3b082b6b0bc81b5a"
+    },
+    {
+      "role": "deliberation-cases",
+      "path": "plugins/multi-agent-consensus/tests/fixtures/deliberation/cases.json",
+      "sha256": "050e2249d21ec8cac36dbd34f01844e62da5202af080a48bde333b7b5ea13275"
+    },
+    {
+      "role": "claude-api-failure",
+      "path": "plugins/fleet-core/tests/fixtures/host-contract/executable-claude-path.py",
+      "sha256": "58509b7272f4bd714b9144bd517860946ab782c7065710acbd88857bd502ba17"
+    },
+    {
+      "role": "impl-spec-profile",
+      "path": "plugins/saga/tests/fixtures/impl-spec/valid-profile/profile.json",
+      "sha256": "b91ac6a12450fca1353ee923d002aff79015b2de347da8b6b0f419fbf70f10ae"
+    },
+    {
+      "role": "impl-spec-folder-contract",
+      "path": "plugins/saga/tests/fixtures/impl-spec/valid-profile/docs/specs/reference-service/README.md",
+      "sha256": "7ff71d28c9339c5d880aa0486dff2008f3738be0ed7f70e3f50a3432ccd77142"
+    }
+  ]
+}
