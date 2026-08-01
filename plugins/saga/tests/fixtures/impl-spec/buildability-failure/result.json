@@ -1,0 +1,28 @@
+{
+  "schema": "saga.buildability-probe.v1",
+  "subject": "reference-service",
+  "round": 1,
+  "implementation_breakdown": {
+    "repositories": ["reference-repo"],
+    "modules": ["reference_service"],
+    "endpoints": ["GET /records/{id}"],
+    "entities": ["Record"],
+    "events_published": [],
+    "events_consumed": [],
+    "tests": ["authorization behavior"]
+  },
+  "questions": {
+    "product": [],
+    "architecture": [],
+    "data": [],
+    "api": [
+      {
+        "question": "Does an unauthorized caller receive 401 or 403?",
+        "classification": "spec-defect",
+        "reasoning": "Two reasonable implementations differ on the wire."
+      }
+    ],
+    "operations": []
+  },
+  "verdict": "FAIL"
+}

@@ -42,6 +42,8 @@ a leaf hands-on, then you come back up to `/outcome`.
    `leaf_saga_id` must own the obligation contract and manifest. The manifest must attest the same
    owner and assignment, and every required transition receipt must verify as satisfied. Missing,
    conflicting, unattested, or wrong-owner evidence refuses completion.
+   An `/impl-spec` requirement is an off-chain obligation: the leaf satisfies it with the promoted
+   `saga.impl-spec-set.v1` manifest and bound receipts, never by inventing a stored Saga phase.
 6. **Telemetry is evidence, never authority.** Cost, progress, retry, heartbeat, and liveness records
    may explain activity or reclaim a stalled leaf, but they cannot settle an obligation or mark the
    outcome complete.

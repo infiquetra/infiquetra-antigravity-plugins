@@ -102,6 +102,7 @@ def test_saga_profiles_inherit_runtime_base_capabilities() -> None:
         "saga.runtime-base",
         "saga.resume",
         "saga.plan",
+        "saga.impl-spec",
         "saga.isolated-work",
         "saga.independent-deliberation",
         "saga.work",
@@ -174,6 +175,17 @@ def test_optional_fallback_is_explicitly_degraded() -> None:
         "degraded_capabilities": ["agy.agent.execution"],
         "fallbacks": {"agy.agent.execution": "agy.sequential.isolation"},
     }
+
+
+def test_impl_spec_uses_only_the_isolated_document_fallback() -> None:
+    catalog = CAPS.load_catalog(FLEET_CORE / "references" / "antigravity-capability-probes.yaml")
+    rows = {row["id"]: row for row in catalog["capabilities"]}
+    agent_execution = rows["agy.agent.execution"]
+
+    assert "saga.impl-spec" not in agent_execution["required_for"]
+    assert "saga.impl-spec" in agent_execution["fallback"]["for_consumers"]
+    assert agent_execution["fallback"]["capability"] == "agy.sequential.isolation"
+    assert agent_execution["fallback"]["when_states"] == ["unknown", "unavailable"]
 
 
 @pytest.mark.parametrize("agent_state", ["failed", "unknown", "unavailable"])

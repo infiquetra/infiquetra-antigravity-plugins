@@ -65,7 +65,7 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
     {
         (
             "plugins/saga/references/operator-choice.md",
-            "bdd890bd5995d28273bbe69168fcca0663478ad66f7d3b657d04b586c1ba939f",
+            "8421c720b43c9756d948124c11750175341c299208b14ecc99b953681269fcac",
             "adee019867eb46e2a20c0550083a4e699d3ea866f0b69c10a7b675f00a29de07",
         ),
         (
@@ -105,7 +105,7 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
         ),
         (
             "plugins/saga/skills/plan/SKILL.md",
-            "aad1642cb458271a108d95169fd32d89b8be840eef415d0028da6e87aa40026c",
+            "7419a5880df90d3b7fb1331606ff44d70f58379f649239b721b84c6a58e34b03",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (

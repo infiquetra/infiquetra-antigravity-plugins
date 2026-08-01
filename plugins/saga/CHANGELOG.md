@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0 - 2026-08-01
+
+- Add `/impl-spec`, a profile-backed six-stage route for multi-document architecture, contract, and
+  operations specifications without adding a stored Saga lifecycle phase.
+- Validate declared README folder contracts and complete specification sets, then emit a deterministic
+  `saga.impl-spec-set.v1` manifest under the canonical `docs/specs/` family.
+- Add reusable `/doc-review` buildability probing, receipt-backed native or isolated-sequential
+  document execution, and routing from the promoted manifest into `/plan`.
+
 ## 1.7.0 - 2026-08-01
 
 - Add a local-only, receipt-backed transaction for promoting staged Antigravity artifacts into

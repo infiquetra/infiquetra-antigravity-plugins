@@ -1,0 +1,6 @@
+{
+  "schema": "saga.impl-spec-profile.v1",
+  "profile_id": "missing-contract",
+  "spec_root": "docs/specs/missing",
+  "folder_contract_readme": "docs/specs/missing/README.md"
+}

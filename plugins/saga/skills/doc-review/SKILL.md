@@ -76,6 +76,32 @@ Classify by explicit context first, then evidence. Use this precedence:
 When classification remains ambiguous, ask before routing. Do not silently guess on a formal
 SDLC artifact because routing determines which review responsibilities run.
 
+## Buildability Probe Mode
+
+Run this mode when the operator explicitly requests a buildability probe, `/impl-spec` invokes it, or
+the target is a profile-backed multi-document spec set. This mode is additive: it does not replace
+the formal readiness review for a later implementation plan.
+
+Read `../../references/buildability-probe-protocol.md` in full. Bind the target folder-contract
+README and the spec-set manifest. Give a fresh native `invoke_subagent` conversation only the spec
+set, shared standards, README, and protocol. Native independence requires
+`agy.agent.execution=passed`. A separately isolated sequential probe is allowed only with
+`agy.sequential.isolation=passed` and its own execution receipt. Same-context roleplay cannot produce
+a probe verdict.
+
+The result must use `saga.buildability-probe.v1` and include the complete implementation breakdown,
+all five question categories, per-question boundary classifications, reasoning, the bounded round,
+and PASS or FAIL. Validate it with:
+
+```bash
+python3 plugins/saga/scripts/impl_spec.py probe-check <probe-result.json>
+```
+
+PASS requires zero `spec-defect` questions. Return the structured result to `/impl-spec` so it can
+perform class-wide remediation and invoke a fresh probe. Write the human report to
+`docs/reviews/YYYY-MM-DD-<subject>-buildability-probe[-rN].md`. Do not expose authoring context,
+prior probes, remediation notes, transcripts, or machine paths to the fresh probe.
+
 ## Formal SDLC Rubric Review
 
 Formal SDLC artifacts get the Infiquetra rubric review first, run inline via the rubric engine

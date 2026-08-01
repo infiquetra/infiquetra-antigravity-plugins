@@ -77,6 +77,7 @@ def test_infiquetra_lifecycle_commands_are_packaged() -> None:
         "optimize",
         "investigate",
         "spec",
+        "impl-spec",
         "pulse",
     ):
         assert (PLUGIN_ROOT / "commands" / f"{command}.md").exists()
@@ -91,7 +92,7 @@ def test_lifecycle_evidence_contracts_are_packaged_and_versioned() -> None:
         _read(PLUGIN_ROOT / "references" / "transition-receipt-schema.json")
     )
 
-    assert plugin_json["version"] == "1.7.0"
+    assert plugin_json["version"] == "1.8.0"
     newest_heading = next(
         line.removeprefix("## ").split(" - ", maxsplit=1)[0]
         for line in _read(PLUGIN_ROOT / "CHANGELOG.md").splitlines()
@@ -103,7 +104,10 @@ def test_lifecycle_evidence_contracts_are_packaged_and_versioned() -> None:
     assert (PLUGIN_ROOT / "scripts" / "lifecycle_obligations.py").exists()
     assert (PLUGIN_ROOT / "scripts" / "transition_receipts.py").exists()
     assert (PLUGIN_ROOT / "scripts" / "artifact_promotion.py").exists()
+    assert (PLUGIN_ROOT / "scripts" / "impl_spec.py").exists()
     assert (PLUGIN_ROOT / "references" / "artifact-promotion-contract.md").exists()
+    assert (PLUGIN_ROOT / "references" / "buildability-probe-protocol.md").exists()
+    assert (PLUGIN_ROOT / "references" / "lifecycle-closure-matrix-template.md").exists()
 
 
 def test_infiquetra_lifecycle_skills_document_required_lifecycle_behavior() -> None:
@@ -125,6 +129,7 @@ def test_infiquetra_lifecycle_skills_document_required_lifecycle_behavior() -> N
         "optimize",
         "investigate",
         "spec",
+        "impl-spec",
     }
     for skill in expected_skills:
         skill_path = PLUGIN_ROOT / "skills" / skill / "SKILL.md"

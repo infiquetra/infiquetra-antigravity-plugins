@@ -1,7 +1,7 @@
 {
   "catalog_schema": "antigravity.capability-catalog.v1",
   "receipt_schema": "antigravity.capabilities.v1",
-  "catalog_revision": 4,
+  "catalog_revision": 5,
   "capabilities": [
     {
       "id": "agy.cli.version",
@@ -15,6 +15,7 @@
       "required_for": [
         "live-canary",
         "saga.ideate",
+        "saga.impl-spec",
         "saga.independent-deliberation",
         "saga.isolated-work",
         "saga.plan",
@@ -60,6 +61,7 @@
       "required_for": [
         "live-canary",
         "saga.ideate",
+        "saga.impl-spec",
         "saga.independent-deliberation",
         "saga.isolated-work",
         "saga.plan",
@@ -87,6 +89,7 @@
       "required_for": [
         "live-canary",
         "saga.ideate",
+        "saga.impl-spec",
         "saga.independent-deliberation",
         "saga.isolated-work",
         "saga.plan",
@@ -114,6 +117,7 @@
       "required_for": [
         "live-canary",
         "saga.ideate",
+        "saga.impl-spec",
         "saga.independent-deliberation",
         "saga.isolated-work",
         "saga.plan",
@@ -141,6 +145,7 @@
       "required_for": [
         "live-canary",
         "saga.ideate",
+        "saga.impl-spec",
         "saga.independent-deliberation",
         "saga.isolated-work",
         "saga.plan",
@@ -168,6 +173,7 @@
       "required_for": [
         "live-canary",
         "saga.ideate",
+        "saga.impl-spec",
         "saga.independent-deliberation",
         "saga.isolated-work",
         "saga.plan",
@@ -252,6 +258,7 @@
         "for_consumers": [
           "saga.independent-deliberation",
           "saga.ideate",
+          "saga.impl-spec",
           "saga.work"
         ],
         "when_states": [

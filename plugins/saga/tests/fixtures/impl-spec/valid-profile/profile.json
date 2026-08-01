@@ -1,0 +1,6 @@
+{
+  "schema": "saga.impl-spec-profile.v1",
+  "profile_id": "reference-service",
+  "spec_root": "docs/specs/reference-service",
+  "folder_contract_readme": "docs/specs/reference-service/README.md"
+}

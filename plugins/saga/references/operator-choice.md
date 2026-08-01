@@ -75,6 +75,10 @@ execution has its own receipt. This does not authorize implementation workers, o
 sequential role-play, or the full reviewer backend. Without that isolation proof, sequential work
 changes the selected guarantee rather than the mechanism.
 
+The same narrow exception applies to `/impl-spec` document authoring, document review, and its
+fresh-context buildability probe. It does not apply to code implementation or broaden the selected
+backend for the surrounding workstream.
+
 ## 4. Recording the choice
 
 The saga envelope stores:

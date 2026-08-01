@@ -2,8 +2,8 @@ schema_version: 1
 model_name: saga-comprehensive-documentation
 source_of_truth: Antigravity Saga repository documents
 command_surface:
-  command_files: 23
-  routable_commands: 22
+  command_files: 24
+  routable_commands: 23
   alias_count: 1
   alias_note: /ceo-review is an alias for /founder-review, not a separate lifecycle node.
 
@@ -31,7 +31,7 @@ maturity:
       from: [docs/ideation/]
       consumed_by: [/plan]
     requirements-ready:
-      from: [docs/brainstorms/, docs/specs/]
+      from: [docs/brainstorms/, docs/specs/, saga.impl-spec-set.v1]
       consumed_by: [/plan]
     plan-ready:
       from: [docs/plans/, docs/reviews/]
@@ -334,6 +334,33 @@ commands:
       - Treating spec as a stored lifecycle phase.
       - Filing an SDLC issue directly from /spec.
     example_invocation: /spec "make Saga docs better"
+  impl-spec:
+    command: /impl-spec
+    phase: think
+    lifecycle_role: profile-backed implementation specification
+    source_refs:
+      - plugins/saga/commands/impl-spec.md
+      - plugins/saga/skills/impl-spec/SKILL.md
+      - plugins/saga/scripts/impl_spec.py
+    purpose: Author and prove a declared multi-document system specification before implementation planning.
+    use_when:
+      - Settled system requirements need a profile-defined architecture, contract, and operations specification set.
+      - A repository profile names a README folder contract that can be validated mechanically.
+    do_not_use_when:
+      - One ordinary WHAT document is sufficient; use /spec.
+      - The profile or README folder contract is absent or must be invented.
+    inputs: Repository-relative saga.impl-spec-profile.v1 file and its declared README folder contract.
+    outputs: Promoted documents under docs/specs/ plus a deterministic saga.impl-spec-set.v1 manifest and bound review receipts.
+    durable_artifacts: [docs/specs/, docs/reviews/]
+    saga_state_behavior: Off-chain obligation; writes no stored lifecycle phase and routes its promoted manifest to /plan.
+    routes_in: [/brainstorm, settled system requirements]
+    routes_out: [/plan, /doc-review buildability-probe mode]
+    gates: Complete profile set, independent P0-P3 review closure, buildability PASS, and canonical promotion receipts.
+    ownership_boundary: Owns specification authoring and proof, not product review, implementation, GitHub mutation, or deployment.
+    common_mistakes:
+      - Inventing a folder layout when the profile contract is missing.
+      - Treating the buildability probe as a replacement for the later plan review.
+    example_invocation: /impl-spec profiles/reference-service.json autonomous
   plan:
     command: /plan
     phase: plan
@@ -348,11 +375,11 @@ commands:
     do_not_use_when:
       - The WHAT is still vague.
       - The user asked for direct implementation of an atomic change.
-    inputs: Requirements doc, issue, source artifact, or request.
+    inputs: Requirements doc, promoted implementation-spec manifest, issue, source artifact, or request.
     outputs: Plan document under docs/plans/ and a plan saga tick.
     durable_artifacts: [docs/plans/]
     saga_state_behavior: Writes lifecycle_phase=plan with phase_status complete when the plan is done.
-    routes_in: [idea-ready, requirements-ready, docs/brainstorms/, docs/specs/]
+    routes_in: [idea-ready, requirements-ready, docs/brainstorms/, docs/specs/, saga.impl-spec-set.v1]
     routes_out: [/doc-review, /work]
     gates: Does not implement or run the review gauntlet.
     ownership_boundary: Owns HOW planning only.
@@ -822,6 +849,8 @@ adjacent_pairs:
   - [/office-hours, /ideate]
   - [/ideate, /brainstorm]
   - [/brainstorm, /spec]
+  - [/spec, /impl-spec]
+  - [/impl-spec, /plan]
   - [/plan, /doc-review]
   - [/qa, /optimize]
   - [/strategy, /founder-review]
