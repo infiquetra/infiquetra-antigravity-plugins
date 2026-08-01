@@ -9,6 +9,13 @@ The receipt counts separate executions rather than headings, keeps requested and
 separate, bounds recovery, and preserves disagreement. Capability-proven isolated sequential Gemini
 conversations may substitute when native agents are unavailable.
 
+The receipt evaluator is directly runnable from a target repository:
+
+```bash
+CONSENSUS_PLUGIN_ROOT="${AGY_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/multi-agent-consensus}"
+python3 "$CONSENSUS_PLUGIN_ROOT/scripts/deliberation.py" evaluate --help
+```
+
 ---
 
 ## Quick Start

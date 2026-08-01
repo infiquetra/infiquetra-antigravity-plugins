@@ -1,6 +1,6 @@
 {
   "name": "multi-agent-consensus",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Native Antigravity multi-agent consensus workflow with receipt-backed deliberation, capability-gated execution, bounded recovery, scoring, and nonprod validator-driven fix routing.",
   "author": {
     "name": "Infiquetra",

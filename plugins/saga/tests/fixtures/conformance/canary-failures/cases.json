@@ -1,0 +1,37 @@
+{
+  "schema": "saga.live-canary-failure-cases.v1",
+  "cases": [
+    {
+      "id": "missing-profile-readme",
+      "expected": "preflight-blocked"
+    },
+    {
+      "id": "required-capability-failure",
+      "expected": "preflight-blocked"
+    },
+    {
+      "id": "missing-phase-or-strategy",
+      "expected": "mechanical-failure"
+    },
+    {
+      "id": "shallow-mechanical-success",
+      "expected": "release-pending"
+    },
+    {
+      "id": "failed-resume",
+      "expected": "mechanical-failure"
+    },
+    {
+      "id": "invalid-handoff",
+      "expected": "mechanical-failure"
+    },
+    {
+      "id": "baseline-mismatch",
+      "expected": "preflight-blocked"
+    },
+    {
+      "id": "attempted-remote-mutation",
+      "expected": "immediate-failure"
+    }
+  ]
+}

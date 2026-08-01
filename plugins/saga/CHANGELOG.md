@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.0 - 2026-08-01
+
+- Add runnable transition-receipt and artifact-promotion commands for Antigravity phases working in
+  target repositories that do not contain plugin source.
+- Give the reference lifecycle skills a portable installed-plugin command contract and bind the live
+  canary fixture to an explicit lifecycle-obligation contract.
+- Discover canonical deliberation, transition, and promotion receipts by their outcome directories
+  while retaining legacy filename discovery for controlled fixtures.
+
+## 1.11.0 - 2026-08-01
+
+- Add one bounded AGY/Gemini release canary with deterministic-first preflight, observed runtime
+  capability evidence, structured mutation auditing, and a no-remote reference repository.
+- Keep native AGY plan mode separate from the edit-enabled live lifecycle while retaining its
+  existing standalone Saga plan capability contract.
+- Require complete mechanical evidence and an explicit five-dimension operator decision before a
+  live run can qualify the release.
+
 ## 1.10.0 - 2026-08-01
 
 - Add a sanitized reference-lifecycle conformance fixture that indexes deterministic capability,

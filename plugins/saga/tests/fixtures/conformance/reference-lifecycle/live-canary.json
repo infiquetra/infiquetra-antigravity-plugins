@@ -1,0 +1,74 @@
+{
+  "schema": "saga.live-canary-config.v1",
+  "fixture_id": "reference-lifecycle",
+  "fixture_revision": 1,
+  "minimum_agy_version": "1.1.9",
+  "model": "gemini-3.1-pro",
+  "effort": "high",
+  "resolved_model": "gemini-3.1-pro-high",
+  "routing_agent": "lifecycle-router",
+  "execution_agent": "default",
+  "sandbox": true,
+  "profile": {
+    "path": "plugins/saga/tests/fixtures/impl-spec/valid-profile/profile.json",
+    "sha256": "b91ac6a12450fca1353ee923d002aff79015b2de347da8b6b0f419fbf70f10ae"
+  },
+  "folder_contract": {
+    "path": "plugins/saga/tests/fixtures/impl-spec/valid-profile/docs/specs/reference-service/README.md",
+    "sha256": "7ff71d28c9339c5d880aa0486dff2008f3738be0ed7f70e3f50a3432ccd77142"
+  },
+  "obligation_contract": {
+    "path": "plugins/saga/tests/fixtures/conformance/reference-lifecycle/live-obligation-contract.json",
+    "sha256": "2da9d17ec94ac908d3c9b6b7f28ece7b72a82fe3e56ffe26992e1502d9a96464"
+  },
+  "baseline_manifest": {
+    "path": "docs/conformance/baselines/reference-lifecycle/manifest.yaml",
+    "sha256": "2ec7bbbeb98aedc7e6aaf1c79571e0602d4fc37e96204d8f0ca62d6be01f3363"
+  },
+  "phase_commands": [
+    {
+      "id": "ideate",
+      "command": "/ideate Build the local reference service described in seed.md. Work autonomously, retain every seed constraint, and stop before remote mutation."
+    },
+    {
+      "id": "brainstorm",
+      "command": "/brainstorm Turn the selected reference-service idea into complete requirements. Work autonomously and use the existing ideation artifact."
+    },
+    {
+      "id": "impl-spec",
+      "command": "/impl-spec profiles/reference-service/profile.json autonomous"
+    },
+    {
+      "id": "plan",
+      "command": "/plan Build a decision-complete plan from the promoted reference-service specification."
+    },
+    {
+      "id": "doc-review",
+      "command": "/doc-review Review and safely fix the current reference-service plan until no actionable P0 through P3 finding remains."
+    },
+    {
+      "id": "resume",
+      "command": "/resume Reconstruct this reference lifecycle from repository evidence and route to the earliest unsettled obligation."
+    },
+    {
+      "id": "work",
+      "command": "/work Implement the reviewed reference-service plan locally. Do not push, open a pull request, create an issue, change a board, merge, or deploy."
+    },
+    {
+      "id": "code-review",
+      "command": "/code-review Review the complete local reference-service branch and write the durable review artifact."
+    },
+    {
+      "id": "qa",
+      "command": "/qa Validate the implemented reference service against its requirements and write the durable quality-assurance artifact."
+    },
+    {
+      "id": "retro",
+      "command": "/retro Review this reference lifecycle and write the durable retrospective without changing global or remote state."
+    },
+    {
+      "id": "handoff",
+      "command": "/handoff Prepare and promote a local handoff envelope for the completed reference service. Target team Operations and target repository infiquetra-antigravity-plugins. Do not create the issue."
+    }
+  ]
+}

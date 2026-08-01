@@ -120,3 +120,14 @@ passes the ordinary `/doc-review` readiness gate.
 - `../../references/lifecycle-closure-matrix-template.md` — required stateful-entity closure.
 - `../../references/artifact-promotion-contract.md` — canonical repository promotion.
 - `../../references/operator-choice.md` — host capability and fallback authority.
+
+## Executable receipt commands
+
+Run the executable receipt path for every required staged spec and promote the set manifest last.
+Read `$SAGA_PLUGIN_ROOT/references/live-receipt-commands.md` for the closed JSON inputs and full flags.
+
+```bash
+SAGA_PLUGIN_ROOT="${AGY_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/saga}"
+test -f "$SAGA_PLUGIN_ROOT/scripts/transition_receipts.py"
+test -f "$SAGA_PLUGIN_ROOT/scripts/artifact_promotion.py"
+```

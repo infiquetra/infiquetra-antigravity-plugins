@@ -85,7 +85,7 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
         ),
         (
             "plugins/saga/skills/code-review/SKILL.md",
-            "98ecad314a26a7b6f982e6c4ccd1f0b1f065b91c6821358cc69b51f964bf498a",
+            "33dbf60ffae081ac559342cdadfa308bff3652ecec9989f696e1624e266219f1",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (
@@ -105,17 +105,17 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
         ),
         (
             "plugins/saga/skills/plan/SKILL.md",
-            "7419a5880df90d3b7fb1331606ff44d70f58379f649239b721b84c6a58e34b03",
+            "ff1abf4e863de09daaae0f90631ac2725a65cab4a8170dcd66c691c183f29cae",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (
             "plugins/saga/skills/qa/SKILL.md",
-            "5a6ea2f3fe89aac90d03bee2b72d201c337d1a4f872c948c4e0d8773c9ad216b",
+            "fdb4799dff75da26736afbae88bb7d604a978865931f6c51c27977d9fe967bcd",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
         (
             "plugins/saga/skills/retro/SKILL.md",
-            "7f00a29fdafdaeb46742e89d98f9d099a711fae1007efc241ab4faac2c09bb62",
+            "7917dc569fd1b1c6900c3fcca6edfb02cabbdc0e7cfd6673b2a78eeed9b882be",
             "be02d074098701d374c677220cc31f3256f5bf48c230ad4676dd47bc804d7866",
         ),
     }

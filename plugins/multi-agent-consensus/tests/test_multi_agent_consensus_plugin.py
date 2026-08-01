@@ -59,7 +59,7 @@ def test_multi_agent_consensus_metadata_matches_current_release() -> None:
     latest_heading = next(line for line in changelog.splitlines() if line.startswith("## ["))
     latest_match = re.fullmatch(r"## \[([^\]]+)\] — \d{4}-\d{2}-\d{2}", latest_heading)
 
-    assert plugin_json["version"] == "2.5.0"
+    assert plugin_json["version"] == "2.6.0"
     assert latest_match is not None
     assert latest_match.group(1) == plugin_json["version"]
     assert "validator" in plugin_json["description"].lower()

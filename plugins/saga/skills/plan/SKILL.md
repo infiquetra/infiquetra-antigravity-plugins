@@ -384,3 +384,14 @@ An Antigravity brain or runtime copy is staging only. Before claiming durable pl
 promote the artifact into `docs/plans/` with `scripts/artifact_promotion.py` and bind its promotion
 receipt to the applicable lifecycle transition. A divergent canonical predecessor is preserved,
 returns `conflicting`, and blocks routing until operator adjudication.
+
+Run the executable receipt path before claiming completion. Read
+`$SAGA_PLUGIN_ROOT/references/live-receipt-commands.md` for the closed JSON inputs and full flags.
+
+```bash
+SAGA_PLUGIN_ROOT="${AGY_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/saga}"
+CONSENSUS_PLUGIN_ROOT="$(dirname "$SAGA_PLUGIN_ROOT")/multi-agent-consensus"
+test -f "$CONSENSUS_PLUGIN_ROOT/scripts/deliberation.py"
+test -f "$SAGA_PLUGIN_ROOT/scripts/transition_receipts.py"
+test -f "$SAGA_PLUGIN_ROOT/scripts/artifact_promotion.py"
+```
