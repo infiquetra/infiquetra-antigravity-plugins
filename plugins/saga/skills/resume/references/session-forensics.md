@@ -1,7 +1,7 @@
 # Tier 2 — Zero-Save Session Forensics (fallback only)
 
-Tier 2 is `/resume`'s **last resort**: a slim, Claude-only port of CE's session forensics over local JSONL
-session logs. It runs **only** when Tier 1 found **no saga AND no resolvable issue**. It is context-safe by
+Tier 2 is `/resume`'s **last resort**: host-local session forensics over local JSONL session logs. It
+runs **only** when Tier 1 found **no saga AND no resolvable issue**. It is context-safe by
 construction — the orchestrator never reads session content; a generic synthesis agent does, file-mediated.
 
 ## The corrected trigger — same-machine work that never wrote a saga

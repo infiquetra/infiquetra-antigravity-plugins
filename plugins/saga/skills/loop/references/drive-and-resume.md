@@ -84,10 +84,19 @@ Resume is the saga round trip:
 3. **route** from the restored `lifecycle_phase` / `phase_status` via `dispatch-table.md`.
 
 When the restored workstream includes a canonical lifecycle-obligation contract and transition
-receipts, insert a proof check between restore and route: evaluate the receipts, select the earliest
-required obligation that is not satisfied, and route to its declared command, phase, or producer.
+receipts, insert a proof check between restore and route:
+
+```bash
+python3 plugins/saga/scripts/lifecycle_reconciliation.py \
+  --repo-root . --contract <repository-relative-contract.json> \
+  --receipt <repository-relative-receipt.json>
+```
+
+Repeat `--receipt` for each receipt. Select the earliest required obligation that is not satisfied,
+and route to its declared command, phase, or producer.
 This proof-carrying route takes precedence over the cached phase. Repeating the check with unchanged
-evidence is idempotent; missing, invalid, or conflicting evidence cannot advance the route.
+evidence is idempotent; missing or invalid evidence cannot advance the route, and
+`operator_adjudication_required=true` stops automatic routing.
 
 ### The routing-tick `save` shape
 
@@ -140,10 +149,10 @@ and let the operator decide — rather than blindly re-dispatching. Read `orches
 `restore` (the full envelope), not via the `scan` candidate (which carries only the orchestration
 pointer summary).
 
-### Deep forensics is opt-in — never auto-route into the /resume stub
+### Deep forensics is opt-in
 
 `/loop` does lightweight restore + the inline cold path itself. For heavy forensic reconstruction
 (tangled multi-round history, corrupt cache, "what happened across these PRs"), **OFFER** the
-**opt-in** `/resume` route — `/resume` is the queued deep-reconstruction engine. **Never** auto-route
-into the `/resume` stub and **never** block `/loop` on it; routing to `/resume` is advisory and
+**opt-in** `/resume` route — `/resume` is the shipped deep-reconstruction engine. **Never** auto-route
+into `/resume` and **never** block `/loop` on it; routing to `/resume` is advisory and
 operator-confirmed.

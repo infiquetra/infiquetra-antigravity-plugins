@@ -18,11 +18,15 @@ Two invariants the surface enforces:
   native `/resume <leaf-saga-id>` / `/work` / `/code-review` / `/qa` — there is no `/outcome work`.
   `attend` just prints the native re-entry handoff for a leaf you want hands-on (R16 altitude seam).
 - **Status is derived on read** (R17). There is no operator-writable status field; the cockpit is
-  recomputed every read from the committed spec + completion events, so it cannot drift.
+  recomputed every read from the committed spec + completion events, so it cannot drift. For each
+  proof-carrying node, `status` also emits the shared lifecycle reconciliation result, including the
+  earliest unsettled obligation and destination.
 - **Completion requires owned, verifiable evidence.** A proof-carrying leaf completes only when its
   owner matches the lifecycle-obligation contract, its evidence manifest is attested, and every
-  required transition receipt verifies as satisfied. Activity, cost, heartbeats, issue motion, or a
-  child self-report never substitutes for settlement evidence.
+  required transition receipt verifies as satisfied through the same reconciler used by `/loop` and
+  `/resume`. The barrier reports the earliest unsettled obligation and stops conflicts for operator
+  adjudication. Activity, cost, heartbeats, issue motion, or a child self-report never substitutes
+  for settlement evidence.
 - **External effects require separate authority.** Board changes, ship transitions, merges, and
   deployment are first represented as local typed intents. Saga may execute an injected adapter only
   after a separate authority receipt binds the unchanged intent payload.

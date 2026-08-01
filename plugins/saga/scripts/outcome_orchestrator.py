@@ -35,12 +35,11 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import lifecycle_obligations  # noqa: E402
+import lifecycle_reconciliation  # noqa: E402
 import manifest_store  # noqa: E402
 import outcome_github  # noqa: E402  (after the sys.path shim, by design)
 import outcome_spec  # noqa: E402
 import outcome_store  # noqa: E402
-import transition_receipts  # noqa: E402
 
 # Per-subplot completion contracts (R11) — the thing the parent barrier verifies.
 CONTRACT_CODE = "code:pr-merged"
@@ -74,17 +73,6 @@ class BarrierVerdict:
         }
 
 
-def _repository_json(repo_root: Path, reference: str) -> dict[str, Any]:
-    root = repo_root.resolve()
-    target = (root / reference).resolve(strict=True)
-    if target != root and root not in target.parents:
-        raise ValueError("lifecycle evidence reference escapes the repository")
-    loaded = json.loads(target.read_text(encoding="utf-8"))
-    if not isinstance(loaded, dict):
-        raise ValueError("lifecycle evidence document must be an object")
-    return loaded
-
-
 def verified_lifecycle_settlement(node: Any, *, repo_root: Path) -> BarrierVerdict | None:
     """Verify U4 contract, transition receipts, manifest attestation, and leaf ownership."""
 
@@ -99,18 +87,16 @@ def verified_lifecycle_settlement(node: Any, *, repo_root: Path) -> BarrierVerdi
             "orphan",
             "proof-carrying node has no owning leaf_saga_id",
         )
-    if not node.obligation_contract_ref or not node.transition_receipt_refs:
+    if not node.obligation_contract_ref:
         return BarrierVerdict(
             sid,
             False,
             "lifecycle:settlement",
             "incomplete",
-            "contract and transition receipt references must be present together",
+            "transition receipt references require an obligation contract",
         )
     try:
-        contract = lifecycle_obligations.ObligationContract.from_dict(
-            _repository_json(repo_root, node.obligation_contract_ref)
-        )
+        contract = lifecycle_reconciliation.load_contract(repo_root, node.obligation_contract_ref)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return BarrierVerdict(
             sid, False, "lifecycle:settlement", "invalid", f"contract invalid: {exc}"
@@ -151,45 +137,25 @@ def verified_lifecycle_settlement(node: Any, *, repo_root: Path) -> BarrierVerdi
             "manifest invalid: " + "; ".join(manifest_errors),
         )
 
-    results: dict[str, lifecycle_obligations.SettlementResult] = {}
     try:
-        for reference in node.transition_receipt_refs:
-            receipt = transition_receipts.TransitionReceipt.from_dict(
-                _repository_json(repo_root, reference)
-            )
-            result = transition_receipts.evaluate_transition_receipt(
-                receipt, contract, repo_root=repo_root
-            )
-            previous = results.get(receipt.obligation_id)
-            if (
-                previous is None
-                or result.state is lifecycle_obligations.SettlementState.CONFLICTING
-            ):
-                results[receipt.obligation_id] = result
+        reconciliation = lifecycle_reconciliation.reconcile_required_obligations(
+            contract,
+            lifecycle_reconciliation.load_receipts(repo_root, node.transition_receipt_refs),
+            repo_root=repo_root,
+        )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return BarrierVerdict(
             sid, False, "lifecycle:settlement", "invalid", f"receipt invalid: {exc}"
         )
-
-    required = [
-        obligation
-        for obligation in contract.obligations
-        if obligation.requirement is lifecycle_obligations.RequirementLevel.REQUIRED
-    ]
-    unsettled = [
-        obligation.obligation_id
-        for obligation in required
-        if results.get(obligation.obligation_id) is None
-        or results[obligation.obligation_id].state
-        is not lifecycle_obligations.SettlementState.SATISFIED
-    ]
-    if unsettled:
+    if not reconciliation.complete:
         return BarrierVerdict(
             sid,
             False,
             "lifecycle:settlement",
-            "unsettled",
-            "required obligations are not settled: " + ", ".join(unsettled),
+            reconciliation.settlement_state.value,
+            f"required obligation {reconciliation.obligation_id!r} is "
+            f"{reconciliation.settlement_state.value}",
+            evidence={"reconciliation": reconciliation.to_dict()},
         )
     return BarrierVerdict(
         sid,
@@ -201,6 +167,7 @@ def verified_lifecycle_settlement(node: Any, *, repo_root: Path) -> BarrierVerdi
             "leaf_saga_id": node.leaf_saga_id,
             "manifest_execution_id": manifest.get("execution_id", ""),
             "receipt_refs": list(node.transition_receipt_refs),
+            "reconciliation": reconciliation.to_dict(),
         },
     )
 

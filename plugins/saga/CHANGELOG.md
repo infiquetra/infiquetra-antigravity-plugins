@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.0 - 2026-08-01
+
+- Reconcile required lifecycle obligations through one deterministic, read-only evaluator shared by
+  `/outcome`, `/loop`, and `/resume`.
+- Preserve satisfied work on retry, route to the earliest unsettled requirement, and stop conflicting
+  evidence for operator adjudication without selecting by receipt order.
+- Add a repository-reference command-line interface for `/resume` and retain `/outcome`'s owner and
+  evidence-manifest checks around the shared result.
+
 ## 1.8.0 - 2026-08-01
 
 - Add `/impl-spec`, a profile-backed six-stage route for multi-document architecture, contract, and

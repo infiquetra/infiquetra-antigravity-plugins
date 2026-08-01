@@ -10,18 +10,23 @@ Reconstruct an in-flight Infiquetra work thread in depth, then route. `/resume` 
 
 ## Instructions
 
-1. Load `saga/skills/resume/SKILL.md` and run its tiered flow:
+1. Load `saga/skills/resume/SKILL.md` and run its tiered flow.
+2. When a canonical lifecycle-obligation contract applies, run
+   `scripts/lifecycle_reconciliation.py` against its repository-relative contract and receipt
+   references before interpreting cached phase or narrative state. Route to the returned earliest
+   unsettled obligation; a conflicting result stops for operator adjudication.
+   The forensic tiers still discover the thread and its canonical references:
    - **Tier 1 (default)** — saga-anchored deep reconstruction: read the **whole** tick chain
      (`saga.py ticks`, not just the latest frame `restore` reads), layer in PR archaeology
      (`load_saga_context.py` / `saga.py context`) and the committed `docs/*` the ticks point at, then
      **reconcile conflicts explicitly** (committed `docs/*` + GitHub win over the stale cache).
-   - **Tier 2 (fallback only — no saga AND no resolvable issue)** — a slim, Claude-only port of CE
-     session forensics: discover local JSONL sessions, extract skeletons **file-mediated** to a scratch
+   - **Tier 2 (fallback only — no saga AND no resolvable issue)** — host-local session forensics:
+     discover local JSONL sessions, extract skeletons **file-mediated** to a scratch
      dir, and dispatch a **generic** synthesis agent to read the extracts.
-2. **Route** the reconstructed thread per the **shared** `skills/loop/references/dispatch-table.md`
+3. **Route** the reconstructed thread per the **shared** `skills/loop/references/dispatch-table.md`
    (referenced, never duplicated) — commonly to `/work` (resume the round-N loop) or `/handoff`. Never
    route back to `/loop`.
-3. Write **one** git-ignored re-entry tick that **reuses the restored `saga_id`** (`saga.py save`,
+4. Write **one** git-ignored re-entry tick that **reuses the restored `saga_id`** (`saga.py save`,
    `--status paused` / `active`, or `handed-off` when routing to `/handoff`). Minting a new saga is
    correct **only** in the Tier-2 no-saga branch. Never `git add`.
 

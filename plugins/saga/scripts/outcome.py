@@ -49,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # catches ``outcome_dispatcher.BackendHaltError`` per leaf. outcome_dispatcher does NOT import this
 # module (it duck-types the request), so there is no import cycle.
 import host_capability_gate  # noqa: E402
+import lifecycle_reconciliation  # noqa: E402
 import outcome_dispatcher  # noqa: E402
 import outcome_spec  # noqa: E402  (after the sys.path shim, by design)
 import outcome_store  # noqa: E402
@@ -510,6 +511,25 @@ def status(
     for st in states.values():
         counts[st] = counts.get(st, 0) + 1
     done = {sid for sid, st in states.items() if st == LIVE_DONE}
+    reconciliations: dict[str, dict[str, Any]] = {}
+    for node in spec.nodes:
+        if not node.obligation_contract_ref:
+            if node.transition_receipt_refs:
+                raise OutcomeError(
+                    f"node {node.subplot_id!r} has transition receipts without an obligation contract"
+                )
+            continue
+        try:
+            result = lifecycle_reconciliation.reconcile_repository_refs(
+                repo_root,
+                node.obligation_contract_ref,
+                node.transition_receipt_refs,
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            raise OutcomeError(
+                f"node {node.subplot_id!r} lifecycle reconciliation failed: {exc}"
+            ) from exc
+        reconciliations[node.subplot_id] = result.to_dict()
     return {
         "outcome_id": spec.outcome_id,
         "objective": spec.objective,
@@ -521,6 +541,7 @@ def status(
         # otherwise a negative-terminal (failed/rejected/stalled) node whose deps are satisfied would be
         # re-listed as dispatchable, contradicting its own `states` entry (the U8 cross-surface fix).
         "frontier": sorted(sid for sid, st in states.items() if st == LIVE_READY),
+        "reconciliations": reconciliations,
         "complete": len(done) == len(spec.nodes),
     }
 
@@ -1144,12 +1165,15 @@ def production_harvester(
         return "done" if all_done else "running"
 
     def harvester(spec: Any, store: Any) -> list[str]:
-        return outcome_orchestrator.harvest(
-            spec,
-            store=store,
-            github_runner=github_runner,
-            child_state_reader=child_state_reader,
-            repo_root=repo_root,
+        return cast(
+            list[str],
+            outcome_orchestrator.harvest(
+                spec,
+                store=store,
+                github_runner=github_runner,
+                child_state_reader=child_state_reader,
+                repo_root=repo_root,
+            ),
         )
 
     return harvester
