@@ -147,11 +147,36 @@ jobs:
             echo "No bandit report generated"
           fi
 
+  conformance:
+    name: Saga Conformance
+    runs-on: ${{ fromJSON(vars.WORKFLOW_RUNNER_LABELS || '"ubuntu-latest"') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Verify deterministic Saga scenarios
+        run: uv run python scripts/saga_conformance.py verify --fixture reference-lifecycle
+
+      - name: Validate approved Claude and Codex baseline
+        run: uv run python scripts/saga_conformance.py validate-baseline docs/conformance/baselines/reference-lifecycle/manifest.yaml
+
   publish:
     name: Publish Plugin
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ${{ fromJSON(vars.WORKFLOW_RUNNER_LABELS || '"ubuntu-latest"') }}
-    needs: [tests, validate, lint, type-check, security]
+    needs: [tests, validate, lint, type-check, security, conformance]
     permissions:
       contents: write
 

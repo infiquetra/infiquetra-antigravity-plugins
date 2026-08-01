@@ -1,5 +1,5 @@
 {
   "name": "saga",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Infiquetra lifecycle state machine — 22 skills from idea to deploy, with Antigravity-native orchestration, shared capability gates, docs, and adversarial confidence"
 }

@@ -1,0 +1,175 @@
+{
+  "schema": "saga.conformance-scenario-set.v1",
+  "fixture_id": "reference-lifecycle",
+  "fixture_revision": 1,
+  "scenarios": [
+    {
+      "scenario_id": "stale-brain-state",
+      "scenario_class": "failure",
+      "requirement_ids": ["R47", "R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_resume_reconciliation.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_resume_reconciliation.py::test_outcome_loop_and_resume_use_the_same_reconciliation_result"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Canonical receipts select the same next obligation across all consumers instead of trusting stale cached narration."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "conflicting-canonical-docs",
+      "scenario_class": "failure",
+      "requirement_ids": ["R44", "R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_artifact_promotion.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_artifact_promotion.py::test_divergent_predecessor_preserves_both_versions_and_blocks"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Divergent canonical and staged content is preserved and automatic promotion stops for adjudication."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "unavailable-required-capability",
+      "scenario_class": "failure",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/fleet-core/tests/test_antigravity_capabilities.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/fleet-core/tests/test_antigravity_capabilities.py::test_optional_fallback_blocks_when_fallback_result_is_absent"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "An unavailable capability with no proven fallback blocks its consumer."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "claude-only-api",
+      "scenario_class": "failure",
+      "requirement_ids": ["R23", "R48", "AE4"],
+      "input_contract": {
+        "kind": "repository-fixture",
+        "reference": "plugins/fleet-core/tests/fixtures/host-contract/executable-claude-path.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/fleet-core/tests/test_host_contract_lint.py::test_unallowlisted_foreign_runtime_annotations_fail_closed"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "An active Claude-only path and workflow API produce unresolved host-contract findings."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "mismatched-receipt",
+      "scenario_class": "failure",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_transition_receipts.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_transition_receipts.py::test_claimed_success_cannot_override_computed_settlement"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "A claimed success that disagrees with recomputed evidence settles as conflicting."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "missing-strategies",
+      "scenario_class": "failure",
+      "requirement_ids": ["R33", "R48"],
+      "input_contract": {
+        "kind": "repository-fixture",
+        "reference": "plugins/multi-agent-consensus/tests/fixtures/deliberation/cases.json"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/multi-agent-consensus/tests/test_deliberation.py::test_duplicate_strategy_results_do_not_replace_missing_coverage"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Duplicate strategy results cannot replace missing declared coverage."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "false-completion-narration",
+      "scenario_class": "failure",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_resume_reconciliation.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_resume_reconciliation.py::test_narration_or_unrelated_github_completion_cannot_settle_required_evidence"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Narration and an unrelated GitHub completion cannot satisfy missing canonical output."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    },
+    {
+      "scenario_id": "unauthorized-external-mutation",
+      "scenario_class": "failure",
+      "requirement_ids": ["R48"],
+      "input_contract": {
+        "kind": "synthetic-test-builder",
+        "reference": "plugins/saga/tests/test_external_action_adapters.py"
+      },
+      "validator": {
+        "kind": "pytest-node",
+        "node_id": "plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority_rejects_negative_cases"
+      },
+      "expected": {
+        "exit_code": 0,
+        "observable": "Missing or mismatched authority prevents the external adapter from executing."
+      },
+      "sanitization": {
+        "state": "sanitized",
+        "raw_source_committed": false
+      }
+    }
+  ]
+}

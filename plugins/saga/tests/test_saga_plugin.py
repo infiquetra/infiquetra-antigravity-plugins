@@ -92,7 +92,7 @@ def test_lifecycle_evidence_contracts_are_packaged_and_versioned() -> None:
         _read(PLUGIN_ROOT / "references" / "transition-receipt-schema.json")
     )
 
-    assert plugin_json["version"] == "1.9.0"
+    assert plugin_json["version"] == "1.10.0"
     newest_heading = next(
         line.removeprefix("## ").split(" - ", maxsplit=1)[0]
         for line in _read(PLUGIN_ROOT / "CHANGELOG.md").splitlines()
@@ -106,6 +106,10 @@ def test_lifecycle_evidence_contracts_are_packaged_and_versioned() -> None:
     assert (PLUGIN_ROOT / "scripts" / "transition_receipts.py").exists()
     assert (PLUGIN_ROOT / "scripts" / "artifact_promotion.py").exists()
     assert (PLUGIN_ROOT / "scripts" / "impl_spec.py").exists()
+    assert (PLUGIN_ROOT.parents[1] / "scripts" / "saga_conformance.py").exists()
+    assert (
+        PLUGIN_ROOT / "tests" / "fixtures" / "conformance" / "reference-lifecycle" / "fixture.json"
+    ).exists()
     assert (PLUGIN_ROOT / "references" / "artifact-promotion-contract.md").exists()
     assert (PLUGIN_ROOT / "references" / "buildability-probe-protocol.md").exists()
     assert (PLUGIN_ROOT / "references" / "lifecycle-closure-matrix-template.md").exists()
