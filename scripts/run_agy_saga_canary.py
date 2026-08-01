@@ -812,6 +812,16 @@ def _prepare_fixture(workspace: Path, config: Mapping[str, Any], repo_root: Path
         raise CanaryError("fixture seed commit failed")
 
 
+def phase_instruction(command: str, workspace: Path) -> str:
+    """Anchor a configured phase to the runtime-only fixture paths."""
+
+    return (
+        f"{command}\n\n"
+        f"Canary context: the target repository root is {workspace}. "
+        f"The seed document is {workspace / 'seed.md'}. Work only in that repository."
+    )
+
+
 def run_canary(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
     """Drive one fresh local reference lifecycle after a passing preflight."""
 
@@ -838,7 +848,7 @@ def run_canary(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any
     conversation_sha256: str | None = None
     for row in cast(list[dict[str, str]], config["phase_commands"]):
         phase = row["id"]
-        instruction = row["command"]
+        instruction = phase_instruction(row["command"], workspace)
         summary, events = _invoke_agy(
             instruction,
             cwd=workspace,

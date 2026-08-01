@@ -29,6 +29,15 @@ and deterministic preflight pass against this commit.
 
 ## Residual Risk
 
-The full live route has not yet run. Gemini may stop at a lifecycle gate or produce a mechanically
-complete but substantively weak result. The runner stops at the first mechanical failure, and the
-separate five-dimension operator review remains release-blocking.
+The first full live route stopped during `/ideate`; later phases remain unobserved. A replacement run
+may stop at another lifecycle gate or produce a mechanically complete but substantively weak result.
+The runner stops at the first mechanical failure, and the separate five-dimension operator review
+remains release-blocking.
+
+## Live Acceptance Addendum
+
+The first authorized run stopped at `/ideate`: lifecycle-router asked for the seed and repository
+paths even though AGY reported the fixture as its working directory. The bounded repair appends the
+runtime-only absolute workspace and seed paths to each configured phase instruction. The committed
+configuration remains repository-relative and contains no host path. A focused regression test
+binds that behavior; no second live run was started by this repair.

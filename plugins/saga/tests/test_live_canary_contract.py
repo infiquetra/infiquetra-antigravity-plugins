@@ -219,6 +219,16 @@ def test_config_binds_approved_inputs_and_exact_route() -> None:
     assert [row["id"] for row in config["phase_commands"]] == list(M.PHASES)
 
 
+def test_phase_instruction_anchors_runtime_workspace_without_committed_host_path(
+    tmp_path: Path,
+) -> None:
+    instruction = M.phase_instruction("/ideate Build from seed.md.", tmp_path)
+
+    assert str(tmp_path) in instruction
+    assert str(tmp_path / "seed.md") in instruction
+    assert "/Users/" not in CONFIG.read_text(encoding="utf-8")
+
+
 def test_live_canary_does_not_require_native_plan_mode() -> None:
     catalog = M.CAPABILITIES.load_catalog(M.CATALOG_PATH)
     rows = {row["id"]: row for row in catalog["capabilities"]}
