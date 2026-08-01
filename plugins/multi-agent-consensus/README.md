@@ -4,6 +4,11 @@ Native Antigravity multi-agent consensus workflow. Spawns parallel workers and r
 
 This plugin provides a structured workflow for executing non-trivial plans. The main agent acts as the Team Lead, delegating work to specialized subagents and running a strict review cycle before calling the work complete.
 
+Multi-strategy runs can use a versioned deliberation manifest and deterministic receipt evaluator.
+The receipt counts separate executions rather than headings, keeps requested and observed host facts
+separate, bounds recovery, and preserves disagreement. Capability-proven isolated sequential Gemini
+conversations may substitute when native agents are unavailable.
+
 ---
 
 ## Quick Start
@@ -86,6 +91,8 @@ After 3 cycles, execution proceeds with the best available version and documents
 **Hard stop**: Any security or auth dimension scoring < 5.0 is treated as a blocking issue and flags to the user immediately.
 
 ### Reference Files
+- `multi-agent-consensus/references/deliberation-manifest-schema.json`
+- `multi-agent-consensus/scripts/deliberation.py`
 - `multi-agent-consensus/skills/multi-agent-consensus/references/reviewer-registry.md`
 - `multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 - `multi-agent-consensus/skills/multi-agent-consensus/references/consensus-protocol.md`

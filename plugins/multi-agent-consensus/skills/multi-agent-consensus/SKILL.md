@@ -13,6 +13,26 @@ when_to_use: |
 
 This skill provides a structured workflow for executing plans using Antigravity's native subagent capabilities. You (the main agent) will act as the **Team Lead**. You will use the `invoke_subagent` tool to spawn workers and reviewers, orchestrate their execution, and enforce a strict consensus protocol.
 
+## Receipt-backed deliberation
+
+Before any run claims multi-strategy coverage, materialize the closed manifest defined by
+`plugins/multi-agent-consensus/references/deliberation-manifest-schema.json`. Bind the current sanitized host-capability receipt,
+declare every applicable strategy, requested model and effort, allowed tools, execution bounds,
+expected result fields, convergence rule, retry limit, and escalation policy before dispatch.
+
+Use native agents only when `agy.agent.execution=passed`. When that capability is `unknown` or
+`unavailable`, separately isolated sequential conversations may substitute only when
+`agy.sequential.isolation=passed`; ordinary same-context role-play never counts. Each execution emits
+one result with a unique execution ID. Validate the results with
+`plugins/multi-agent-consensus/scripts/deliberation.py`; missing,
+duplicate, malformed, or failed coverage follows the manifest's bounded recovery policy, and an
+incomplete receipt blocks completion.
+
+Keep requested and observed model, effort, tools, isolation, and worker facts separate. Leave
+unobserved values as `unknown`. Convergence preserves material disagreement, evidence, and
+adjudication. A complete receipt can bind into Saga as `deliberation-receipt` evidence; it does not
+create a competing settlement state.
+
 ## Step 1: Worker Kickoff
 
 1. Break the plan down into independent phases or work streams.
@@ -83,6 +103,8 @@ Run testers after deployment. If testers hard-fail, run a maximum 3 remediation 
 
 
 ### Reference Files
+- `multi-agent-consensus/references/deliberation-manifest-schema.json`
+- `multi-agent-consensus/scripts/deliberation.py`
 - `multi-agent-consensus/skills/multi-agent-consensus/references/reviewer-registry.md`
 - `multi-agent-consensus/skills/multi-agent-consensus/references/review-criteria.md`
 - `multi-agent-consensus/skills/multi-agent-consensus/references/consensus-protocol.md`

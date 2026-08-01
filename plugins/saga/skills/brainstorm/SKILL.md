@@ -11,6 +11,30 @@ The durable result names testable requirement IDs, assumptions, actors, and acce
 Unresolved product choices remain explicit open decisions. Present each material choice to the operator
 and stop until it is decided; do not silently convert an assumption into approval.
 
+## Deliberation contract
+
+<!-- saga-deliberation-phase
+{
+  "schema": "saga.deliberation-phase.v1",
+  "phase": "brainstorm",
+  "strategies": [
+    {"strategy_id": "evidence-gap", "role": "Evidence-gap challenger", "applies_when": "Phase 1.2 finds no observable evidence for the need"},
+    {"strategy_id": "specificity-gap", "role": "Beneficiary-specificity challenger", "applies_when": "Phase 1.2 cannot identify a concrete beneficiary"},
+    {"strategy_id": "counterfactual-gap", "role": "Counterfactual challenger", "applies_when": "Phase 1.2 cannot state current behavior or the cost of no change"},
+    {"strategy_id": "attachment-gap", "role": "Solution-attachment challenger", "applies_when": "Phase 1.2 finds an untested attachment to one solution shape"},
+    {"strategy_id": "durability-gap", "role": "Durability challenger", "applies_when": "deep product scope makes foreseeable world changes material"}
+  ],
+  "minimum_coverage": {"rule": "all-applicable", "floor": 1},
+  "applicability_rule": "Only gaps actually found in Phase 1.2 apply; suppressing a found gap needs a recorded operator decision.",
+  "completion_quality": "Resolve or explicitly record every applicable product question so planning does not invent behavior.",
+  "cheap_first_escalation": {"allowed": false, "triggers": []}
+}
+-->
+
+When two or more pressure-test strategies run independently, create a manifest and validate their
+separate receipts with `multi-agent-consensus/scripts/deliberation.py`. Incomplete coverage cannot be
+called a completed pressure test. The operator dialogue remains one question at a time.
+
 Brainstorm answers **WHAT to build** for one chosen idea, then writes a right-sized requirements
 document. It precedes `/plan`, which answers **HOW to build it**.
 

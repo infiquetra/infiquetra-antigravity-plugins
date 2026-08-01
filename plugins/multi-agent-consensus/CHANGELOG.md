@@ -4,6 +4,16 @@ All notable changes to this plugin are documented here.
 
 ---
 
+## [2.5.0] — 2026-07-31
+
+### Added
+
+- Add a closed deliberation manifest and deterministic receipt evaluator that counts independent
+  executions, keeps requested and observed facts separate, and applies bounded recovery.
+- Permit capability-proven isolated sequential conversations when native agents are unavailable.
+- Preserve material disagreement, evidence, adjudication, and traceable escalation in receipts that
+  can bind into Saga transition evidence.
+
 ## [2.4.0] — 2026-07-30
 
 ### Changed

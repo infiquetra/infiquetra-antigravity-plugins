@@ -1,7 +1,7 @@
 {
   "catalog_schema": "antigravity.capability-catalog.v1",
   "receipt_schema": "antigravity.capabilities.v1",
-  "catalog_revision": 3,
+  "catalog_revision": 4,
   "capabilities": [
     {
       "id": "agy.cli.version",
@@ -239,8 +239,7 @@
         "agent-execution-proof"
       ],
       "required_for": [
-        "live-canary",
-        "saga.independent-deliberation"
+        "live-canary"
       ],
       "outcome_rules": {
         "passed": "independent-execution-proven",
@@ -251,6 +250,7 @@
       "fallback": {
         "capability": "agy.sequential.isolation",
         "for_consumers": [
+          "saga.independent-deliberation",
           "saga.ideate",
           "saga.work"
         ],

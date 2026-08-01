@@ -12,6 +12,36 @@ diff actually warrants, validates the surviving findings, classifies and routes 
 durable review artifact. It reports and routes — it does **not** fix, commit, push, open PRs, or file
 issues.
 
+## Deliberation contract
+
+<!-- saga-deliberation-phase
+{
+  "schema": "saga.deliberation-phase.v1",
+  "phase": "code-review",
+  "strategies": [
+    {"strategy_id": "correctness", "role": "Correctness reviewer", "applies_when": "always"},
+    {"strategy_id": "security", "role": "Security reviewer", "applies_when": "always"},
+    {"strategy_id": "testing", "role": "Testing reviewer", "applies_when": "always"},
+    {"strategy_id": "maintainability", "role": "Maintainability and conventions reviewer", "applies_when": "always"},
+    {"strategy_id": "deploy-migration", "role": "Deploy and migration verification reviewer", "applies_when": "the diff touches deploy, migration, infrastructure, Ansible, or CI publish surfaces"},
+    {"strategy_id": "reliability", "role": "Reliability reviewer", "applies_when": "the diff touches errors, retries, timeouts, asynchronous work, or health checks"},
+    {"strategy_id": "performance", "role": "Performance reviewer", "applies_when": "the diff touches queries, loops, caching, or concurrency"},
+    {"strategy_id": "api-contract", "role": "API contract reviewer", "applies_when": "the diff touches routes, schemas, exported signatures, or versioning"},
+    {"strategy_id": "adversarial", "role": "Adversarial reviewer", "applies_when": "the diff is large or touches auth, payments, mutation, or external integration"},
+    {"strategy_id": "agent-native", "role": "Agent-native reviewer", "applies_when": "the diff adds a user-facing capability"},
+    {"strategy_id": "previous-comments", "role": "Previous-comments reviewer", "applies_when": "the PR has prior review comments"}
+  ],
+  "minimum_coverage": {"rule": "all-applicable", "floor": 4},
+  "applicability_rule": "The four always-on lenses and every conditionally selected lens apply; dropping one needs a recorded operator decision.",
+  "completion_quality": "Produce evidence-backed, deduplicated findings with preserved reviewer disagreement and adjudication.",
+  "cheap_first_escalation": {"allowed": false, "triggers": []}
+}
+-->
+
+When the selected lenses execute independently, create a manifest and validate their separate receipts
+with `multi-agent-consensus/scripts/deliberation.py`. Incomplete coverage cannot clear the review. An
+inline small review remains available but does not claim independent execution.
+
 ## Position in the lifecycle
 
 `/code-review` is NOT the saga `LIFECYCLE_PHASES` `review` slot. That slot is `/doc-review`'s plan ->

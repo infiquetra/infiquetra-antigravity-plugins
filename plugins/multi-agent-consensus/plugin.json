@@ -1,7 +1,7 @@
 {
   "name": "multi-agent-consensus",
-  "version": "2.4.0",
-  "description": "Native Antigravity multi-agent consensus workflow with capability-gated agent and isolation contracts, parallel workers and reviewers, scoring, and nonprod validator-driven fix routing.",
+  "version": "2.5.0",
+  "description": "Native Antigravity multi-agent consensus workflow with receipt-backed deliberation, capability-gated execution, bounded recovery, scoring, and nonprod validator-driven fix routing.",
   "author": {
     "name": "Infiquetra",
     "email": "hello@infiquetra.com"
@@ -14,6 +14,7 @@
     "reviewers",
     "antigravity",
     "validators",
+    "receipts",
     "automation",
     "nonprod"
   ]
