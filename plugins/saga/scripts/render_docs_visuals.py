@@ -257,22 +257,23 @@ def render_command_matrix(model: dict[str, Any]) -> str:
         parts,
         70,
         118,
-        "17 routable commands plus /ceo-review as the /founder-review alias.",
+        "18 routed lifecycle commands plus /ceo-review as the /founder-review alias.",
         cls="subtitle",
         fill="muted",
     )
 
     groups = [
-        ("Think", ["office-hours", "ideate", "brainstorm", "spec", "strategy"], "teal"),
+        ("Think", ["office-hours", "ideate", "brainstorm", "spec", "impl-spec"], "teal"),
         ("Plan/Review", ["plan", "doc-review", "founder-review", "code-review"], "blue"),
         ("Work/QA", ["work", "qa", "resume", "loop"], "green"),
-        ("Off-chain/Route", ["investigate", "optimize", "handoff", "retro"], "amber"),
+        ("Off-chain/Route", ["strategy", "investigate", "optimize", "handoff", "retro"], "amber"),
     ]
     state_tags = {
         "office-hours": ("no-write", "teal"),
         "ideate": ("idea-ready", "blue"),
         "brainstorm": ("req-ready", "green"),
         "spec": ("off-chain", "amber"),
+        "impl-spec": ("spec set", "violet"),
         "strategy": ("off-chain", "amber"),
         "plan": ("plan tick", "green"),
         "doc-review": ("readiness", "rose"),

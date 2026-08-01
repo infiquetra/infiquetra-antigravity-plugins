@@ -168,6 +168,35 @@ def test_first_promotion_and_unchanged_retry_are_idempotent(tmp_path: Path) -> N
     assert list(first.receipt_path.parent.glob("*.json")) == [first.receipt_path]
 
 
+def test_impl_spec_promotion_uses_canonical_specs_family(tmp_path: Path) -> None:
+    transition = _transition(tmp_path)
+    promoted = M.promote_artifact(
+        repo_root=tmp_path,
+        outcome_id="outcome-23",
+        phase="impl-spec",
+        source_role="repository-staging",
+        source_ref="staging/reference-service/overview.md",
+        staged_content="# Reference service\n",
+        target_ref="docs/specs/reference-service/overview.md",
+        expected_predecessor_sha256=None,
+        transition_receipt_ref=transition,
+    )
+
+    assert promoted.artifact_path == tmp_path / "docs/specs/reference-service/overview.md"
+    with pytest.raises(M.ArtifactPromotionError, match="canonical docs family"):
+        M.promote_artifact(
+            repo_root=tmp_path,
+            outcome_id="outcome-23",
+            phase="impl-spec",
+            source_role="repository-staging",
+            source_ref="staging/reference-service/overview.md",
+            staged_content="# Wrong family\n",
+            target_ref="docs/plans/reference-service.md",
+            expected_predecessor_sha256=None,
+            transition_receipt_ref=transition,
+        )
+
+
 def test_matching_predecessor_is_replaced_atomically(tmp_path: Path) -> None:
     target = tmp_path / "docs/plans/approved.md"
     target.parent.mkdir(parents=True)

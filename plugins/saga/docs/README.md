@@ -18,15 +18,18 @@ The source model for command coverage and visuals is [model/saga-docs-model.yaml
 
 ## Operating Model
 
-Saga has 23 command files and 22 routable commands. `/ceo-review` is a compatibility alias for `/founder-review`.
+Saga has 24 command files and 23 routable commands. `/ceo-review` is a compatibility alias for `/founder-review`.
 
 The main chain is a reviewed-work spine:
 
 ```text
-idea/requirements-ready -> /plan -> /doc-review -> /work -> /code-review -> /qa -> /handoff or /retro
+idea/requirements-ready -> [/impl-spec] -> /plan -> /doc-review -> /work -> /code-review -> /qa -> /handoff or /retro
 ```
 
-Several commands intentionally sit off the linear spine. `/spec`, `/investigate`, `/optimize`, and `/strategy` are not stored lifecycle phases; they produce artifacts or decisions that route back into the chain.
+Several commands intentionally sit off the linear spine. `/spec`, `/impl-spec`, `/investigate`,
+`/optimize`, and `/strategy` are not stored lifecycle phases; they produce artifacts or decisions that
+route back into the chain. `/impl-spec` is used only when a repository profile declares a
+multi-document folder contract.
 
 Repository documents are the canonical Saga record. Runtime state and native
 brain artifacts are advisory projections; see [Portability](portability.md) for

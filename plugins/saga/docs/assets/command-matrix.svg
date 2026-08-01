@@ -14,7 +14,7 @@
     <tspan x="70" dy="0">Command Matrix</tspan>
   </text>
   <text x="70" y="118" class="subtitle" fill="#52616f">
-    <tspan x="70" dy="0">17 routable commands plus /ceo-review as the /founder-review alias.</tspan>
+    <tspan x="70" dy="0">18 routed lifecycle commands plus /ceo-review as the /founder-review alias.</tspan>
   </text>
   <rect x="70" y="175" width="350" height="565" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="2"/>
   <rect x="94" y="205" width="96" height="34" rx="17" fill="#0f7c80"/>
@@ -62,14 +62,15 @@
     <tspan x="289" dy="0">off-chain</tspan>
   </text>
   <text x="98" y="651" class="label" fill="#2f6fbd">
-    <tspan x="98" dy="0">/strategy</tspan>
+    <tspan x="98" dy="0">/impl-spec</tspan>
   </text>
   <text x="98" y="679" class="body" fill="#52616f">
-    <tspan x="98" dy="0">durable direction anchor</tspan>
+    <tspan x="98" dy="0">profile-backed</tspan>
+    <tspan x="98" dy="18">implementation specification</tspan>
   </text>
-  <rect x="275" y="629" width="130" height="34" rx="17" fill="#b7791f"/>
+  <rect x="275" y="629" width="118" height="34" rx="17" fill="#6b5fb5"/>
   <text x="289" y="652" class="small" fill="#fbfcfd">
-    <tspan x="289" dy="0">off-chain</tspan>
+    <tspan x="289" dy="0">spec set</tspan>
   </text>
   <rect x="440" y="175" width="350" height="565" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="2"/>
   <rect x="464" y="205" width="154" height="34" rx="17" fill="#2f6fbd"/>
@@ -169,43 +170,53 @@
     <tspan x="1218" dy="0">Off-chain/Route</tspan>
   </text>
   <text x="1208" y="275" class="label" fill="#2f6fbd">
-    <tspan x="1208" dy="0">/investigate</tspan>
+    <tspan x="1208" dy="0">/strategy</tspan>
   </text>
   <text x="1208" y="303" class="body" fill="#52616f">
-    <tspan x="1208" dy="0">root-cause diagnosis</tspan>
+    <tspan x="1208" dy="0">durable direction anchor</tspan>
   </text>
   <rect x="1385" y="253" width="130" height="34" rx="17" fill="#b7791f"/>
   <text x="1399" y="276" class="small" fill="#fbfcfd">
-    <tspan x="1399" dy="0">read-only</tspan>
+    <tspan x="1399" dy="0">off-chain</tspan>
   </text>
   <text x="1208" y="369" class="label" fill="#2f6fbd">
-    <tspan x="1208" dy="0">/optimize</tspan>
+    <tspan x="1208" dy="0">/investigate</tspan>
   </text>
   <text x="1208" y="397" class="body" fill="#52616f">
-    <tspan x="1208" dy="0">metric experiment loop</tspan>
+    <tspan x="1208" dy="0">root-cause diagnosis</tspan>
   </text>
-  <rect x="1385" y="347" width="118" height="34" rx="17" fill="#b7791f"/>
+  <rect x="1385" y="347" width="130" height="34" rx="17" fill="#b7791f"/>
   <text x="1399" y="370" class="small" fill="#fbfcfd">
-    <tspan x="1399" dy="0">optimize</tspan>
+    <tspan x="1399" dy="0">read-only</tspan>
   </text>
   <text x="1208" y="463" class="label" fill="#2f6fbd">
-    <tspan x="1208" dy="0">/handoff</tspan>
+    <tspan x="1208" dy="0">/optimize</tspan>
   </text>
   <text x="1208" y="491" class="body" fill="#52616f">
-    <tspan x="1208" dy="0">issue handoff envelope</tspan>
+    <tspan x="1208" dy="0">metric experiment loop</tspan>
   </text>
-  <rect x="1385" y="441" width="118" height="34" rx="17" fill="#2f6fbd"/>
+  <rect x="1385" y="441" width="118" height="34" rx="17" fill="#b7791f"/>
   <text x="1399" y="464" class="small" fill="#fbfcfd">
-    <tspan x="1399" dy="0">envelope</tspan>
+    <tspan x="1399" dy="0">optimize</tspan>
   </text>
   <text x="1208" y="557" class="label" fill="#2f6fbd">
-    <tspan x="1208" dy="0">/retro</tspan>
+    <tspan x="1208" dy="0">/handoff</tspan>
   </text>
   <text x="1208" y="585" class="body" fill="#52616f">
+    <tspan x="1208" dy="0">issue handoff envelope</tspan>
+  </text>
+  <rect x="1385" y="535" width="118" height="34" rx="17" fill="#2f6fbd"/>
+  <text x="1399" y="558" class="small" fill="#fbfcfd">
+    <tspan x="1399" dy="0">envelope</tspan>
+  </text>
+  <text x="1208" y="651" class="label" fill="#2f6fbd">
+    <tspan x="1208" dy="0">/retro</tspan>
+  </text>
+  <text x="1208" y="679" class="body" fill="#52616f">
     <tspan x="1208" dy="0">lifecycle learning</tspan>
   </text>
-  <rect x="1385" y="535" width="118" height="34" rx="17" fill="#0f7c80"/>
-  <text x="1399" y="558" class="small" fill="#fbfcfd">
+  <rect x="1385" y="629" width="118" height="34" rx="17" fill="#0f7c80"/>
+  <text x="1399" y="652" class="small" fill="#fbfcfd">
     <tspan x="1399" dy="0">terminal</tspan>
   </text>
   <rect x="70" y="780" width="1460" height="55" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="2"/>

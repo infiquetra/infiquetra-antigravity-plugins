@@ -36,10 +36,11 @@ receipts with `multi-agent-consensus/scripts/deliberation.py`. Incomplete covera
 confidence pass complete. A lightweight inline check does not claim independent coverage.
 
 `/plan` answers **"How should it be built?"** It takes a settled WHAT — from `/brainstorm`'s
-requirements doc, a handoff issue, or a clear ad-hoc request — and interrogates it into a durable,
-agent-consumable implementation plan. It does **not** invent product behavior (that came from
-`/brainstorm` or the issue), it does **not** implement code, and it does **not** run the review
-gauntlet. It plans, self-reviews, records a plan saga, and routes.
+requirements doc, a promoted `saga.impl-spec-set.v1` manifest, a handoff issue, or a clear ad-hoc
+request — and interrogates it into a durable, agent-consumable implementation plan. It does **not**
+invent product behavior (that came from `/brainstorm`, `/impl-spec`, or the issue), it does **not**
+implement code, and it does **not** run the review gauntlet. It plans, self-reviews, records a plan
+saga, and routes.
 
 ## Position in the lifecycle
 
@@ -48,6 +49,7 @@ gauntlet. It plans, self-reviews, records a plan saga, and routes.
 - `/office-hours` answers: "What is even the right frame?"
 - `/ideate` answers: "What are the strongest ideas worth exploring?"
 - `/brainstorm` answers: "What exactly should one chosen idea mean?" (the WHAT)
+- `/impl-spec` answers: "What complete system contract must the plan consume?" (off-chain)
 - **`/plan` answers: "How should it be built?"** (the HOW — this engine)
 - the `review` phase (`/doc-review`) answers: "Is this plan ready to execute?"
 - `/work` answers: "Build it." (consumes the plan + saga)
@@ -96,9 +98,12 @@ Capture the input and decide whether a plan doc is even warranted before spendin
 
 ### 0.1 Capture input
 
-The input is an issue reference, a requirements doc path, or an ad-hoc request. Take it from command
-arguments or the active artifact. If empty, ask: "What would you like to plan? Point me at the
-requirements doc, the issue, or describe the work." Do not proceed without one.
+The input is an issue reference, a requirements doc path, a promoted
+`saga.impl-spec-set.v1` manifest, or an ad-hoc request. Take it from command arguments or the active
+artifact. For an implementation-spec manifest, verify that every listed path and SHA-256 digest
+matches repository content, then name the manifest path and identity in the plan. If empty, ask:
+"What would you like to plan? Point me at the requirements doc, implementation-spec manifest, the
+issue, or describe the work." Do not proceed without one.
 
 ### 0.2 Issue handoff routing
 
@@ -155,9 +160,12 @@ If depth is unclear, ask one targeted question, then continue.
 Read code before asking. This is the moment the operator sees you grounded in their actual repo, not a
 generic checklist.
 
-1. **Read the upstream artifact first.** If a `/brainstorm` requirements doc (`docs/brainstorms/*-requirements.md`),
-   the handoff issue, or a linked source exists, read it thoroughly and carry forward its problem frame,
-   requirements, scope boundaries, KTDs, and open questions as constraints the plan must honor.
+1. **Read the upstream artifact first.** If a `/brainstorm` requirements doc
+   (`docs/brainstorms/*-requirements.md`), a promoted implementation-spec manifest and its complete
+   file set, the handoff issue, or a linked source exists, read it thoroughly and carry forward its
+   problem frame, requirements, scope boundaries, Key Technical Decisions, and open questions as
+   constraints the plan must honor. A buildability pass on the spec set does not replace the later
+   `/doc-review` readiness gate on this plan.
 2. **Read `STRATEGY.md`** if present and anchor plan decisions to the active tracks; flag any decision
    that pulls away from the stated approach.
 3. **Read the engineering journal** (`docs/engineering-journal/`) for relevant prior LEARNINGS and

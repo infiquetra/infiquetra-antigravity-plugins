@@ -26,12 +26,17 @@ Off-chain commands are deliberate exits from the linear path.
 | Command | State behavior | Routes back through |
 |---------|----------------|---------------------|
 | `/spec` | saga-untouched | `/handoff`, `/plan`, optional `/doc-review` |
+| `/impl-spec` | saga-untouched, receipt-backed obligation | promoted manifest to `/plan`, then `/doc-review` |
 | `/investigate` | saga read-only | `/work`, `/handoff`, `/brainstorm`, `/code-review` |
 | `/optimize` | saga-untouched | `/work` for the winning change |
 | `/strategy` | saga-untouched | `/ideate`, `/brainstorm`, `/plan`, `/founder-review` |
 | `/retro` | saga read-only terminal | `/handoff` only when learning should become work |
 
 Do not add off-chain commands as stored `lifecycle_phase` values. Their artifacts can still become handoff sources.
+
+The reference route for a profile-backed system specification is `/ideate` -> `/brainstorm` ->
+`/impl-spec` -> `/plan` -> `/doc-review`. The buildability probe inside `/impl-spec` checks the
+specification set; it does not replace the implementation-readiness review of the resulting plan.
 
 ## Destination Horizon
 

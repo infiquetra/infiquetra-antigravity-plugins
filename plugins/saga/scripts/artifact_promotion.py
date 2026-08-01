@@ -32,6 +32,7 @@ MAX_ARTIFACT_BYTES = 2 * 1024 * 1024
 PHASE_TARGETS: dict[str, str] = {
     "ideate": "ideation",
     "brainstorm": "brainstorms",
+    "impl-spec": "specs",
     "plan": "plans",
     "doc-review": "reviews",
     "work": "work-sessions",

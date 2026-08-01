@@ -1,6 +1,6 @@
 # Saga Command Selection
 
-Saga has 23 command files and 22 routable commands. `/ceo-review` is an alias for `/founder-review`, so it is documented separately but does not add a lifecycle node.
+Saga has 24 command files and 23 routable commands. `/ceo-review` is an alias for `/founder-review`, so it is documented separately but does not add a lifecycle node.
 
 ![Command Matrix](assets/command-matrix.svg)
 
@@ -11,6 +11,8 @@ Saga has 23 command files and 22 routable commands. `/ceo-review` is an alias fo
 | `/office-hours` vs `/ideate` | `/office-hours` finds the frame; `/ideate` generates options inside a usable frame. |
 | `/ideate` vs `/brainstorm` | `/ideate` produces and critiques many ideas; `/brainstorm` deepens one chosen idea into requirements. |
 | `/brainstorm` vs `/spec` | `/brainstorm` explores requirements and approaches; `/spec` interrogates an ambiguous WHAT until it is precise. |
+| `/spec` vs `/impl-spec` | `/spec` sharpens one WHAT document; `/impl-spec` proves a profile-declared multi-document system contract. |
+| `/impl-spec` vs `/plan` | `/impl-spec` defines the complete system contract; `/plan` turns that settled contract into implementation units. |
 | `/plan` vs `/doc-review` | `/plan` writes implementation units and decisions; `/doc-review` checks whether that plan is ready to execute. |
 | `/qa` vs `/optimize` | `/qa` gates a shipped or merge-bound change; `/optimize` loops toward a metric target. |
 | `/strategy` vs `/founder-review` | `/strategy` records direction; `/founder-review` challenges ambition, scope, and timing. |
@@ -93,6 +95,25 @@ WHAT-interrogation engine for vague asks.
 | Boundary | Owns WHAT rigor, not HOW planning or issue mutation. |
 | Common mistakes | Treating `spec` as a stored lifecycle phase; filing an SDLC issue directly. |
 | Example | `/spec "make Saga docs better"` |
+
+### /impl-spec
+
+Profile-backed authoring and proof for a multi-document system specification.
+
+| Field | Value |
+|-------|-------|
+| Purpose | Author and prove the complete specification set declared by a repository profile. |
+| Use when | Settled system requirements need architecture, contract, and operations documents governed by a README folder contract. |
+| Do not use when | One WHAT document is sufficient, or no valid profile and folder contract exists. |
+| Inputs | Repository-relative `saga.impl-spec-profile.v1` file and its declared README. |
+| Outputs | Promoted `docs/specs/` documents, review evidence, and a `saga.impl-spec-set.v1` manifest. |
+| Saga state | Off-chain obligation; writes no stored lifecycle phase. |
+| Routes in | `/brainstorm`, settled system requirements. |
+| Routes out | promoted manifest to `/plan`; buildability probing through `/doc-review`. |
+| Gates | Complete set, independent P0-P3 review closure, buildability PASS, and promotion receipts. |
+| Boundary | Owns specification authoring and proof, not product review, implementation, GitHub mutation, or deployment. |
+| Common mistakes | Inventing a missing folder contract; treating its probe as the later plan review. |
+| Example | `/impl-spec profiles/reference-service.json autonomous` |
 
 ### /plan
 

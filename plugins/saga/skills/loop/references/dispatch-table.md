@@ -1,6 +1,6 @@
 # Dispatch Table
 
-The designed routing map for `/loop`. It is **total** over the 17 routable lifecycle commands: every
+The designed routing map for `/loop`. It is **total** over the 18 routed lifecycle commands: every
 input type, saga `lifecycle_phase` + `phase_status`, and handoff maturity resolves to exactly one next
 command. The table is designed from the already-shipped siblings' own clean-exit routing — there is no
 upstream router to port. `/loop` reads this table in Phase 2, then ticks the saga and dispatches
@@ -15,9 +15,9 @@ unchanged contract-and-receipt set must return the same route on every retry. Mi
 conflicting evidence keeps the obligation unsettled. Use the tables below only when no such contract
 applies or after all required obligations are satisfied.
 
-The 17 routable commands: `/office-hours`, `/ideate`, `/brainstorm`, `/spec`, `/plan`, `/doc-review`,
-`/work`, `/code-review`, `/qa`, `/investigate`, `/founder-review`, `/strategy`, `/optimize`, `/handoff`,
-`/retro`, `/resume`, and `/loop` itself (re-entry).
+The 18 routed lifecycle commands: `/office-hours`, `/ideate`, `/brainstorm`, `/spec`, `/impl-spec`,
+`/plan`, `/doc-review`, `/work`, `/code-review`, `/qa`, `/investigate`, `/founder-review`, `/strategy`,
+`/optimize`, `/handoff`, `/retro`, `/resume`, and `/loop` itself (re-entry).
 
 ---
 
@@ -33,6 +33,7 @@ A route to a **stub** target is **advisory**: `/loop` names it as the next comma
 | `/ideate` | shipped (529L) | normal |
 | `/brainstorm` | shipped (342L) | normal |
 | `/spec` | shipped (spec-interrogation engine) | **advisory + off-chain** — never block |
+| `/impl-spec` | shipped (profile-backed specification set) | **off-chain obligation** — receipt-backed |
 | `/plan` | shipped | normal |
 | `/doc-review` | shipped (178L) | **HARD gate** (P0/P1 block, see below) |
 | `/work` | shipped | normal |
@@ -58,6 +59,7 @@ When `scan` finds no in-flight saga and there is no issue, route by how settled 
 | "Give me ideas" / "what should I improve" / open divergent ask | `/ideate` |
 | One chosen idea, WHAT not yet pinned | `/brainstorm` |
 | A vague ask / under-specified issue that needs a precise, formal WHAT before planning or handoff | `/spec` (advisory, off-chain) |
+| Settled system requirements with a declared multi-document profile and folder contract | `/impl-spec` (off-chain obligation) |
 | Settled WHAT, ready for HOW | `/plan` |
 | Strategic-direction ask ("where are we pointed") | `/strategy` (advisory, shipped) |
 
@@ -74,6 +76,9 @@ The spine, by handoff maturity and saga phase:
 ```
 idea/requirements-ready ─► /plan ─► /doc-review ─► /work ─► /code-review ─► /qa ─► /handoff or /retro
 ```
+
+When a profile-backed specification set is required, insert `/impl-spec` before `/plan`. Route to
+`/plan` only after the promoted `saga.impl-spec-set.v1` manifest and its receipts are satisfied.
 
 | Saga `lifecycle_phase` | `phase_status` | Handoff maturity | Next command |
 |---|---|---|---|
@@ -99,6 +104,7 @@ For `plan-ready` / `resume-ready` issues, the direct consumer is `/work`; for `i
 | Input / trigger | Next command | State |
 |---|---|---|
 | A vague ask / under-specified issue that needs a precise, formal WHAT (five-Why, scope/MVP/out-of-scope lock, failure modes) before planning or handoff | `/spec` | advisory, shipped (off-chain) |
+| Settled system requirements plus a valid implementation-spec profile and README folder contract | `/impl-spec` | shipped (off-chain obligation) |
 | Bug / defect / root-cause question, a failing or flaky test, "why is this broken" | `/investigate` | advisory, shipped (off-chain) |
 | Strategic-direction ask, STRATEGY.md maintenance | `/strategy` | advisory, shipped |
 | "Improve / route / optimize this metric" | `/optimize` | advisory, shipped (off-chain) |
@@ -116,6 +122,11 @@ and is **saga-UNTOUCHED**: it writes a sharp WHAT artifact under `docs/specs/` a
 — to `/handoff` (the spec becomes a `requirements-ready` SDLC issue source), to `/plan` (settle the
 HOW), or to an optional `/doc-review` pass (which reads the spec under the **requirements** lens). It
 never enters the work thread and never blocks `/loop`.
+
+`/impl-spec` is the profile-backed **multi-document implementation-specification route**. It writes no
+stored Saga phase. Its required obligation remains unsettled until the complete set, independent
+reviews, buildability PASS, promotion receipts, and final `saga.impl-spec-set.v1` manifest verify.
+`/loop` then routes that promoted manifest to `/plan`; the plan still passes `/doc-review` before work.
 
 `/investigate` is the **off-chain systematic-debugging engine** and is **READ-ONLY on the saga**: it
 diagnoses (it never blocks `/loop`) and routes the work OUT by what it finds — a confirmed **real fix**
