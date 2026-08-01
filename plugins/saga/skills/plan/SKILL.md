@@ -11,6 +11,30 @@ A decision-complete plan names decisions, literal write paths, unit dependencies
 test node IDs, stop conditions, and authority gates. The operator approves unresolved material choices
 before the plan is called executable. Planning never grants mutation, merge, or deployment authority.
 
+## Deliberation contract
+
+<!-- saga-deliberation-phase
+{
+  "schema": "saga.deliberation-phase.v1",
+  "phase": "plan",
+  "strategies": [
+    {"strategy_id": "requirements", "role": "Requirements-confidence reviewer", "applies_when": "the confidence checklist scores Requirements as a candidate"},
+    {"strategy_id": "technical-decisions", "role": "Technical-decision confidence reviewer", "applies_when": "the confidence checklist scores Key Technical Decisions as a candidate"},
+    {"strategy_id": "implementation-units", "role": "Implementation-unit confidence reviewer", "applies_when": "the confidence checklist scores Implementation Units as a candidate"},
+    {"strategy_id": "system-impact", "role": "System-impact confidence reviewer", "applies_when": "the confidence checklist scores System-Wide Impact as a candidate"},
+    {"strategy_id": "risks-dependencies", "role": "Risk and dependency confidence reviewer", "applies_when": "the confidence checklist scores Risks and Dependencies as a candidate"}
+  ],
+  "minimum_coverage": {"rule": "all-applicable", "floor": 1},
+  "applicability_rule": "The Phase 4 checklist score selects the top warranted sections; dropping a selected section needs a recorded operator decision.",
+  "completion_quality": "Ground every selected section in settled requirements, repository evidence, ordered units, and decisive tests.",
+  "cheap_first_escalation": {"allowed": false, "triggers": []}
+}
+-->
+
+When Phase 4 dispatches multiple confidence strategies, create a manifest and validate their separate
+receipts with `multi-agent-consensus/scripts/deliberation.py`. Incomplete coverage cannot mark the
+confidence pass complete. A lightweight inline check does not claim independent coverage.
+
 `/plan` answers **"How should it be built?"** It takes a settled WHAT — from `/brainstorm`'s
 requirements doc, a handoff issue, or a clear ad-hoc request — and interrogates it into a durable,
 agent-consumable implementation plan. It does **not** invent product behavior (that came from

@@ -87,6 +87,58 @@ def _github_fact() -> O.Evidence:
     )
 
 
+def _deliberation_receipt(tmp_path: Path, *, complete: bool = True) -> Path:
+    body = {
+        "schema": M.DELIBERATION_RECEIPT_SCHEMA,
+        "manifest_id": "issue-19-review",
+        "phase": "review",
+        "complete": complete,
+        "coverage": {
+            "required": 1,
+            "accepted": 1 if complete else 0,
+            "missing_strategy_ids": [] if complete else ["correctness"],
+            "exhausted_strategy_ids": [],
+        },
+        "requested": {
+            "model": "gemini-3.1-pro",
+            "effort": "high",
+            "tools": ["read"],
+            "max_workers": 1,
+        },
+        "observed": {
+            "models": ["unknown"],
+            "efforts": ["unknown"],
+            "tools": "unknown",
+            "isolation": ["isolated-sequential"],
+            "worker_count": 1 if complete else 0,
+        },
+        "host_capability_receipt": {
+            "reference": "docs/evidence/host.json",
+            "sha256": "sha256:" + ("a" * 64),
+            "states": {"agy.sequential.isolation": "passed"},
+        },
+        "accepted_results": [],
+        "issues": [],
+        "recovery_requests": [],
+        "convergence": {"summary": "", "disagreements": [], "adjudication": ""},
+        "escalation": {
+            "mode": "fixed",
+            "selected_model": "gemini-3.1-pro",
+            "trigger_evidence": [],
+        },
+    }
+    receipt = {
+        **body,
+        "receipt_id": hashlib.sha256(
+            json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        ).hexdigest(),
+    }
+    path = tmp_path / "docs" / "deliberation.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+    return path
+
+
 def _receipt(tmp_path: Path) -> M.TransitionReceipt:
     return M.build_transition_receipt(
         contract=_contract(),
@@ -161,6 +213,54 @@ def test_receipt_binds_every_category_and_round_trips(tmp_path: Path) -> None:
             "external_facts",
         )
     )
+
+
+def test_complete_deliberation_binds_through_transition_receipt(tmp_path: Path) -> None:
+    path = _deliberation_receipt(tmp_path)
+    evidence = M.deliberation_evidence(
+        repo_root=tmp_path,
+        receipt_path=path,
+        evidence_id="deliberation-proof",
+        subject="issue-21",
+        producer="multi-agent-consensus",
+    )
+
+    receipt = M.build_transition_receipt(
+        contract=_contract(),
+        transition_id="review-to-work",
+        obligation_id="deliberation",
+        attempt=1,
+        lifecycle_evidence=[evidence],
+        repo_root=tmp_path,
+    )
+
+    assert evidence.kind is O.EvidenceKind.DELIBERATION_RECEIPT
+    assert receipt.settlement_state is O.SettlementState.SATISFIED
+
+
+def test_incomplete_or_tampered_deliberation_cannot_bind(tmp_path: Path) -> None:
+    incomplete = _deliberation_receipt(tmp_path, complete=False)
+    with pytest.raises(M.TransitionReceiptError, match="incomplete deliberation"):
+        M.deliberation_evidence(
+            repo_root=tmp_path,
+            receipt_path=incomplete,
+            evidence_id="deliberation-proof",
+            subject="issue-21",
+            producer="multi-agent-consensus",
+        )
+
+    complete = _deliberation_receipt(tmp_path)
+    data = json.loads(complete.read_text())
+    data["observed"]["worker_count"] = 99
+    complete.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(M.TransitionReceiptError, match="identity does not match"):
+        M.deliberation_evidence(
+            repo_root=tmp_path,
+            receipt_path=complete,
+            evidence_id="deliberation-proof",
+            subject="issue-21",
+            producer="multi-agent-consensus",
+        )
 
 
 def test_reference_schemas_validate_current_contract_and_receipt(tmp_path: Path) -> None:

@@ -15,6 +15,31 @@ Operator-supplied perspectives may be compared inline. Host-originated independe
 an inline comparison or externally supplied records. Never replace missing capability evidence with
 self-issued fixtures or narration.
 
+## Deliberation contract
+
+<!-- saga-deliberation-phase
+{
+  "schema": "saga.deliberation-phase.v1",
+  "phase": "ideate",
+  "strategies": [
+    {"strategy_id": "pain-friction", "role": "Pain and friction frame", "applies_when": "selected by the Phase 0.4 adaptive count or backlog theme padding"},
+    {"strategy_id": "inversion-removal-automation", "role": "Inversion, removal, and automation frame", "applies_when": "selected by the Phase 0.4 adaptive count or backlog theme padding"},
+    {"strategy_id": "assumption-reframing", "role": "Assumption-breaking and reframing frame", "applies_when": "selected by the Phase 0.4 adaptive count or backlog theme padding"},
+    {"strategy_id": "leverage-compounding", "role": "Leverage and compounding frame", "applies_when": "selected by the Phase 0.4 adaptive count or backlog theme padding"},
+    {"strategy_id": "cross-domain-analogy", "role": "Cross-domain analogy frame", "applies_when": "selected by the Phase 0.4 adaptive count"},
+    {"strategy_id": "constraint-flipping", "role": "Constraint-flipping frame", "applies_when": "selected by the Phase 0.4 adaptive count"}
+  ],
+  "minimum_coverage": {"rule": "all-applicable", "floor": 1},
+  "applicability_rule": "Phase 0.4 scope or backlog selection determines applicability; any further reduction needs a recorded operator decision.",
+  "completion_quality": "Retain operator seeds, cover the selected frames, critique every candidate, and preserve rejection and disagreement evidence.",
+  "cheap_first_escalation": {"allowed": false, "triggers": []}
+}
+-->
+
+Before a run claims multi-strategy coverage, create a manifest and validate its separate execution
+receipts with `multi-agent-consensus/scripts/deliberation.py`. Incomplete coverage blocks convergence.
+An inline comparison may continue where this skill permits it, but it is not independent coverage.
+
 Generate and critically evaluate grounded Infiquetra ideas. The engine generates many
 candidates across parallel frames, critiques all of them, and explains only the survivors —
 with their rejection reasons preserved and revivable.

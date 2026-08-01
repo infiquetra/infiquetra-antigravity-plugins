@@ -11,6 +11,34 @@ runs the acceptance checks the change actually warrants, gathers evidence, assig
 ship verdict, and routes. It reports and routes — it does **not** fix, commit, push, open or merge a
 PR, deploy, file SDLC issues, or set readiness labels.
 
+## Deliberation contract
+
+<!-- saga-deliberation-phase
+{
+  "schema": "saga.deliberation-phase.v1",
+  "phase": "qa",
+  "strategies": [
+    {"strategy_id": "behavior", "role": "Behavior verifier", "applies_when": "the change has user-visible or business behavior"},
+    {"strategy_id": "security", "role": "Security verifier", "applies_when": "the change touches auth, secrets, input trust, injection, or egress"},
+    {"strategy_id": "infra", "role": "Infrastructure verifier", "applies_when": "the change touches hosts, networking, storage, clusters, or Ansible"},
+    {"strategy_id": "api", "role": "API verifier", "applies_when": "the change touches a public or typed contract"},
+    {"strategy_id": "deployment", "role": "Deployment verifier", "applies_when": "the change touches release, promotion, canary, or rollback wiring"},
+    {"strategy_id": "data", "role": "Data verifier", "applies_when": "the change touches persisted state, schema, migration, or backfill"},
+    {"strategy_id": "config", "role": "Configuration verifier", "applies_when": "the change touches settings, flags, environment, or CI configuration"},
+    {"strategy_id": "docs", "role": "Documentation verifier", "applies_when": "the change touches documentation or generated documentation sources"},
+    {"strategy_id": "trivial", "role": "Trivial-change verifier", "applies_when": "the diff has no behavior surface and no other risk class applies"}
+  ],
+  "minimum_coverage": {"rule": "all-applicable", "floor": 1},
+  "applicability_rule": "Phase 1 risk classification selects every applicable class; dropping a selected class needs a recorded operator decision.",
+  "completion_quality": "Adjudicate every applicable acceptance failure from concrete evidence before deriving the ship verdict.",
+  "cheap_first_escalation": {"allowed": false, "triggers": []}
+}
+-->
+
+When multiple risk classes execute independently, create a manifest and validate their separate
+receipts with `multi-agent-consensus/scripts/deliberation.py`. Incomplete coverage cannot support a
+passing ship verdict. A serial inline check remains valid but is not independent coverage.
+
 ## Position in the lifecycle
 
 `/qa` is the saga `LIFECYCLE_PHASES` `qa` slot — the gate after execution:

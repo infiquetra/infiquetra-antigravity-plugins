@@ -457,6 +457,36 @@ def test_optional_proven_fallback_reports_degraded_without_failure(
     }
 
 
+def test_independent_deliberation_accepts_only_proven_sequential_fallback(
+    tmp_path: Path,
+) -> None:
+    selector = contract_repo(tmp_path)
+    states = {
+        row["id"]: "passed"
+        for row in CATALOG["capabilities"]
+        if "saga.independent-deliberation" in row["required_for"]
+    }
+    states["agy.agent.execution"] = "unavailable"
+    states["agy.sequential.isolation"] = "passed"
+    receipt = receipt_with_states(**states)
+
+    result = validate_plugins.run_doctor(
+        tmp_path,
+        tmp_path / "install",
+        capability_profile="saga.independent-deliberation",
+        catalog=CATALOG,
+        receipt=receipt,
+        selector=selector,
+    )
+
+    assert result.ok is True
+    assert result.capability.status == "degraded"
+    assert result.capability.evaluation is not None
+    assert result.capability.evaluation["fallbacks"] == {
+        "agy.agent.execution": "agy.sequential.isolation"
+    }
+
+
 def test_unresolved_lint_finding_fails_with_structured_remediation(tmp_path: Path, capsys) -> None:
     selector = contract_repo(tmp_path)
     selected_path = "plugins/saga/skills/work/SKILL.md"

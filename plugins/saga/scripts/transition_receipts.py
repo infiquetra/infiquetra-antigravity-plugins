@@ -32,6 +32,7 @@ from lifecycle_obligations import (  # noqa: E402
 )
 
 SCHEMA_VERSION = "saga.transition-receipt.v1"
+DELIBERATION_RECEIPT_SCHEMA = "multi-agent-consensus.deliberation-receipt.v1"
 _SLUG = re.compile(r"[A-Za-z0-9._-]+")
 
 _CATEGORY_KINDS: dict[str, frozenset[EvidenceKind]] = {
@@ -433,6 +434,75 @@ def evaluate_transition_receipt(
             ),
         )
     return computed
+
+
+def deliberation_evidence(
+    *,
+    repo_root: Path,
+    receipt_path: Path,
+    evidence_id: str,
+    subject: str,
+    producer: str,
+) -> Evidence:
+    """Bind one complete deliberation receipt as verified transition evidence."""
+
+    _validate_slug(evidence_id, "deliberation evidence_id")
+    if not isinstance(subject, str) or not subject.strip():
+        raise TransitionReceiptError("deliberation evidence subject must be non-empty")
+    if not isinstance(producer, str) or not producer.strip():
+        raise TransitionReceiptError("deliberation evidence producer must be non-empty")
+    root = repo_root.resolve()
+    target = receipt_path if receipt_path.is_absolute() else root / receipt_path
+    try:
+        resolved = target.resolve(strict=True)
+        reference = resolved.relative_to(root).as_posix()
+        raw = resolved.read_bytes()
+        data = json.loads(raw)
+    except ValueError as exc:
+        raise TransitionReceiptError(
+            "deliberation receipt must resolve inside the repository"
+        ) from exc
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise TransitionReceiptError("deliberation receipt is not readable JSON") from exc
+    expected = {
+        "schema",
+        "receipt_id",
+        "manifest_id",
+        "phase",
+        "complete",
+        "coverage",
+        "requested",
+        "observed",
+        "host_capability_receipt",
+        "accepted_results",
+        "issues",
+        "recovery_requests",
+        "convergence",
+        "escalation",
+    }
+    if not isinstance(data, dict) or set(data) != expected:
+        raise TransitionReceiptError("deliberation receipt has an invalid closed shape")
+    if data.get("schema") != DELIBERATION_RECEIPT_SCHEMA:
+        raise TransitionReceiptError("deliberation receipt schema is unsupported")
+    if data.get("complete") is not True:
+        raise TransitionReceiptError("incomplete deliberation cannot become transition evidence")
+    claimed_id = data.get("receipt_id")
+    body = {key: value for key, value in data.items() if key != "receipt_id"}
+    actual_id = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    if claimed_id != actual_id:
+        raise TransitionReceiptError("deliberation receipt identity does not match its content")
+    return Evidence(
+        evidence_id=evidence_id,
+        kind=EvidenceKind.DELIBERATION_RECEIPT,
+        subject=subject,
+        producer=producer,
+        reference=reference,
+        digest="sha256:" + hashlib.sha256(raw).hexdigest(),
+        verification_state=VerificationState.VERIFIED,
+        assertion="complete",
+    )
 
 
 def receipt_path(repo_root: Path, outcome_id: str, receipt_id: str) -> Path:

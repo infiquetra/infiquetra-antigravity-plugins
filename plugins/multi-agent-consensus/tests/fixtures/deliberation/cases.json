@@ -1,0 +1,38 @@
+[
+  {
+    "case_id": "one-call-six-headings",
+    "expected": "incomplete"
+  },
+  {
+    "case_id": "six-isolated-sequential",
+    "expected": "complete"
+  },
+  {
+    "case_id": "duplicate-strategy-ids",
+    "expected": "recovery"
+  },
+  {
+    "case_id": "malformed-results",
+    "expected": "recovery"
+  },
+  {
+    "case_id": "failed-recovery",
+    "expected": "incomplete"
+  },
+  {
+    "case_id": "unknown-model-readback",
+    "expected": "unknown-preserved"
+  },
+  {
+    "case_id": "operator-authorized-applicability",
+    "expected": "reduced-set-accepted"
+  },
+  {
+    "case_id": "preserved-disagreement",
+    "expected": "evidence-and-adjudication-retained"
+  },
+  {
+    "case_id": "cheap-first-escalation",
+    "expected": "declared-trigger-required"
+  }
+]

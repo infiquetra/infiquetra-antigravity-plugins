@@ -53,7 +53,8 @@ convention in [`../skills/brainstorm/SKILL.md`](../skills/brainstorm/SKILL.md).
 
 ## 3. Capability gate
 
-`multi-agent-consensus` is available only when all of the following are true:
+The full `multi-agent-consensus` worker and reviewer backend is available only when all of the
+following are true:
 
 1. the plugin is installed and valid;
 2. the current Antigravity session exposes the native subagent controls required
@@ -67,8 +68,12 @@ with a passing receipt. During unattended recovery, a downgrade to `inline` is
 allowed only when the saga records the downgrade and the work is not
 guarantee-bearing.
 
-Do not convert an independent-agent requirement to sequential execution. That
-would change the selected guarantee rather than degrade the mechanism.
+Receipt-backed deliberation is a narrower exception, not a third backend. A phase may use the
+`multi-agent-consensus` deliberation contract with separately isolated sequential Gemini conversations
+when `agy.agent.execution` is `unknown` or `unavailable`, `agy.sequential.isolation=passed`, and every
+execution has its own receipt. This does not authorize implementation workers, ordinary same-context
+sequential role-play, or the full reviewer backend. Without that isolation proof, sequential work
+changes the selected guarantee rather than the mechanism.
 
 ## 4. Recording the choice
 

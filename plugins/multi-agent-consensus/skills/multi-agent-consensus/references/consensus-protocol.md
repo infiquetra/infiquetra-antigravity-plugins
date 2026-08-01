@@ -16,6 +16,20 @@ The goal is a mutual consensus agreement between the Team Lead and the Reviewers
 
 Maximum iterations: **3**. After 3 cycles, proceed with the best available version regardless of scores.
 
+## Coverage precondition
+
+When this cycle is used as a declared multi-strategy phase, the Team Lead creates the deliberation
+manifest before dispatch and assigns one stable strategy ID to each selected reviewer. One result may
+satisfy only its assigned strategy, regardless of how many headings or personas appear in its text.
+
+After each cycle, evaluate the separate results with
+`plugins/multi-agent-consensus/scripts/deliberation.py`. The cycle may continue
+to its scoring decision only when the receipt proves every applicable strategy ran through native
+agents or capability-proven isolated sequential conversations. Duplicate identities, malformed
+results, and failed strategies consume only the manifest's bounded recovery attempts. Material
+reviewer disagreement and cited evidence remain in the convergence record alongside the Team Lead's
+adjudication.
+
 ---
 
 ## Cycle Structure

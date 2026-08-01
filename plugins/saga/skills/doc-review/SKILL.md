@@ -15,6 +15,31 @@ The core question is:
 
 This is not a copy-editing workflow and it is not a replacement for code review.
 
+## Deliberation contract
+
+<!-- saga-deliberation-phase
+{
+  "schema": "saga.deliberation-phase.v1",
+  "phase": "doc-review",
+  "strategies": [
+    {"strategy_id": "verification", "role": "Verification reviewer", "applies_when": "always"},
+    {"strategy_id": "assumptions", "role": "Assumption reviewer", "applies_when": "always"},
+    {"strategy_id": "requirement-mapping", "role": "Requirement-mapping reviewer", "applies_when": "always"},
+    {"strategy_id": "completeness", "role": "Completeness reviewer", "applies_when": "always"},
+    {"strategy_id": "open-choice-pressure", "role": "Open-choice reviewer", "applies_when": "always"},
+    {"strategy_id": "adversarial-failure-modes", "role": "Adversarial failure-mode reviewer", "applies_when": "always"}
+  ],
+  "minimum_coverage": {"rule": "all-applicable", "floor": 6},
+  "applicability_rule": "All six readiness checks apply; any reduction needs a recorded operator decision.",
+  "completion_quality": "Produce evidence-backed readiness findings and resolve every actionable P0 through P3 item.",
+  "cheap_first_escalation": {"allowed": false, "triggers": []}
+}
+-->
+
+When the readiness checks execute as independent strategies, create a manifest and validate separate
+receipts with `multi-agent-consensus/scripts/deliberation.py`. Incomplete coverage cannot produce a
+ready verdict. An inline review remains valid where selected but is not independent coverage.
+
 ## Target Resolution
 
 1. If the user supplied a path, read that document.

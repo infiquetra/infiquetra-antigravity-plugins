@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://infiquetra.com/schemas/multi-agent-consensus.deliberation-manifest.v1.json",
+  "title": "Receipt-backed deliberation manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "manifest_id",
+    "phase",
+    "strategies",
+    "minimum_coverage",
+    "requested",
+    "allowed_tools",
+    "execution_bounds",
+    "expected_result_fields",
+    "convergence",
+    "recovery",
+    "escalation",
+    "host_capability_receipt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "multi-agent-consensus.deliberation-manifest.v1"
+    },
+    "manifest_id": {
+      "$ref": "#/$defs/slug"
+    },
+    "phase": {
+      "$ref": "#/$defs/slug"
+    },
+    "strategies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "strategy_id",
+          "role",
+          "applicable",
+          "applicability_reason",
+          "applicability_rule",
+          "operator_decision_ref"
+        ],
+        "properties": {
+          "strategy_id": {
+            "$ref": "#/$defs/slug"
+          },
+          "role": {
+            "$ref": "#/$defs/nonEmpty"
+          },
+          "applicable": {
+            "type": "boolean"
+          },
+          "applicability_reason": {
+            "type": "string"
+          },
+          "applicability_rule": {
+            "type": "string"
+          },
+          "operator_decision_ref": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "minimum_coverage": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "effort"
+      ],
+      "properties": {
+        "model": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "effort": {
+          "$ref": "#/$defs/nonEmpty"
+        }
+      }
+    },
+    "allowed_tools": {
+      "$ref": "#/$defs/uniqueStrings"
+    },
+    "execution_bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_workers",
+        "max_turns_per_strategy"
+      ],
+      "properties": {
+        "max_workers": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_turns_per_strategy": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "expected_result_fields": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/uniqueStrings"
+        },
+        {
+          "minItems": 1
+        }
+      ]
+    },
+    "convergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule",
+        "preserve_disagreement"
+      ],
+      "properties": {
+        "rule": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "preserve_disagreement": {
+          "const": true
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_attempts_per_strategy"
+      ],
+      "properties": {
+        "max_attempts_per_strategy": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "escalation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "escalated_model",
+        "triggers"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "fixed",
+            "cheap-first"
+          ]
+        },
+        "escalated_model": {
+          "type": "string"
+        },
+        "triggers": {
+          "$ref": "#/$defs/uniqueStrings"
+        }
+      }
+    },
+    "host_capability_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference",
+        "sha256",
+        "states"
+      ],
+      "properties": {
+        "reference": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "states": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "passed",
+              "failed",
+              "unknown",
+              "unavailable"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "nonEmpty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "uniqueStrings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonEmpty"
+      }
+    }
+  }
+}

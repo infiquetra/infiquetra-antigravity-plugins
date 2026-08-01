@@ -16,6 +16,14 @@ These three reviewers are spawned for every plan execution regardless of plan ty
 | `security-reviewer` | orange | OWASP Top 10, secrets, auth/authZ, PII, supply chain |
 | `architecture-reviewer` | purple | Design patterns, separation of concerns, convention adherence |
 
+## Deliberation identities
+
+For a receipt-backed run, each selected reviewer gets one stable `strategy_id`. Use the reviewer agent
+name without the `-reviewer` suffix when it is unique in the manifest; custom reviewers use a unique
+slug declared before dispatch. A registry entry selects a role but does not prove execution. Only one
+separate native-agent or capability-proven isolated-sequential result with a unique execution ID can
+satisfy that strategy.
+
 ---
 
 ## Optional Reviewers — Code/Implementation Plans
