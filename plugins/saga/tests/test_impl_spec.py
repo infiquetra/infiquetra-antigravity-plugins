@@ -193,9 +193,7 @@ def test_impl_spec_contract_has_no_execution_or_remote_mutation_surface() -> Non
 
 def test_six_stage_skill_preserves_independence_promotion_and_lifecycle_boundaries() -> None:
     skill = (ROOT / "skills/impl-spec/SKILL.md").read_text(encoding="utf-8")
-    stages = (ROOT / "skills/impl-spec/references/impl-spec-stages.md").read_text(
-        encoding="utf-8"
-    )
+    stages = (ROOT / "skills/impl-spec/references/impl-spec-stages.md").read_text(encoding="utf-8")
     authoring = (ROOT / "skills/impl-spec/references/authoring-subagent-prompt.md").read_text(
         encoding="utf-8"
     )
