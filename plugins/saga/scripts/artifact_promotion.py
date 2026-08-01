@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import argparse
 import contextlib
 import hashlib
 import json
 import os
 import re
+import sys
 import tempfile
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -729,3 +731,108 @@ def _identity(value: Mapping[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
     ).hexdigest()
+
+
+def _contained_cli_file(repo_root: Path, reference: str, label: str) -> Path:
+    path = Path(reference)
+    if path.is_absolute() or ".." in path.parts:
+        raise ArtifactPromotionError(f"{label} must be a repository-relative file")
+    root = repo_root.resolve(strict=True)
+    try:
+        resolved = (root / path).resolve(strict=True)
+        resolved.relative_to(root)
+    except (OSError, ValueError) as exc:
+        raise ArtifactPromotionError(f"{label} must resolve inside the repository") from exc
+    if not resolved.is_file():
+        raise ArtifactPromotionError(f"{label} must be a regular file")
+    return resolved
+
+
+def _cli_evidence_refs(repo_root: Path, reference: str | None) -> dict[str, str]:
+    if reference is None:
+        return {}
+    path = _contained_cli_file(repo_root, reference, "evidence input")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ArtifactPromotionError("evidence input is invalid JSON") from exc
+    if not isinstance(value, Mapping) or any(
+        not isinstance(key, str) or not isinstance(item, str) for key, item in value.items()
+    ):
+        raise ArtifactPromotionError("evidence input must map evidence kinds to relative files")
+    return {str(key): str(item) for key, item in value.items()}
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Promote one staged Saga artifact through the canonical local transaction."
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    promote = subparsers.add_parser("promote", help="promote one staged artifact")
+    promote.add_argument("--repo-root", default=".")
+    promote.add_argument("--outcome-id", required=True)
+    promote.add_argument("--phase", choices=sorted(PHASE_TARGETS), required=True)
+    promote.add_argument("--source-role", choices=sorted(SOURCE_ROLES), required=True)
+    promote.add_argument("--source-ref", required=True)
+    promote.add_argument("--staged-file", required=True)
+    promote.add_argument("--target-ref", required=True)
+    promote.add_argument("--expected-predecessor-sha256")
+    promote.add_argument("--transition-receipt", required=True)
+    promote.add_argument("--historical-import", action="store_true")
+    promote.add_argument("--evidence")
+    promote.add_argument("--required-evidence", action="append", default=[])
+    promote.add_argument("--projection")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the bounded artifact-promotion command-line contract."""
+
+    args = _build_parser().parse_args(argv)
+    try:
+        repo_root = Path(args.repo_root)
+        root = repo_root.resolve(strict=True)
+        staged_path = _contained_cli_file(root, args.staged_file, "staged file")
+        evidence = _cli_evidence_refs(root, args.evidence)
+        projection: Path | None = None
+        if args.projection is not None:
+            projection_ref = _logical_reference(args.projection, "projection")
+            projection = root.joinpath(*projection_ref.parts)
+        result = promote_artifact(
+            repo_root=root,
+            outcome_id=args.outcome_id,
+            phase=args.phase,
+            source_role=args.source_role,
+            source_ref=args.source_ref,
+            staged_content=staged_path.read_bytes(),
+            target_ref=args.target_ref,
+            expected_predecessor_sha256=args.expected_predecessor_sha256,
+            transition_receipt_ref=args.transition_receipt,
+            historical_import=args.historical_import,
+            evidence_refs=evidence,
+            required_evidence=args.required_evidence,
+            projection_path=projection,
+        )
+        print(
+            json.dumps(
+                {
+                    "schema": SCHEMA_VERSION,
+                    "artifact_path": result.artifact_path.resolve().relative_to(root).as_posix(),
+                    "promotion_id": result.receipt.promotion_id,
+                    "receipt_path": result.receipt_path.resolve().relative_to(root).as_posix(),
+                    "state": result.receipt.state.value,
+                },
+                sort_keys=True,
+            )
+        )
+        return 0 if result.receipt.state is SettlementState.SATISFIED else 2
+    except (ArtifactPromotionError, OSError) as exc:
+        message = (
+            str(exc) if isinstance(exc, ArtifactPromotionError) else "repository is unavailable"
+        )
+        print(f"artifact-promotion: {message}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

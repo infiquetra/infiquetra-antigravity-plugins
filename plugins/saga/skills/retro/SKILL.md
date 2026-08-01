@@ -364,3 +364,12 @@ An Antigravity brain or runtime copy is staging only. Before claiming durable re
 evidence, promote the report into `docs/retros/` with `scripts/artifact_promotion.py` and bind its
 promotion receipt to the applicable lifecycle transition. A divergent canonical predecessor is
 preserved and blocks completion until operator adjudication.
+
+Run the executable receipt path before claiming completion. Read
+`$SAGA_PLUGIN_ROOT/references/live-receipt-commands.md` for the closed JSON inputs and full flags.
+
+```bash
+SAGA_PLUGIN_ROOT="${AGY_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/saga}"
+test -f "$SAGA_PLUGIN_ROOT/scripts/transition_receipts.py"
+test -f "$SAGA_PLUGIN_ROOT/scripts/artifact_promotion.py"
+```

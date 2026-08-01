@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import contextlib
 import hashlib
 import json
@@ -696,3 +697,126 @@ def _validate_slug(value: Any, where: str) -> str:
     if not isinstance(value, str) or value in {".", ".."} or not _SLUG.fullmatch(value):
         raise TransitionReceiptError(f"{where} must be a slug")
     return value
+
+
+def _load_cli_json(repo_root: Path, reference: str, label: str) -> Any:
+    path = Path(reference)
+    if path.is_absolute() or ".." in path.parts:
+        raise TransitionReceiptError(f"{label} must be a repository-relative file")
+    root = repo_root.resolve(strict=True)
+    try:
+        resolved = (root / path).resolve(strict=True)
+        resolved.relative_to(root)
+        return json.loads(resolved.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise TransitionReceiptError(f"{label} is unreadable or invalid JSON") from exc
+    except ValueError as exc:
+        raise TransitionReceiptError(f"{label} must resolve inside the repository") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise TransitionReceiptError(f"{label} is unreadable or invalid JSON") from exc
+
+
+def _cli_evidence(
+    repo_root: Path,
+    data: Mapping[str, Any],
+) -> dict[str, tuple[Evidence, ...]]:
+    expected = set(_CATEGORY_KINDS)
+    _reject_unknown(data, expected, "evidence input")
+    missing = sorted(expected - set(data))
+    if missing:
+        raise TransitionReceiptError(f"evidence input is missing categories: {', '.join(missing)}")
+    categories = {name: _evidence_list(data, name) for name in _CATEGORY_KINDS}
+    _validate_evidence_categories(categories)
+    validated_lifecycle: list[Evidence] = []
+    for item in categories["lifecycle_evidence"]:
+        if item.kind is not EvidenceKind.DELIBERATION_RECEIPT:
+            validated_lifecycle.append(item)
+            continue
+        rebound = deliberation_evidence(
+            repo_root=repo_root,
+            receipt_path=Path(item.reference),
+            evidence_id=item.evidence_id,
+            subject=item.subject,
+            producer=item.producer,
+        )
+        if rebound != item:
+            raise TransitionReceiptError(
+                "deliberation evidence does not match the validated receipt bytes"
+            )
+        validated_lifecycle.append(rebound)
+    categories["lifecycle_evidence"] = tuple(validated_lifecycle)
+    return categories
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Build and persist one evidence-backed Saga transition receipt."
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    build = subparsers.add_parser("build", help="build one transition receipt")
+    build.add_argument("--repo-root", default=".")
+    build.add_argument("--outcome-id", required=True)
+    build.add_argument("--contract", required=True)
+    build.add_argument("--transition-id", required=True)
+    build.add_argument("--obligation-id", required=True)
+    build.add_argument("--attempt", type=int, default=1)
+    build.add_argument("--evidence", required=True)
+    build.add_argument(
+        "--claimed-settlement",
+        choices=[state.value for state in SettlementState],
+    )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the bounded transition-receipt command-line contract."""
+
+    args = _build_parser().parse_args(argv)
+    try:
+        repo_root = Path(args.repo_root)
+        contract_data = _load_cli_json(repo_root, args.contract, "contract")
+        evidence_data = _load_cli_json(repo_root, args.evidence, "evidence input")
+        if not isinstance(contract_data, Mapping):
+            raise TransitionReceiptError("contract must be an object")
+        if not isinstance(evidence_data, Mapping):
+            raise TransitionReceiptError("evidence input must be an object")
+        contract = ObligationContract.from_dict(contract_data)
+        categories = _cli_evidence(repo_root, evidence_data)
+        receipt = build_transition_receipt(
+            contract=contract,
+            transition_id=args.transition_id,
+            obligation_id=args.obligation_id,
+            attempt=args.attempt,
+            input_refs=categories["input_refs"],
+            operator_decisions=categories["operator_decisions"],
+            execution_receipts=categories["execution_receipts"],
+            canonical_outputs=categories["canonical_outputs"],
+            check_results=categories["check_results"],
+            review_findings=categories["review_findings"],
+            lifecycle_evidence=categories["lifecycle_evidence"],
+            external_facts=categories["external_facts"],
+            claimed_settlement=args.claimed_settlement,
+            repo_root=repo_root,
+        )
+        path = write_transition_receipt(repo_root, args.outcome_id, receipt)
+        root = repo_root.resolve(strict=True)
+        print(
+            json.dumps(
+                {
+                    "schema": SCHEMA_VERSION,
+                    "receipt_id": receipt.receipt_id,
+                    "receipt_path": path.resolve().relative_to(root).as_posix(),
+                    "settlement_state": receipt.settlement_state.value,
+                },
+                sort_keys=True,
+            )
+        )
+        return 0 if receipt.settlement_state is SettlementState.SATISFIED else 2
+    except (ObligationError, OSError) as exc:
+        message = str(exc) if isinstance(exc, ObligationError) else "repository is unavailable"
+        print(f"transition-receipts: {message}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

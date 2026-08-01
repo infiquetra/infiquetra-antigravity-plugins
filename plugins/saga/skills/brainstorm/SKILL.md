@@ -383,3 +383,14 @@ completion, promote the artifact into `docs/brainstorms/` with `scripts/artifact
 bind its promotion receipt to the applicable lifecycle transition. A conflict blocks completion and
 requires operator adjudication. Terminal no-save is valid only for explicitly abandoned unfinished
 exploration and is never resumable, handoffable, or settled.
+
+Run the executable receipt path before claiming completion. Read
+`$SAGA_PLUGIN_ROOT/references/live-receipt-commands.md` for the closed JSON inputs and full flags.
+
+```bash
+SAGA_PLUGIN_ROOT="${AGY_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/saga}"
+CONSENSUS_PLUGIN_ROOT="$(dirname "$SAGA_PLUGIN_ROOT")/multi-agent-consensus"
+test -f "$CONSENSUS_PLUGIN_ROOT/scripts/deliberation.py"
+test -f "$SAGA_PLUGIN_ROOT/scripts/transition_receipts.py"
+test -f "$SAGA_PLUGIN_ROOT/scripts/artifact_promotion.py"
+```

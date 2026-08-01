@@ -55,3 +55,10 @@ The receipt identity is derived from normalized contract, transition, obligation
 ## Integration boundary
 
 Outcome nodes may point to one obligation contract and zero or more transition receipts. Issue #21 adds those references without changing the current completion barrier. `/outcome`, `/loop`, and `/resume` integration is owned by the routing child.
+
+## Installed-plugin command
+
+From a target repository, run `transition_receipts.py build` through the installed Saga plugin with
+one explicit contract and one closed evidence JSON object. The complete command and evidence category
+shape are documented in `references/live-receipt-commands.md`. The command never infers evidence from
+phase narration.

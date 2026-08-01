@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here.
 
 ---
 
+## [2.6.0] — 2026-08-01
+
+### Fixed
+
+- Add a deterministic `deliberation.py evaluate` command that persists write-once receipts from
+  explicit manifest, strategy-result, convergence, and escalation JSON files.
+- Keep target repositories as the working directory while resolving the installed plugin helper,
+  and fail closed on invalid, escaping, or conflicting receipt input.
+
 ## [2.5.0] — 2026-07-31
 
 ### Added

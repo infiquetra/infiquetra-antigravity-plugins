@@ -51,3 +51,9 @@ machine-readable abandonment record is not persisted as canonical evidence and d
 Promotion performs local file operations only. It does not run Git, push a branch, open or merge a
 PR, mutate a GitHub issue or project board, deploy, or choose a conflict winner. Those actions remain
 separate authority paths.
+
+## Installed-plugin command
+
+From a target repository, run `artifact_promotion.py promote` through the installed Saga plugin.
+The complete locator, input, transition-receipt, and staged-file command is documented in
+`references/live-receipt-commands.md`. A non-zero exit means the artifact is not durably promoted.

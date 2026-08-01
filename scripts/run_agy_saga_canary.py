@@ -27,6 +27,7 @@ for script_root in (SCRIPT_ROOT, FLEET_SCRIPTS, SAGA_SCRIPTS):
 
 import artifact_promotion  # noqa: E402
 import fleet_commons_shim  # noqa: E402
+import lifecycle_obligations  # noqa: E402
 import saga_conformance  # noqa: E402
 
 CAPABILITIES = fleet_commons_shim.load("antigravity_capabilities")
@@ -71,6 +72,7 @@ ARTIFACT_GROUPS = {
     "impl-spec": "docs/specs",
     "plan": "docs/plans",
     "doc-review": "docs/reviews",
+    "work": "docs/work-sessions",
     "code-review": "docs/code-reviews",
     "qa": "docs/qa",
     "retro": "docs/retros",
@@ -209,6 +211,7 @@ def load_config(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, An
             "sandbox",
             "profile",
             "folder_contract",
+            "obligation_contract",
             "baseline_manifest",
             "phase_commands",
         },
@@ -235,6 +238,21 @@ def load_config(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, An
         cast(Mapping[str, Any], config["folder_contract"]),
         "folder contract binding",
     )
+    obligation_path = _bound_path(
+        repo_root,
+        cast(Mapping[str, Any], config["obligation_contract"]),
+        "obligation contract binding",
+    )
+    try:
+        obligation_contract = lifecycle_obligations.ObligationContract.from_dict(
+            _load_json(obligation_path, "obligation contract")
+        )
+    except lifecycle_obligations.ObligationError as exc:
+        raise CanaryError("live-canary obligation contract is invalid") from exc
+    if obligation_contract.workstream_id != "reference-lifecycle" or [
+        item.obligation_id for item in obligation_contract.obligations
+    ] != list(ARTIFACT_GROUPS):
+        raise CanaryError("live-canary obligation contract does not match the artifact route")
     baseline = _bound_path(
         repo_root,
         cast(Mapping[str, Any], config["baseline_manifest"]),
@@ -761,16 +779,28 @@ def _artifact_bindings(workspace: Path, root: str) -> list[dict[str, str]]:
 
 def _receipt_bindings(workspace: Path) -> dict[str, list[dict[str, str]]]:
     patterns = {
-        "deliberation": ("*deliberation*receipt*.json",),
-        "promotion": ("*promotion*receipt*.json", "*promotion*.receipt.json"),
-        "transition": ("*transition*receipt*.json",),
+        "deliberation": (
+            "docs/outcomes/*/deliberation-receipts/*.json",
+            "*deliberation*receipt*.json",
+        ),
+        "promotion": (
+            "docs/outcomes/*/promotion-receipts/*.json",
+            "*promotion*receipt*.json",
+            "*promotion*.receipt.json",
+        ),
+        "transition": (
+            "docs/outcomes/*/receipts/*.json",
+            "*transition*receipt*.json",
+        ),
         "handoff": ("docs/handoffs/*.json", "*handoff*receipt*.json"),
     }
     result: dict[str, list[dict[str, str]]] = {}
     for group, group_patterns in patterns.items():
         paths: set[Path] = set()
         for pattern in group_patterns:
-            paths.update(workspace.glob(f"**/{pattern}"))
+            paths.update(
+                workspace.glob(pattern if pattern.startswith("docs/") else f"**/{pattern}")
+            )
         result[group] = [
             {"path": path.relative_to(workspace).as_posix(), "sha256": _digest_file(path)}
             for path in sorted(paths)
@@ -787,12 +817,22 @@ def _prepare_fixture(workspace: Path, config: Mapping[str, Any], repo_root: Path
         cast(Mapping[str, Any], config["folder_contract"]),
         "folder contract binding",
     )
+    obligation_contract = _bound_path(
+        repo_root,
+        cast(Mapping[str, Any], config["obligation_contract"]),
+        "obligation contract binding",
+    )
     target_profile = workspace / "profiles" / "reference-service" / "profile.json"
     target_contract = workspace / "docs" / "specs" / "reference-service" / "README.md"
+    target_obligation = (
+        workspace / "docs" / "outcomes" / "reference-lifecycle" / "obligation-contract.json"
+    )
     target_profile.parent.mkdir(parents=True)
     target_contract.parent.mkdir(parents=True)
+    target_obligation.parent.mkdir(parents=True)
     shutil.copy2(profile, target_profile)
     shutil.copy2(folder_contract, target_contract)
+    shutil.copy2(obligation_contract, target_obligation)
     (workspace / "seed.md").write_text(
         "# Reference service seed\n\n"
         "Build a small local reference service with deterministic validation, durable lifecycle "
@@ -818,13 +858,23 @@ def _prepare_fixture(workspace: Path, config: Mapping[str, Any], repo_root: Path
         raise CanaryError("fixture seed commit failed")
 
 
-def phase_instruction(command: str, workspace: Path) -> str:
+def phase_instruction(command: str, phase: str, workspace: Path) -> str:
     """Anchor a configured phase to the runtime-only fixture paths."""
 
-    return (
+    context = (
         f"{command}\n\n"
         f"Canary context: the target repository root is {workspace}. "
         f"The seed document is {workspace / 'seed.md'}. Work only in that repository."
+    )
+    if phase not in ARTIFACT_GROUPS:
+        return context
+    return (
+        context
+        + " Before writing the canonical phase artifact, follow the skill's installed-plugin receipt "
+        "commands. Use outcome ID reference-lifecycle, contract "
+        "docs/outcomes/reference-lifecycle/obligation-contract.json, transition ID "
+        f"{phase}-complete, and obligation ID {phase}. Stage receipt inputs under "
+        f".gemini/saga/receipts/{phase}/ and stop if any receipt command returns non-zero."
     )
 
 
@@ -854,7 +904,7 @@ def run_canary(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any
     conversation_sha256: str | None = None
     for row in cast(list[dict[str, str]], config["phase_commands"]):
         phase = row["id"]
-        instruction = phase_instruction(row["command"], workspace)
+        instruction = phase_instruction(row["command"], phase, workspace)
         summary, events = _invoke_agy(
             instruction,
             cwd=workspace,

@@ -226,11 +226,17 @@ def test_config_binds_approved_inputs_and_exact_route() -> None:
 def test_phase_instruction_anchors_runtime_workspace_without_committed_host_path(
     tmp_path: Path,
 ) -> None:
-    instruction = M.phase_instruction("/ideate Build from seed.md.", tmp_path)
+    instruction = M.phase_instruction("/ideate Build from seed.md.", "ideate", tmp_path)
 
     assert str(tmp_path) in instruction
     assert str(tmp_path / "seed.md") in instruction
+    assert "docs/outcomes/reference-lifecycle/obligation-contract.json" in instruction
+    assert "transition ID ideate-complete" in instruction
+    assert "obligation ID ideate" in instruction
     assert "/Users/" not in CONFIG.read_text(encoding="utf-8")
+
+    resume = M.phase_instruction("/resume Reconstruct.", "resume", tmp_path)
+    assert "obligation ID" not in resume
 
 
 def test_live_canary_does_not_require_native_plan_mode() -> None:

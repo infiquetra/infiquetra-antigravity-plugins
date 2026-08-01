@@ -1,0 +1,166 @@
+{
+  "schema": "saga.lifecycle-obligation.v1",
+  "contract_id": "reference-lifecycle-live-v1",
+  "workstream_id": "reference-lifecycle",
+  "stored_lifecycle_phases": [
+    "ideation",
+    "brainstorm",
+    "plan",
+    "review",
+    "work",
+    "qa"
+  ],
+  "off_chain_obligations": [
+    "impl-spec",
+    "retro"
+  ],
+  "obligations": [
+    {
+      "obligation_id": "ideate",
+      "kind": "stored-phase",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "deliberation-receipt",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "phase": "ideation"
+    },
+    {
+      "obligation_id": "brainstorm",
+      "kind": "stored-phase",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "deliberation-receipt",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "phase": "brainstorm"
+    },
+    {
+      "obligation_id": "impl-spec",
+      "kind": "off-chain-ceremony",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "ceremony-artifact",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "command": "impl-spec"
+    },
+    {
+      "obligation_id": "plan",
+      "kind": "stored-phase",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "deliberation-receipt",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "phase": "plan"
+    },
+    {
+      "obligation_id": "doc-review",
+      "kind": "review",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "deliberation-receipt",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ]
+    },
+    {
+      "obligation_id": "work",
+      "kind": "stored-phase",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "ceremony-artifact",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "phase": "work"
+    },
+    {
+      "obligation_id": "code-review",
+      "kind": "review",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "deliberation-receipt",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ]
+    },
+    {
+      "obligation_id": "qa",
+      "kind": "stored-phase",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "deliberation-receipt",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "phase": "qa"
+    },
+    {
+      "obligation_id": "retro",
+      "kind": "off-chain-ceremony",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "ceremony-artifact",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ],
+      "command": "retro"
+    },
+    {
+      "obligation_id": "handoff",
+      "kind": "handoff",
+      "subject": "reference-lifecycle",
+      "requirement": "required",
+      "producer": "phase-worker",
+      "required_evidence": [
+        {
+          "kind": "ceremony-artifact",
+          "minimum_count": 1,
+          "independent": false
+        }
+      ]
+    }
+  ]
+}

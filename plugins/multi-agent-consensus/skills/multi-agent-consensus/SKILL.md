@@ -28,6 +28,19 @@ one result with a unique execution ID. Validate the results with
 duplicate, malformed, or failed coverage follows the manifest's bounded recovery policy, and an
 incomplete receipt blocks completion.
 
+From a target repository, resolve the installed plugin and run the complete command rather than
+searching that repository for plugin source:
+
+```bash
+CONSENSUS_PLUGIN_ROOT="${AGY_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/multi-agent-consensus}"
+python3 "$CONSENSUS_PLUGIN_ROOT/scripts/deliberation.py" evaluate \
+  --repo-root . --outcome-id <outcome-id> \
+  --manifest <manifest.json> --results <results.json> \
+  --convergence <convergence.json> --escalation <escalation.json>
+```
+
+The command prints the repository-relative receipt path. A non-zero exit blocks the deliberation.
+
 Keep requested and observed model, effort, tools, isolation, and worker facts separate. Leave
 unobserved values as `unknown`. Convergence preserves material disagreement, evidence, and
 adjudication. A complete receipt can bind into Saga as `deliberation-receipt` evidence; it does not

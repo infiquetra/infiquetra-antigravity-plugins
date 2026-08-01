@@ -3,14 +3,20 @@
 
 from __future__ import annotations
 
+import argparse
+import contextlib
 import hashlib
 import json
+import os
 import re
+import sys
+import tempfile
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 MANIFEST_SCHEMA = "multi-agent-consensus.deliberation-manifest.v1"
 RECEIPT_SCHEMA = "multi-agent-consensus.deliberation-receipt.v1"
@@ -729,3 +735,142 @@ def _unique_strings(value: Any, path: str, required: bool = False) -> tuple[str,
     if len(value) != len(set(value)):
         raise DeliberationError(f"{path} must not contain duplicates")
     return tuple(value)
+
+
+def write_deliberation_receipt(
+    repo_root: Path,
+    outcome_id: str,
+    receipt: Mapping[str, Any],
+) -> Path:
+    """Persist one validated deliberation receipt with deterministic write-once identity."""
+
+    validate_receipt(receipt)
+    if _SLUG.fullmatch(outcome_id) is None or outcome_id in {".", ".."}:
+        raise DeliberationError("outcome_id must be a bounded identifier")
+    receipt_id = receipt.get("receipt_id")
+    if not isinstance(receipt_id, str) or _SLUG.fullmatch(receipt_id) is None:
+        raise DeliberationError("receipt_id must be a bounded identifier")
+    root = repo_root.resolve(strict=True)
+    target = (
+        root / "docs" / "outcomes" / outcome_id / "deliberation-receipts" / f"{receipt_id}.json"
+    )
+    _assert_safe_output(root, target)
+    payload = json.dumps(receipt, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            delete=False,
+        ) as handle:
+            temporary = handle.name
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary, target)
+        except FileExistsError:
+            if target.is_symlink() or target.read_text(encoding="utf-8") != payload:
+                raise DeliberationError(
+                    "deliberation receipt identity already contains different bytes"
+                ) from None
+    except OSError as exc:
+        raise DeliberationError("could not persist deliberation receipt") from exc
+    finally:
+        if temporary is not None:
+            with contextlib.suppress(FileNotFoundError):
+                Path(temporary).unlink()
+    return target
+
+
+def _assert_safe_output(root: Path, target: Path) -> None:
+    try:
+        target.resolve(strict=False).relative_to(root)
+    except ValueError as exc:
+        raise DeliberationError("deliberation receipt path escapes the repository") from exc
+    current = root
+    for part in target.relative_to(root).parts[:-1]:
+        current /= part
+        if current.is_symlink():
+            raise DeliberationError("deliberation receipt path must not contain symlinks")
+
+
+def _load_cli_json(repo_root: Path, reference: str, label: str) -> Any:
+    path = Path(reference)
+    if path.is_absolute() or ".." in path.parts:
+        raise DeliberationError(f"{label} must be a repository-relative file")
+    root = repo_root.resolve(strict=True)
+    try:
+        resolved = (root / path).resolve(strict=True)
+        resolved.relative_to(root)
+        return json.loads(resolved.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise DeliberationError(f"{label} is unreadable or invalid JSON") from exc
+    except ValueError as exc:
+        raise DeliberationError(f"{label} must resolve inside the repository") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise DeliberationError(f"{label} is unreadable or invalid JSON") from exc
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Validate independent strategy results and persist a deliberation receipt."
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    evaluate = subparsers.add_parser("evaluate", help="evaluate one declared deliberation")
+    evaluate.add_argument("--repo-root", default=".")
+    evaluate.add_argument("--outcome-id", required=True)
+    evaluate.add_argument("--manifest", required=True)
+    evaluate.add_argument("--results", required=True)
+    evaluate.add_argument("--convergence", required=True)
+    evaluate.add_argument("--escalation", required=True)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the bounded deliberation command-line contract."""
+
+    args = _build_parser().parse_args(argv)
+    try:
+        repo_root = Path(args.repo_root)
+        manifest = _load_cli_json(repo_root, args.manifest, "manifest")
+        results = _load_cli_json(repo_root, args.results, "results")
+        convergence = _load_cli_json(repo_root, args.convergence, "convergence")
+        escalation = _load_cli_json(repo_root, args.escalation, "escalation")
+        if not isinstance(manifest, Mapping):
+            raise DeliberationError("manifest must be an object")
+        if not isinstance(results, list) or any(not isinstance(row, Mapping) for row in results):
+            raise DeliberationError("results must be a list of objects")
+        if not isinstance(convergence, Mapping):
+            raise DeliberationError("convergence must be an object")
+        if not isinstance(escalation, Mapping):
+            raise DeliberationError("escalation must be an object")
+        receipt = evaluate_deliberation(
+            cast(Mapping[str, Any], manifest),
+            cast(list[Mapping[str, Any]], results),
+            convergence=cast(Mapping[str, Any], convergence),
+            escalation=cast(Mapping[str, Any], escalation),
+        )
+        path = write_deliberation_receipt(repo_root, args.outcome_id, receipt)
+        root = repo_root.resolve(strict=True)
+        print(
+            json.dumps(
+                {
+                    "schema": RECEIPT_SCHEMA,
+                    "complete": receipt["complete"],
+                    "receipt_id": receipt["receipt_id"],
+                    "receipt_path": path.relative_to(root).as_posix(),
+                },
+                sort_keys=True,
+            )
+        )
+        return 0 if receipt["complete"] is True else 2
+    except DeliberationError as exc:
+        print(f"deliberation: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
