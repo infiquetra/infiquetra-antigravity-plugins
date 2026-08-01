@@ -55,7 +55,8 @@ not a competitor to any of them.
    transition receipts outranks phase narration. Evaluate receipts and select the earliest required
    obligation that is not satisfied. A repeated evaluation over unchanged evidence returns the same
    destination; missing, invalid, or conflicting evidence never skips work. Fall back to the dispatch
-   table only when no proof-carrying obligation contract applies.
+   table only when no proof-carrying obligation contract applies. The executable source is
+   `scripts/lifecycle_reconciliation.py`; `load_saga_context.py` is only a compatibility wrapper.
 4. **Recommend the backend ONLY for what `/loop` itself drives.** Use
    `lifecycle_state.py recommend-backend` for `/loop`'s own Drive sequencing or a router-level sweep.
    Routed-to commands choose their own backend at their own offer; `/loop` never auto-hands a backend
@@ -69,12 +70,11 @@ not a competitor to any of them.
    (`handoff_envelope.py`). `mission-control` owns issues / boards / comments; `deploy` owns
    deploy mutation; the journal owns durable decisions. `/loop` points at those owners; it never
    reimplements them.
-7. **Gate before routing, never block on a stub.** The one HARD gate routes to `/doc-review`
+7. **Gate before routing.** The one HARD gate routes to `/doc-review`
    (shipped) — block routing to `/work` on unresolved P0/P1 unless overridden with a recorded
    rationale. The route to shipped **`/qa`** is **advisory** (it is a gate-only node that produces a
-   verdict but never blocks the router), and routes to **stub** targets (`/retro`, `/resume`, and
-   `/strategy` / `/optimize` per their state) are **advisory** and **never** block `/loop` on their
-   output.
+   verdict but never blocks the router), and routes to `/retro`, `/resume`, `/strategy`, or
+   `/optimize` are advisory and never add a router-owned gate.
 
 ## Interaction method
 
@@ -174,11 +174,9 @@ that the saga points at — those are durable; the cache is not. Route from the 
 ### 1.3 Deeper forensics is opt-in, never auto
 
 When cold reconstruction is not enough (tangled multi-round history, a corrupt local cache, a forensic
-"what happened across these PRs" question), **OFFER** the `/resume` route as an **opt-in** — `/resume`
-is the queued deep-reconstruction engine. **Never** auto-route into the `/resume` stub: `/loop` does
-its own lightweight restore + inline cold path inline, and only suggests `/resume` when the operator
-wants the heavy forensic dig. (`/resume` is a stub today; routing to it is advisory and never blocks
-`/loop`.)
+"what happened across these PRs" question), **OFFER** the shipped `/resume` route as an opt-in.
+`/loop` does its own lightweight restore and inline cold path; `/resume` adds the whole-tick-chain dig
+and uses the same proof-carrying reconciler before routing.
 
 ---
 
@@ -188,10 +186,12 @@ Decide the destination class and apply the gates **before** picking the next com
 
 ### 2.1 Normalize the destination
 
-Before phase-based normalization, use
-`load_saga_context.route_earliest_unsettled_required_obligation` when the workstream supplies a
-canonical obligation contract and transition receipts. Route to its returned destination when
-`complete` is false. Only a `complete=true` result permits the lifecycle horizon to advance.
+Before phase-based normalization, use `scripts/lifecycle_reconciliation.py` when the workstream
+supplies a canonical obligation contract and transition receipts. The
+`load_saga_context.route_earliest_unsettled_required_obligation` function remains a compatibility
+wrapper around that shared evaluator. Route to its returned destination when `complete` is false.
+Only a `complete=true` result permits the lifecycle horizon to advance; an
+`operator_adjudication_required=true` result stops instead of dispatching.
 
 Normalize the routing intent to the canonical set with the helper, so the saga `--destination` stores
 a clean enum:

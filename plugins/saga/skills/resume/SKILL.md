@@ -1,6 +1,6 @@
 ---
 name: resume
-description: The Infiquetra lifecycle's HEAVY forensic reconstruction engine — the deep half beside /loop's lightweight restore. Two tiers — Tier 1 reconstructs from the saga's WHOLE tick-chain trajectory (not just the last frame) plus PR archaeology and explicit conflict reconciliation; Tier 2 (fallback only, no saga AND no resolvable issue) is a slim Claude-only port of CE session forensics over local JSONL logs. Read-only on the world; it writes one git-ignored re-entry tick that reuses the restored saga_id, then routes. Triggers on "resume", "reconstruct what happened", "what was tried across these PRs", a corrupt or missing local cache, or same-machine work that never wrote a saga.
+description: The Infiquetra lifecycle's HEAVY forensic reconstruction engine — the deep half beside /loop's lightweight restore. Two tiers — Tier 1 reconstructs from the saga's WHOLE tick-chain trajectory (not just the last frame) plus PR archaeology and explicit conflict reconciliation; Tier 2 (fallback only, no saga AND no resolvable issue) uses host-local session forensics over local JSONL logs. Read-only on the world; it writes one git-ignored re-entry tick that reuses the restored saga_id, then routes. Triggers on "resume", "reconstruct what happened", "what was tried across these PRs", a corrupt or missing local cache, or same-machine work that never wrote a saga.
 ---
 
 # Resume
@@ -28,27 +28,27 @@ forensics. It never routes back to `/loop` (no ping-pong); it routes forward to 
 - the destination command (`/work`, `/handoff`, …) answers its own phase question once routed to
 
 `/loop` does the cheap restore inline; `/resume` is the expensive dig `/loop` defers to. The two
-reconcile **identically** — they inherit the same durability precedence (committed `docs/*` + GitHub
-authoritative; the git-ignored saga cache is the anchor, not the authority). The only difference is
-depth: `/resume` reads the whole tick chain, not the last frame.
+reconcile **identically** when a proof-carrying contract applies because both call
+`scripts/lifecycle_reconciliation.py`. Without such a contract, they retain the legacy durability
+precedence: committed `docs/*` and GitHub outrank the git-ignored cache. `/resume` additionally reads
+the whole tick chain.
 
 ## Core principles
 
-1. **Reconstruct from the durable source of truth.** Committed `docs/*` and GitHub issue / PR state are
-   authoritative; the git-ignored saga cache in `.gemini/saga/` is the **anchor, not the
-   authority**. This is the **existing** precedence — `../loop/references/drive-and-resume.md` lines
-   108-111 and `../../references/saga-spec.md` §10 — **inherited, not reinvented**, so `/loop` and
-   `/resume` reconcile a stale cache against a merged PR the same way.
+1. **Reconstruct from canonical evidence.** When a lifecycle-obligation contract applies, its verified
+   transition receipts determine settlement and GitHub facts count only for the obligation that names
+   them. Otherwise committed `docs/*` and GitHub issue or PR state outrank the git-ignored saga cache.
 2. **Read the WHOLE trajectory, not the last frame.** Tier 1 reads **all** saga ticks oldest -> newest
    (the new `ticks` reader) and reconciles them via the §6 full-snapshot semantics — answered questions
    dropped off, cleared blockers vanished, phase regressions surfaced. This all-ticks read **plus**
    deeper PR archaeology **plus** explicit conflict reconciliation is what makes `/resume` deeper than
    `/loop`. `load_saga_context.py` and reading `docs/*` are **shared substrate** `/loop` already runs —
    they are **not** the differentiator. (See `references/forensic-reconstruction.md`.)
-3. **Reconcile conflicts explicitly, operator-confirmed.** When the cache disagrees with reality — a
-   stale `lifecycle_phase` vs a merged PR, an open blocker the PR already cleared — surface the conflict,
-   apply the precedence (committed + GitHub win), and confirm the reconciled state with the operator
-   before routing. Never silently trust the cache.
+3. **Reconcile conflicts explicitly, operator-confirmed.** A conflicting proof-carrying result stops
+   for operator adjudication; never choose by timestamp or narrative. When only the legacy cache
+   disagrees with reality — a stale `lifecycle_phase` vs a merged PR, or an open blocker the PR already
+   cleared — apply the legacy precedence (committed + GitHub win), surface the conflict, and confirm
+   the reconciled state with the operator before routing.
 4. **Zero-save JSONL forensics is the last resort, context-safe by construction.** Tier 2 fires **only**
    when there is no saga AND no resolvable issue. The **orchestrator NEVER Reads or cats a raw `.jsonl`
    or a skeleton file.** Discovery returns paths; extraction is **file-mediated** to a scratch dir; a
@@ -106,6 +106,20 @@ the orchestration pointer. Classify the run:
   (Phase 2's `load_saga_context.py` / `saga.py context` path).
 - **NEITHER** — no matching saga AND no resolvable issue -> **Tier 2** (Phase 3b), the last-resort JSONL
   session forensics.
+
+After selecting the thread in Phase 1, if its committed references identify a repository-relative
+lifecycle-obligation contract, reconcile it before interpreting the cached phase:
+
+```bash
+python3 plugins/saga/scripts/lifecycle_reconciliation.py \
+  --repo-root . --contract <repository-relative-contract.json> \
+  --receipt <repository-relative-receipt.json>
+```
+
+Repeat `--receipt` for every receipt. When `complete` is false, its `obligation_id`,
+`settlement_state`, and `destination` are the resume route. When
+`operator_adjudication_required` is true, stop for the operator instead. Brain-only narration,
+unscoped GitHub completion, and cached phase status cannot override this result.
 
 ---
 
@@ -179,9 +193,10 @@ the committed docs, then produce the reconstructed state:
 - **checks** — what tests / gates ran (latest snapshot).
 - **next-step** — the one imperative resume anchor.
 
-**Conflicts resolve toward the durable side.** If the cached `lifecycle_phase` says `work` but a PR for
-this round is merged, the committed + GitHub state wins; the cache was stale. Surface every conflict
-explicitly and confirm the reconciled state with the operator (Interaction method) before routing.
+**Legacy cache conflicts resolve toward the durable side only when no proof-carrying contract
+applies.** If the cached `lifecycle_phase` says `work` but a PR for this round is merged, committed
+documentation and GitHub state win; the cache was stale. Surface every conflict explicitly and confirm the
+reconciled state with the operator (Interaction method) before routing.
 
 ---
 
@@ -190,7 +205,7 @@ explicitly and confirm the reconciled state with the operator (Interaction metho
 Fires **only** when Phase 0 found **no saga AND no resolvable issue** — same-machine work that never
 wrote a saga: raw sessions, pre-saga-adoption work, or a session that crashed before its first tick.
 This is **not** the "fresh clone on a new machine" case (there the local session logs are simply absent —
-fall back to the committed `docs/*` instead). Tier 2 is a slim Claude-only port of CE session forensics.
+fall back to the committed `docs/*` instead). Tier 2 retains the host-local session-forensics design.
 
 **The HARD context-safety guardrail:** the **orchestrator NEVER Reads or cats a raw `.jsonl` or a
 skeleton file.** ONLY the generic synthesis agent reads skeletons, and ONLY via paths. **Never** paste

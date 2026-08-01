@@ -21,11 +21,10 @@ The 18 routed lifecycle commands: `/office-hours`, `/ideate`, `/brainstorm`, `/s
 
 ---
 
-## Stub-vs-shipped state (the advisory rule)
+## Shipped state and advisory routing
 
-A route to a **stub** target is **advisory**: `/loop` names it as the next command and dispatches, but
-**never blocks `/loop` on its output** — the stub cannot produce a gate result yet. Only the shipped
-`/doc-review` route carries a HARD gate.
+An advisory route names the next command without adding a router-owned gate. Only `/doc-review`
+carries the router's hard readiness gate.
 
 | Target | State | Routing |
 |---|---|---|
@@ -43,7 +42,7 @@ A route to a **stub** target is **advisory**: `/loop` names it as the next comma
 | `/qa` | shipped (gate-only) | **advisory** — never block |
 | `/investigate` | shipped (systematic-debugging engine) | **advisory + off-chain** — never block |
 | `/retro` | shipped (meta-improvement engine) | **advisory + terminal** — never block |
-| `/resume` | **stub (24L)** | **advisory / opt-in** — never auto-route |
+| `/resume` | shipped (shared evidence reconciliation + forensic reconstruction) | **advisory / opt-in** — never auto-route |
 | `/strategy` | shipped (STRATEGY.md engine) | **advisory** — never block |
 | `/optimize` | **shipped (metric-loop engine)** | **advisory + off-chain** — never block |
 
@@ -111,7 +110,7 @@ For `plan-ready` / `resume-ready` issues, the direct consumer is `/work`; for `i
 | Scope / ambition question ("is this ambitious enough", "think bigger") on a plan / strategy / brainstorm | `/founder-review` | shipped |
 | Post-completion learnings capture, workflow self-improvement | `/retro` | advisory, shipped (terminal) |
 | Hand a durable artifact to an SDLC issue | `/handoff` | shipped (+ envelope) |
-| Deep forensic reconstruction (opt-in only) | `/resume` | advisory stub, never auto |
+| Deep forensic reconstruction (opt-in only) | `/resume` | shipped, advisory, never auto |
 
 `/founder-review` fires **upstream of execution** and produces a scope decision, then routes accepted
 scope back to `/plan` and the (re-)expanded plan back to `/doc-review` — `/loop` honors that closed

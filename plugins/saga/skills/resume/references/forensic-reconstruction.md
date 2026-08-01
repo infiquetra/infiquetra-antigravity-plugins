@@ -63,13 +63,16 @@ python3 plugins/saga/scripts/saga.py context --repo <owner/repo> --issue <N>
 Both return `prior_prs` (number, state, `mergedAt`, `reviewDecision`, round), `rounds_seen` / `next_round`,
 `adr_refs`, and matching journal sections. A missing `gh` no-raises to an empty PR list (saga-spec §7) —
 offline reconstruction still works off the saga + committed docs. Tier 1's archaeology is reconciling each
-round's PR outcome against the matching tick: a round whose PR is `MERGED` is done regardless of a stale
-cached `phase_status`.
+round's PR outcome against the matching tick: a round whose PR is `MERGED` settles that external PR
+fact regardless of a stale cached `phase_status`; it does not settle a separate review, quality,
+promotion, or other obligation.
 
-## The conflict-resolution rule (inherited precedence — do not reinvent)
+## Conflict resolution
 
-When the git-ignored saga cache disagrees with the durable side, the durable side wins. This is the
-**existing** precedence, inherited so `/loop` and `/resume` reconcile identically:
+When a canonical lifecycle-obligation contract applies, run `scripts/lifecycle_reconciliation.py`
+first. A conflicting result stops for operator adjudication; neither GitHub nor committed prose can
+override it. When no proof-carrying contract applies and the git-ignored saga cache disagrees with the
+durable side, the durable side wins under the legacy precedence:
 
 > Committed `docs/*` + GitHub issue / PR state are authoritative; the git-ignored
 > `.gemini/saga/` saga cache is the anchor, not the authority.

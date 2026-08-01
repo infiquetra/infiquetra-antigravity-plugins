@@ -87,13 +87,17 @@ Leaf work is **always** the native verbs on the leaf's own saga: `/resume <leaf-
    a stale one (R13), so an externally triggered tick overlapping a manual one never both mutate.
 3. Recompute `completed` from parent-verified evidence and the **ready frontier** from the spec
    (`ready_frontier`, the level-triggered read). For proof-carrying leaves, verify owner binding,
-   manifest attestation, and every required transition receipt before materializing completion.
+   manifest attestation, then call `lifecycle_reconciliation.reconcile_required_obligations` over
+   every required transition receipt before materializing completion. Its earliest unsettled result
+   is the same one `/loop` and `/resume` use; a conflicting result requires operator adjudication.
 4. For each ready, not-yet-dispatched, not-completed leaf: take its per-subplot dispatch lock and
    **dispatch** it to its backend (record the handoff in the ledger). Already-dispatched leaves are
    skipped — repeated ticks never double-dispatch (idempotent).
 5. Report cost, progress, and Fleet Core liveness classifications without converting activity into
    completion.
-6. Return the derived status. Pages only on exceptions.
+6. Return the derived status. For every proof-carrying node, include the result from
+   `lifecycle_reconciliation.py` so `/outcome status`, `/loop`, and `/resume` expose the same
+   settlement and next destination. Pages only on exceptions.
 
 The execution backends a leaf can be dispatched to — inline / fork / subagent /
 multi-agent-consensus / `/goal` / manual — are wired in later units; the dispatch *seam* and the

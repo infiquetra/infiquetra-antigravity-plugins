@@ -99,7 +99,7 @@ post-merge until `/qa` lands the advance; `/handoff` deriving `resume-ready` for
 (the thread *is* resume-ready-into-qa).
 
 Likewise **`/resume` routing is advisory**. `/work`'s own Phase-0.4 re-entry (this file) is the
-load-bearing "come back later" mechanism — it does not depend on the `/resume` stub being rebuilt. A
+load-bearing "come back later" mechanism — it does not depend on invoking `/resume`. A
 re-invocation of `/work` on a saga with `pr_refs` re-runs this transition table; that is the durable loop.
 
 ## Saga writes summary (this loop)

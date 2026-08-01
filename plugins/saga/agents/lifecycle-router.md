@@ -11,7 +11,9 @@ Use `/loop` as the lifecycle entrypoint. Convert vague asks with
 `plugins/saga/skills/loop/references/generic-ask-compiler.md`, then choose one destination command.
 When a canonical lifecycle-obligation contract and transition receipts are available, route to the
 earliest required obligation that is not verifiably satisfied. Settled obligations are skipped;
-missing, invalid, or conflicting evidence never permits routing past an obligation.
+missing, invalid, or conflicting evidence never permits routing past an obligation. Use
+`plugins/saga/scripts/lifecycle_reconciliation.py` for this decision; do not infer settlement from
+phase narration or GitHub status.
 
 ## Routes
 

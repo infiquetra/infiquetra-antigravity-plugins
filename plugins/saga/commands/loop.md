@@ -25,8 +25,8 @@ command that owns the next phase. It does not execute the phase work itself.
    saga state lives under
    `.gemini/saga/`; the committed `docs/*` and issue/PR state are the durable source
    of truth.
-3. Apply the one HARD gate (doc-review P0/P1 before `/work`); routes to stub targets
-   (`/qa`, `/retro`, `/resume`, `/strategy`, `/optimize`) are advisory and never block `/loop`.
+3. Apply the one HARD gate (doc-review P0/P1 before `/work`). Routes to advisory targets
+   (`/qa`, `/retro`, `/resume`, `/strategy`, `/optimize`) do not add a router-owned gate.
 4. `/loop` owns the typed handoff envelope (`handoff_envelope.py`). It does **not** implement code (`/work`),
    plan (`/plan`), review (`/doc-review` / `/code-review` / `/founder-review`), run QA (`/qa`), file
    SDLC issues (`mission-control`), deploy (`deploy`), **instruct a routed command's
