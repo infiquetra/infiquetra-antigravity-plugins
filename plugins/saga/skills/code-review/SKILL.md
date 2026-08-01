@@ -336,3 +336,10 @@ artifact, append the saga tick (if one exists), route — then stop.
   right-sizing, conservative bias, read-only constraint, `{validated, reason}` return.
 - `references/built-vs-planned.md` — scope-drift detection (informational) + the 5-state plan-completion
   audit + the three verification modes + the honesty rule, reading `docs/plans/` and the journal.
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable code-review evidence,
+promote the review into `docs/code-reviews/` with `scripts/artifact_promotion.py` and bind its
+promotion receipt to the applicable lifecycle transition. A divergent canonical predecessor is
+preserved and blocks completion until operator adjudication.

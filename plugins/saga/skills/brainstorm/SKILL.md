@@ -375,3 +375,11 @@ No HTML rendering or output-mode resolution; no Proof / HITL review loop; no non
 brainstorming mode; no Slack researcher; no dedicated Visualizations affordance (introduce a diagram
 ad hoc via agent agency when it genuinely helps). The artifact is always a single markdown file under
 `docs/brainstorms/`. Scratch, when needed, goes under `.gemini/saga/`, never `/tmp`.
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable requirements
+completion, promote the artifact into `docs/brainstorms/` with `scripts/artifact_promotion.py` and
+bind its promotion receipt to the applicable lifecycle transition. A conflict blocks completion and
+requires operator adjudication. Terminal no-save is valid only for explicitly abandoned unfinished
+exploration and is never resumable, handoffable, or settled.

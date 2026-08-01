@@ -357,3 +357,10 @@ It never blocks the router.
 - `../../scripts/override_rate_reader.py` — R12 telemetry reader: scans saga envelopes for
   override-rate, over/under-tier, and budget-exhaustion signals (Phase 1.6). Zero-data reports
   "no data yet"; read-only; `--json` for machine-readable output.
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable retrospective
+evidence, promote the report into `docs/retros/` with `scripts/artifact_promotion.py` and bind its
+promotion receipt to the applicable lifecycle transition. A divergent canonical predecessor is
+preserved and blocks completion until operator adjudication.

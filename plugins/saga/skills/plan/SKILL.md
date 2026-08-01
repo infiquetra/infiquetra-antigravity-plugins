@@ -369,3 +369,10 @@ Recommend the next command with plural clean exits:
 `/plan` authors a plan artifact and self-reviews it. It does **NOT** implement code, does **NOT** file
 SDLC issues (`mission-control` owns issue creation), and does **NOT** run the full review gauntlet
 (`/doc-review` owns that). Plan, write the saga, route — then stop.
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming durable planning completion,
+promote the artifact into `docs/plans/` with `scripts/artifact_promotion.py` and bind its promotion
+receipt to the applicable lifecycle transition. A divergent canonical predecessor is preserved,
+returns `conflicting`, and blocks routing until operator adjudication.

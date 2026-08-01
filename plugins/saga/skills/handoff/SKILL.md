@@ -73,3 +73,10 @@ When a recipient does have `saga`, the issue may suggest:
 - `/work <issue>` for `plan-ready` or `resume-ready`.
 
 Do not suggest `/loop` for normal team handoff.
+
+## Canonical artifact promotion
+
+An Antigravity brain or runtime copy is staging only. Before claiming a durable handoff, promote the
+packet into `docs/handoffs/` with `scripts/artifact_promotion.py` and bind its promotion receipt to
+the applicable lifecycle transition. A divergent canonical predecessor is preserved and blocks the
+handoff until operator adjudication.
