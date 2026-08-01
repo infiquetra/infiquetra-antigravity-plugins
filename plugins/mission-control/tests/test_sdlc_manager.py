@@ -105,4 +105,6 @@ def test_runtime_normalizes_repository_inputs_and_typed_failures_rejects_negativ
         "content": {"number": 15, "repository": {"name": "mission-control"}},
     }
     with pytest.raises(sdlc_manager.ProjectItemResolutionError, match="ambiguous"):
-        sdlc_manager._resolve_project_item([duplicate, {**duplicate, "id": "PVTI_2"}], "mission-control", 15)
+        sdlc_manager._resolve_project_item(
+            [duplicate, {**duplicate, "id": "PVTI_2"}], "mission-control", 15
+        )

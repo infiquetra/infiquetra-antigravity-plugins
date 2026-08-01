@@ -14,13 +14,22 @@ import qa_health_score  # noqa: E402
 
 
 def _valid(text: str) -> bool:
-    terms = ("producer_id", "tester_id", "test_node_ids", "must differ", "agy.agent.execution=passed", "cannot certify its own work")
+    terms = (
+        "producer_id",
+        "tester_id",
+        "test_node_ids",
+        "must differ",
+        "agy.agent.execution=passed",
+        "cannot certify its own work",
+    )
     forbidden = (
         "producer and tester may be the same",
         "the producer may certify its own work",
         "failed tests may be accepted",
     )
-    return all(term in text for term in terms) and not any(term in text.lower() for term in forbidden)
+    return all(term in text for term in terms) and not any(
+        term in text.lower() for term in forbidden
+    )
 
 
 def test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence() -> None:
@@ -34,7 +43,9 @@ def test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence(
     assert score["overall"] == 87
 
 
-def test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence_rejects_negative_cases() -> None:
+def test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence_rejects_negative_cases() -> (
+    None
+):
     skill = (ROOT / "skills/qa/SKILL.md").read_text()
     assert not _valid(skill.replace("must differ", "may match", 1))
     assert not _valid(skill + "\nThe producer and tester may be the same.\n")

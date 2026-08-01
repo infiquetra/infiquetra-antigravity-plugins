@@ -161,7 +161,10 @@ def verified_lifecycle_settlement(node: Any, *, repo_root: Path) -> BarrierVerdi
                 receipt, contract, repo_root=repo_root
             )
             previous = results.get(receipt.obligation_id)
-            if previous is None or result.state is lifecycle_obligations.SettlementState.CONFLICTING:
+            if (
+                previous is None
+                or result.state is lifecycle_obligations.SettlementState.CONFLICTING
+            ):
                 results[receipt.obligation_id] = result
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return BarrierVerdict(

@@ -44,8 +44,7 @@ def route_earliest_unsettled_required_obligation(
 
     contract = lifecycle_obligations.ObligationContract.from_dict(contract.to_dict())
     receipts = tuple(
-        transition_receipts.TransitionReceipt.from_dict(receipt.to_dict())
-        for receipt in receipts
+        transition_receipts.TransitionReceipt.from_dict(receipt.to_dict()) for receipt in receipts
     )
     contract.validate()
     by_obligation: dict[str, list[transition_receipts.TransitionReceipt]] = {}

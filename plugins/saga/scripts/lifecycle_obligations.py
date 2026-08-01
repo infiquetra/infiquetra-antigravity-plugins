@@ -765,7 +765,10 @@ def verify_independent_receipt(
     if evidence.kind not in INDEPENDENT_EVIDENCE_KINDS:
         return False, f"{evidence.evidence_id} is not an independent evidence kind"
     if repo_root is None:
-        return False, f"{evidence.evidence_id} cannot resolve its identity receipt without repo_root"
+        return (
+            False,
+            f"{evidence.evidence_id} cannot resolve its identity receipt without repo_root",
+        )
     target = repo_root.resolve().joinpath(*PurePosixPath(evidence.reference).parts)
     try:
         raw = target.resolve(strict=True).read_bytes()
@@ -808,7 +811,10 @@ def verify_independent_receipt(
     ):
         return False, f"{evidence.evidence_id} requires a distinct attester identity"
     artifact_digest = receipt.get("artifact_sha256")
-    if not isinstance(artifact_digest, str) or re.fullmatch(r"[0-9a-f]{64}", artifact_digest) is None:
+    if (
+        not isinstance(artifact_digest, str)
+        or re.fullmatch(r"[0-9a-f]{64}", artifact_digest) is None
+    ):
         return False, f"{evidence.evidence_id} artifact_sha256 is invalid"
     origin = receipt.get("origin")
     if origin == "saga-host-created":
@@ -821,7 +827,10 @@ def verify_independent_receipt(
                 "a passing agy.agent.execution capability"
             )
     elif origin == "imported-external":
-        if receipt.get("host_capability") is not None or receipt.get("host_capability_state") is not None:
+        if (
+            receipt.get("host_capability") is not None
+            or receipt.get("host_capability_state") is not None
+        ):
             return False, f"{evidence.evidence_id} imported receipt may not claim host execution"
     else:
         return False, f"{evidence.evidence_id} identity receipt origin is invalid"

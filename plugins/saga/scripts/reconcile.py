@@ -36,7 +36,11 @@ class CanonicalEvidence:
     sha256: str
 
     def validate(self) -> None:
-        if not self.reference or self.reference.startswith("/") or ".." in self.reference.split("/"):
+        if (
+            not self.reference
+            or self.reference.startswith("/")
+            or ".." in self.reference.split("/")
+        ):
             raise ReconciliationError("canonical reference must be repository-relative")
         _digest(self.sha256, "canonical sha256")
 

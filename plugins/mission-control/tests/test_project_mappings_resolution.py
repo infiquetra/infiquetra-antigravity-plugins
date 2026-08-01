@@ -258,16 +258,17 @@ def test_flow_resolves_project_field_issue_and_repository_before_mutation() -> N
     assert set(data["projects"]) == {"operations", "asgard", "campps"}
     assert all(project["repositories"] == [] for project in data["projects"].values())
 
-    flow_skill = (
-        Path(__file__).resolve().parents[1] / "skills" / "flow" / "SKILL.md"
-    ).read_text(encoding="utf-8")
+    flow_skill = (Path(__file__).resolve().parents[1] / "skills" / "flow" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
     assert "normalize the repository" in flow_skill
     assert "resolve the explicitly named active project, issue, field, and option" in flow_skill
     assert "obtain explicit operator approval" in flow_skill
 
 
-def test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases(
-) -> None:
+def test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases() -> (
+    None
+):
     with pytest.raises(argparse.ArgumentTypeError):
         sdlc_manager._normalize_repo_arg("other-org/mission-control")
 

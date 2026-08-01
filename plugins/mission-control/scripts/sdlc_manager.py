@@ -1820,7 +1820,9 @@ def _get_issue_column_times(org: str, repo: str, number: int) -> list[dict]:
             raise ApiResponseError("issue history totalCount changed during pagination")
 
         nodes = timeline.get("nodes")
-        if not isinstance(nodes, list) or any(node is not None and not isinstance(node, dict) for node in nodes):
+        if not isinstance(nodes, list) or any(
+            node is not None and not isinstance(node, dict) for node in nodes
+        ):
             raise ApiResponseError("issue history response contains malformed events")
         all_events.extend(cast(list[dict[str, Any]], [node for node in nodes if node is not None]))
 

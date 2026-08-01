@@ -42,10 +42,6 @@ class ConcurrencyPolicy:
             raise ConcurrencyPolicyError("heartbeat_s must be positive and less than lease_ttl_s")
 
     def admits(self, active_count: int) -> bool:
-        if (
-            isinstance(active_count, bool)
-            or not isinstance(active_count, int)
-            or active_count < 0
-        ):
+        if isinstance(active_count, bool) or not isinstance(active_count, int) or active_count < 0:
             raise ConcurrencyPolicyError("active_count must be a non-negative integer")
         return active_count < self.max_active

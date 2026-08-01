@@ -31,9 +31,7 @@ def control_chart(series: list[float], *, baseline_n: int = 4) -> ChartVerdict:
     if baseline_n < 2:
         raise ControlChartError("baseline_n must be at least 2")
     if any(
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not math.isfinite(value)
+        isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
         for value in series
     ):
         raise ControlChartError("series values must be finite numbers")
@@ -41,9 +39,7 @@ def control_chart(series: list[float], *, baseline_n: int = 4) -> ChartVerdict:
         return ChartVerdict("insufficient-evidence", None, None, None, ())
     baseline = [float(value) for value in series[:baseline_n]]
     centerline = sum(baseline) / len(baseline)
-    moving_ranges = [
-        abs(right - left) for left, right in zip(baseline, baseline[1:], strict=False)
-    ]
+    moving_ranges = [abs(right - left) for left, right in zip(baseline, baseline[1:], strict=False)]
     mean_range = sum(moving_ranges) / len(moving_ranges)
     lower = centerline - LIMIT_FACTOR * mean_range
     upper = centerline + LIMIT_FACTOR * mean_range

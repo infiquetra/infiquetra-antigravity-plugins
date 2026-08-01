@@ -114,7 +114,9 @@ class DoctorResult:
     host_contract: HostContractStatus = field(default_factory=HostContractStatus)
 
 
-def _resolve_repository_file(repo_root: Path, value: object, field: str) -> tuple[Path | None, str | None]:
+def _resolve_repository_file(
+    repo_root: Path, value: object, field: str
+) -> tuple[Path | None, str | None]:
     if not isinstance(value, str) or not value:
         return None, f"{field} must be a non-empty repository-relative path"
     candidate = Path(value)
@@ -328,9 +330,7 @@ def validate_repository_quality_evidence(
         else:
             for match in re.finditer(r"(?m)^- id: ([a-z0-9.-]+)$", ledger_text):
                 known_ids.add(match.group(1))
-        fixture_ids = {
-            row.get("owner") for row in fixtures or [] if isinstance(row, Mapping)
-        }
+        fixture_ids = {row.get("owner") for row in fixtures or [] if isinstance(row, Mapping)}
         ownership_ids = {
             stable_id
             for row in ownership or []
@@ -338,10 +338,14 @@ def validate_repository_quality_evidence(
             for stable_id in row["stable_ids"]
         }
         test_ids = set(by_owner) if isinstance(tests, list) else set()
-        referenced_ids = {value for value in fixture_ids | ownership_ids | test_ids if isinstance(value, str)}
+        referenced_ids = {
+            value for value in fixture_ids | ownership_ids | test_ids if isinstance(value, str)
+        }
         unknown_ids = sorted(referenced_ids - known_ids)
         if unknown_ids:
-            errors.append("quality evidence names unknown stable identifiers: " + ", ".join(unknown_ids))
+            errors.append(
+                "quality evidence names unknown stable identifiers: " + ", ".join(unknown_ids)
+            )
         if fixture_ids != ownership_ids or ownership_ids != test_ids:
             errors.append("fixture, ownership, and test stable identifiers must match exactly")
     return errors
@@ -353,29 +357,46 @@ def canonical_repository_quality_evidence(repo_root: Path) -> dict[str, Any]:
     test_prefix = "plugins/fleet-core/tests/test_repository_quality_guards.py::"
     return {
         "schema": QUALITY_EVIDENCE_SCHEMA,
-        "fixtures": [{
-            "path": fixture_path.as_posix(),
-            "owner": QUALITY_STABLE_ID,
-            "purpose": "sanitized orphan-evidence contract fixture",
-            "provenance": "sanitized",
-            "sha256": fixture_digest,
-        }],
+        "fixtures": [
+            {
+                "path": fixture_path.as_posix(),
+                "owner": QUALITY_STABLE_ID,
+                "purpose": "sanitized orphan-evidence contract fixture",
+                "provenance": "sanitized",
+                "sha256": fixture_digest,
+            }
+        ],
         "ownership": [
             {"path": fixture_path.as_posix(), "stable_ids": [QUALITY_STABLE_ID]},
             {"path": "scripts/validate_plugins.py", "stable_ids": [QUALITY_STABLE_ID]},
-            {"path": "plugins/fleet-core/tests/test_repository_quality_guards.py", "stable_ids": [QUALITY_STABLE_ID]},
+            {
+                "path": "plugins/fleet-core/tests/test_repository_quality_guards.py",
+                "stable_ids": [QUALITY_STABLE_ID],
+            },
         ],
-        "journals": [{
-            "path": "docs/engineering-journal/DECISIONS.md",
-            "status": "completed",
-            "evidence": [
-                fixture_path.as_posix(),
-                "plugins/fleet-core/tests/test_repository_quality_guards.py",
-            ],
-        }],
+        "journals": [
+            {
+                "path": "docs/engineering-journal/DECISIONS.md",
+                "status": "completed",
+                "evidence": [
+                    fixture_path.as_posix(),
+                    "plugins/fleet-core/tests/test_repository_quality_guards.py",
+                ],
+            }
+        ],
         "tests": [
-            {"stable_id": QUALITY_STABLE_ID, "kind": "positive", "node_id": test_prefix + "test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps"},
-            {"stable_id": QUALITY_STABLE_ID, "kind": "negative", "node_id": test_prefix + "test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases"},
+            {
+                "stable_id": QUALITY_STABLE_ID,
+                "kind": "positive",
+                "node_id": test_prefix
+                + "test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps",
+            },
+            {
+                "stable_id": QUALITY_STABLE_ID,
+                "kind": "negative",
+                "node_id": test_prefix
+                + "test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases",
+            },
         ],
     }
 

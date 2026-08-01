@@ -11,14 +11,16 @@ def _valid(skill: str, reference: str) -> bool:
     combined = skill + "\n" + reference
     required = ("read-only census operations", "separate mutation", "explicit operator approval")
     forbidden = ("gap reports authorize deployment", "status requests authorize tracking updates")
-    return all(term in combined for term in required) and not any(term in combined.lower() for term in forbidden)
+    return all(term in combined for term in required) and not any(
+        term in combined.lower() for term in forbidden
+    )
 
 
 def test_rollout_skill_separates_status_gap_analysis_and_mutation() -> None:
     skill = (PLUGIN_ROOT / "skills/rollout/SKILL.md").read_text(encoding="utf-8")
-    reference = (
-        PLUGIN_ROOT / "skills/rollout/references/work-hierarchy.md"
-    ).read_text(encoding="utf-8")
+    reference = (PLUGIN_ROOT / "skills/rollout/references/work-hierarchy.md").read_text(
+        encoding="utf-8"
+    )
 
     assert "`rollout status` and `rollout gap-analysis` are read-only census operations" in skill
     assert "Every `deploy-*` or\n`rollout update` operation is a separate mutation" in skill
@@ -30,9 +32,9 @@ def test_rollout_skill_separates_status_gap_analysis_and_mutation() -> None:
 
 def test_rollout_skill_separates_status_gap_analysis_and_mutation_rejects_negative_cases() -> None:
     skill = (PLUGIN_ROOT / "skills/rollout/SKILL.md").read_text(encoding="utf-8")
-    reference = (
-        PLUGIN_ROOT / "skills/rollout/references/work-hierarchy.md"
-    ).read_text(encoding="utf-8")
+    reference = (PLUGIN_ROOT / "skills/rollout/references/work-hierarchy.md").read_text(
+        encoding="utf-8"
+    )
 
     assert "never deploy, create or edit an issue, or update tracking state" in skill
     assert "Never treat a gap report or status\nrequest as approval to mutate" in skill

@@ -40,9 +40,7 @@ _COMPARISON_SUFFIXES = frozenset(
 REQUIRED_ACTIVE_GLOBS: tuple[str, ...] = ()
 REQUIRED_EXACT_PATHS: tuple[str, ...] = ()
 REQUIRED_COMPARISON_ROOTS = ("docs", "tests")
-_CANONICAL_SELECTOR_DIGEST = (
-    "08df27477f912819b88ff979e60416ec20ff124e9b3a5eda1cb2532fd6195629"
-)
+_CANONICAL_SELECTOR_DIGEST = "08df27477f912819b88ff979e60416ec20ff124e9b3a5eda1cb2532fd6195629"
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$")

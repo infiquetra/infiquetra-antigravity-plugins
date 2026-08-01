@@ -377,9 +377,7 @@ class EvidenceBinding:
             raise ManifestError("evidence_binding.owner_id must be non-empty")
         attestation = data.get("attestation")
         if not isinstance(attestation, Mapping) or set(attestation) != _ATTESTATION_FIELDS:
-            raise ManifestError(
-                "evidence_binding.attestation has unknown or missing fields"
-            )
+            raise ManifestError("evidence_binding.attestation has unknown or missing fields")
         return cls(
             input_sha256=data["input_sha256"],
             output_sha256=data["output_sha256"],

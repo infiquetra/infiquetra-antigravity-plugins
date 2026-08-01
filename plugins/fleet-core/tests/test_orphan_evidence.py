@@ -40,11 +40,14 @@ def test_orphan_evidence_requires_owner_shape_and_run_attestation() -> None:
         "records": [_record()],
     }
 
-    assert ORPHAN.validate_evidence(
-        evidence,
-        expected_run_id="run-1",
-        expected_owners={"assignment-1": "worker-1"},
-    ) == []
+    assert (
+        ORPHAN.validate_evidence(
+            evidence,
+            expected_run_id="run-1",
+            expected_owners={"assignment-1": "worker-1"},
+        )
+        == []
+    )
     assert ORPHAN.load_evidence(FIXTURES / "valid.json")["records"] == []
 
 

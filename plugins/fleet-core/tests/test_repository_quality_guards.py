@@ -27,7 +27,10 @@ def _evidence():
                 "stable_ids": ["repository-quality-guards"],
             },
             {"path": "scripts/validate_plugins.py", "stable_ids": ["repository-quality-guards"]},
-            {"path": "plugins/fleet-core/tests/test_repository_quality_guards.py", "stable_ids": ["repository-quality-guards"]},
+            {
+                "path": "plugins/fleet-core/tests/test_repository_quality_guards.py",
+                "stable_ids": ["repository-quality-guards"],
+            },
         ],
         "journals": [
             {
@@ -66,7 +69,9 @@ def test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps() -
     assert validator.validate_repository_quality_evidence(_evidence(), repo_root=root) == []
 
 
-def test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases() -> None:
+def test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases() -> (
+    None
+):
     cases = []
     fake = _evidence()
     fake["fixtures"][0]["provenance"] = "claimed-live"
@@ -105,4 +110,6 @@ def test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rej
     cases.append(uncollected)
 
     for evidence in cases:
-        assert validator.validate_repository_quality_evidence(evidence, repo_root=Path(__file__).resolve().parents[3])
+        assert validator.validate_repository_quality_evidence(
+            evidence, repo_root=Path(__file__).resolve().parents[3]
+        )

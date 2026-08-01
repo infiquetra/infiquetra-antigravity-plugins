@@ -91,12 +91,15 @@ def test_saga_acceptance_compares_bounded_semantic_receipts_rejects_negative_cas
     cases.append((left, unknown_fact, 110.0))
 
     for candidate_left, candidate_right, evaluated_at in cases:
-        assert ACCEPTANCE.compare_receipts(
-            contract,
-            candidate_left,
-            candidate_right,
-            evaluated_at=evaluated_at,
-        )["compatible"] is False
+        assert (
+            ACCEPTANCE.compare_receipts(
+                contract,
+                candidate_left,
+                candidate_right,
+                evaluated_at=evaluated_at,
+            )["compatible"]
+            is False
+        )
 
 
 def test_acceptance_contract_and_emission_fail_closed(tmp_path: Path) -> None:

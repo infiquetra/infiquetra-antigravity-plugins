@@ -59,7 +59,9 @@ def validate_attestation(
         "output_sha256",
         "binding_sha256",
     }
-    errors = ["attestation has unknown or missing fields"] if set(attestation) != expected_fields else []
+    errors = (
+        ["attestation has unknown or missing fields"] if set(attestation) != expected_fields else []
+    )
     if attestation.get("schema") != ATTESTATION_SCHEMA:
         errors.append("attestation schema is invalid")
     if attestation.get("attester") != TRUSTED_ATTESTER:

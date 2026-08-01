@@ -151,7 +151,11 @@ def _portability_errors(model: dict[str, Any]) -> list[str]:
             errors.append(f"packet mapping {packet_id}: stale source provenance")
         if classification not in allowed:
             errors.append(f"packet mapping {packet_id}: unsupported classification")
-        if not isinstance(target, str) or not target.startswith("plugins/") or not _resolve_repo_path(target).is_file():
+        if (
+            not isinstance(target, str)
+            or not target.startswith("plugins/")
+            or not _resolve_repo_path(target).is_file()
+        ):
             errors.append(f"packet mapping {packet_id}: target boundary is missing")
     contracts = portability.get("runtime_contracts")
     if not isinstance(contracts, dict) or not contracts:
@@ -191,9 +195,7 @@ def test_portability_page_maps_every_runtime_specific_contract_to_antigravity() 
         assert label in portability_text.lower()
     assert len(model["portability"]["packet_mappings"]) == 45
     mappings = list(model["portability"]["packet_mappings"].values())
-    assert {mapping[1] for mapping in mappings} == {
-        "0c2072446c7e136caa274b5f637ca2c8c03725e4"
-    }
+    assert {mapping[1] for mapping in mappings} == {"0c2072446c7e136caa274b5f637ca2c8c03725e4"}
     classifications = [mapping[3] for mapping in mappings]
     assert classifications.count("adapted") == 26
     assert classifications.count("preserved") == 15
@@ -203,7 +205,9 @@ def test_portability_page_maps_every_runtime_specific_contract_to_antigravity() 
     assert "does not consume them as source-oracle behavior" in portability_text
 
 
-def test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases() -> None:
+def test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases() -> (
+    None
+):
     model = _load_model()
     portability = model["portability"]
 

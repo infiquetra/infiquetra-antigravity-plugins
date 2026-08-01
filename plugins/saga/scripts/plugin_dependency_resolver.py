@@ -26,7 +26,9 @@ def source_lineage_to_target(name: str) -> tuple[str, str]:
     try:
         return SOURCE_PLUGIN_MAPPINGS[name]
     except KeyError as exc:
-        raise DependencyResolutionError("source lineage name has no approved target mapping") from exc
+        raise DependencyResolutionError(
+            "source lineage name has no approved target mapping"
+        ) from exc
 
 
 def resolve_target_plugin(

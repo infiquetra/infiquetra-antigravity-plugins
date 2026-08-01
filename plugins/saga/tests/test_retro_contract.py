@@ -28,7 +28,9 @@ def test_retro_records_evidence_backed_learning_without_state_mutation() -> None
     assert "link every finding to evidence" in report
 
 
-def test_retro_records_evidence_backed_learning_without_state_mutation_rejects_negative_cases() -> None:
+def test_retro_records_evidence_backed_learning_without_state_mutation_rejects_negative_cases() -> (
+    None
+):
     skill = (ROOT / "skills/retro/SKILL.md").read_text()
     assert not _valid(
         skill.replace("Retrospective analysis never writes", "Retrospective analysis writes", 1)

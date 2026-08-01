@@ -82,11 +82,7 @@ class LeaseBroker:
     def active(self, *, now: float | None = None) -> tuple[Lease, ...]:
         if now is None:
             instant = self._now()
-        elif (
-            isinstance(now, bool)
-            or not isinstance(now, (int, float))
-            or not math.isfinite(now)
-        ):
+        elif isinstance(now, bool) or not isinstance(now, (int, float)) or not math.isfinite(now):
             raise LeaseError("now must be a finite number")
         else:
             instant = float(now)
@@ -207,9 +203,7 @@ def validate_snapshot(snapshot: object) -> list[str]:
         if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in times):
             errors.append(f"{prefix} timestamps must be numeric")
         else:
-            acquired_at, renewed_at, expires_at = cast(
-                tuple[float, float, float], tuple(times)
-            )
+            acquired_at, renewed_at, expires_at = cast(tuple[float, float, float], tuple(times))
             assert isinstance(acquired_at, (int, float))
             assert isinstance(renewed_at, (int, float))
             assert isinstance(expires_at, (int, float))

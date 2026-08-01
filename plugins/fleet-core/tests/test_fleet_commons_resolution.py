@@ -27,7 +27,9 @@ def test_shared_runtime_resolution_is_logical_portable_and_target_bound() -> Non
     assert fleet_commons_shim.load("workflow_compat").WORKFLOW_SCHEMA.startswith("antigravity.")
 
 
-def test_shared_runtime_resolution_is_logical_portable_and_target_bound_rejects_negative_cases() -> None:
+def test_shared_runtime_resolution_is_logical_portable_and_target_bound_rejects_negative_cases() -> (
+    None
+):
     for plugin_name in (
         "team-execution",
         "verified-workflows",

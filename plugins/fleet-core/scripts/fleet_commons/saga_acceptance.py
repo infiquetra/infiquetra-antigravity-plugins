@@ -99,8 +99,13 @@ def _validate_receipt(
     if not isinstance(receipt, dict):
         return [f"{label} receipt must be an object"]
     expected_fields = {
-        "schema", "contract_sha256", "canary_id", "runtime_id", "input_sha256",
-        "observed_at", "facts",
+        "schema",
+        "contract_sha256",
+        "canary_id",
+        "runtime_id",
+        "input_sha256",
+        "observed_at",
+        "facts",
     }
     if set(receipt) != expected_fields:
         return [f"{label} receipt has an invalid shape"]
@@ -111,9 +116,10 @@ def _validate_receipt(
     for field in ("canary_id", "runtime_id"):
         if not isinstance(receipt.get(field), str) or not receipt[field].strip():
             errors.append(f"{label} receipt {field} must be non-empty")
-    if not isinstance(receipt.get("input_sha256"), str) or SHA256_RE.fullmatch(
-        receipt["input_sha256"]
-    ) is None:
+    if (
+        not isinstance(receipt.get("input_sha256"), str)
+        or SHA256_RE.fullmatch(receipt["input_sha256"]) is None
+    ):
         errors.append(f"{label} receipt input_sha256 is invalid")
     observed_at = receipt.get("observed_at")
     if (
@@ -146,7 +152,11 @@ def compare_receipts(
     evaluated_at: float,
 ) -> dict[str, Any]:
     errors = validate_contract(contract)
-    if isinstance(evaluated_at, bool) or not isinstance(evaluated_at, (int, float)) or not math.isfinite(evaluated_at):
+    if (
+        isinstance(evaluated_at, bool)
+        or not isinstance(evaluated_at, (int, float))
+        or not math.isfinite(evaluated_at)
+    ):
         errors.append("evaluated_at must be a finite number")
     for label, receipt in (("left", left), ("right", right)):
         errors.extend(_validate_receipt(contract, receipt, label, evaluated_at))

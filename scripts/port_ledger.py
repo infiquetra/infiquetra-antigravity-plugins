@@ -2600,7 +2600,9 @@ def _migration_preservation_errors(
             if key not in {"migration", "antigravity_state"}
         }
         if _plain_data(protected_original) != _plain_data(protected_recorded):
-            errors.append(f"candidate {candidate_id!r}: source decision or packet authority changed")
+            errors.append(
+                f"candidate {candidate_id!r}: source decision or packet authority changed"
+            )
     return errors
 
 

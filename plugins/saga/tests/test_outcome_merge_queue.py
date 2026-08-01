@@ -374,9 +374,7 @@ def _integration_receipt(tmp_path: Path):
                     "subject": "build",
                     "requirement": "required",
                     "producer": "worker",
-                    "required_evidence": [
-                        {"kind": "check-result", "independent": True}
-                    ],
+                    "required_evidence": [{"kind": "check-result", "independent": True}],
                 }
             ],
         }
@@ -395,9 +393,7 @@ def _integration_receipt(tmp_path: Path):
 def test_outcome_merge_settles_only_from_verified_integration_receipt(tmp_path: Path) -> None:
     contract, receipt = _integration_receipt(tmp_path)
     node = _node("build", leaf_saga_id="leaf-build")
-    result = M.settle_from_verified_integration_receipt(
-        node, receipt, contract, repo_root=tmp_path
-    )
+    result = M.settle_from_verified_integration_receipt(node, receipt, contract, repo_root=tmp_path)
     assert result["settled"] is True
     assert result["settlement_state"] == "satisfied"
 

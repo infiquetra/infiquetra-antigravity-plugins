@@ -206,9 +206,12 @@ def plan_board_intents(
                 "subplot_id": node.subplot_id,
                 "spec_revision": spec.spec_revision,
             }
-            action_id = "board-" + hashlib.sha256(
-                json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-            ).hexdigest()[:24]
+            action_id = (
+                "board-"
+                + hashlib.sha256(
+                    json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest()[:24]
+            )
             planned.append(
                 {
                     "payload": payload,

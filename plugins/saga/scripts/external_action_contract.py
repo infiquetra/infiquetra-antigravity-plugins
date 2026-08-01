@@ -193,9 +193,7 @@ def validate_result(
     _digest(row.get("evidence_sha256"), "external action result evidence_sha256")
 
 
-def _strict_mapping(
-    value: object, expected: frozenset[str], name: str
-) -> Mapping[str, Any]:
+def _strict_mapping(value: object, expected: frozenset[str], name: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ExternalActionContractError(f"{name} must be an object")
     if set(value) != expected:

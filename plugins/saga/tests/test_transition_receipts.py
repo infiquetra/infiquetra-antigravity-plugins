@@ -53,7 +53,9 @@ def _repository_evidence(
                 json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
             ).hexdigest(),
         }
-        target.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":")), encoding="utf-8")
+        target.write_text(
+            json.dumps(receipt, sort_keys=True, separators=(",", ":")), encoding="utf-8"
+        )
     else:
         target.write_text(evidence_id, encoding="utf-8")
     return O.Evidence.from_dict(

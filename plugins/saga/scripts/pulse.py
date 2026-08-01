@@ -20,7 +20,9 @@ import second_opinion  # noqa: E402
 
 PULSE_SCHEMA = "pulse_snapshot.v1"
 RUN_FACT_SCHEMA = "run_fact.v1"
-SENSITIVE_KEYS = frozenset({"api_key", "authorization", "credential", "password", "secret", "token"})
+SENSITIVE_KEYS = frozenset(
+    {"api_key", "authorization", "credential", "password", "secret", "token"}
+)
 
 
 class PulseError(ValueError):
@@ -86,7 +88,11 @@ def _validated_records(
             raise PulseError(f"receipt {index} quality must be between 0 and 1")
         counts[(record["provider"], record["capability"])] += 1
         validated.append(dict(record))
-    sparse = sorted(f"{provider}::{capability}" for (provider, capability), count in counts.items() if count < min_samples)
+    sparse = sorted(
+        f"{provider}::{capability}"
+        for (provider, capability), count in counts.items()
+        if count < min_samples
+    )
     if sparse:
         raise PulseError(f"insufficient evidence for: {', '.join(sparse)}")
     return validated

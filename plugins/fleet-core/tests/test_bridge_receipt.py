@@ -49,7 +49,9 @@ def test_bridge_receipt_distinguishes_requested_observed_and_unknown() -> None:
     }
 
 
-def test_bridge_receipt_distinguishes_requested_observed_and_unknown_rejects_negative_cases() -> None:
+def test_bridge_receipt_distinguishes_requested_observed_and_unknown_rejects_negative_cases() -> (
+    None
+):
     malformed = _receipt()
     malformed["observed_facts"]["model"]["evidence_sha256"] = "not-a-digest"
     self_attested = _receipt()

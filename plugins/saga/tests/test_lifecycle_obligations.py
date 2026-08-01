@@ -58,7 +58,9 @@ def _repo_evidence(
                 json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
             ).hexdigest(),
         }
-        target.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":")), encoding="utf-8")
+        target.write_text(
+            json.dumps(receipt, sort_keys=True, separators=(",", ":")), encoding="utf-8"
+        )
     else:
         target.write_text(content or evidence_id, encoding="utf-8")
     return M.Evidence.from_dict(
@@ -223,21 +225,18 @@ def test_lifecycle_advances_only_when_required_obligations_have_independent_rece
         is M.SettlementState.UNSATISFIED
     )
 
-    forged = _repo_evidence(
-        tmp_path, "forged-review", "review-finding", producer="reviewer"
-    )
+    forged = _repo_evidence(tmp_path, "forged-review", "review-finding", producer="reviewer")
     forged_path = tmp_path / forged.reference
     forged_receipt = json.loads(forged_path.read_text())
     forged_receipt["producer_id"] = "different-reviewer"
     forged_path.write_text(json.dumps(forged_receipt, sort_keys=True, separators=(",", ":")))
     forged = replace(forged, digest=_digest(forged_path))
-    assert M.evaluate_obligation(
-        contract, "work-proof", [forged], repo_root=tmp_path
-    ).state is M.SettlementState.UNSATISFIED
-
-    host_created = _repo_evidence(
-        tmp_path, "host-created", "execution-receipt", producer="runner"
+    assert (
+        M.evaluate_obligation(contract, "work-proof", [forged], repo_root=tmp_path).state
+        is M.SettlementState.UNSATISFIED
     )
+
+    host_created = _repo_evidence(tmp_path, "host-created", "execution-receipt", producer="runner")
     host_path = tmp_path / host_created.reference
     host_receipt = json.loads(host_path.read_text())
     body = {
@@ -254,9 +253,10 @@ def test_lifecycle_advances_only_when_required_obligations_have_independent_rece
     }
     host_path.write_text(json.dumps(host_receipt, sort_keys=True, separators=(",", ":")))
     host_created = replace(host_created, digest=_digest(host_path))
-    assert M.evaluate_obligation(
-        contract, "work-proof", [host_created], repo_root=tmp_path
-    ).state is M.SettlementState.UNSATISFIED
+    assert (
+        M.evaluate_obligation(contract, "work-proof", [host_created], repo_root=tmp_path).state
+        is M.SettlementState.UNSATISFIED
+    )
 
     fallback = _repo_evidence(
         tmp_path,
@@ -432,9 +432,7 @@ def test_rule_fallback_and_obligation_types_fail_closed() -> None:
     with pytest.raises(M.ObligationError, match="unsupported kind"):
         M.EvidenceRule.from_dict({"kind": "unknown", "independent": False})
     with pytest.raises(M.ObligationError, match="positive integer"):
-        M.EvidenceRule.from_dict(
-            {"kind": "input", "minimum_count": True, "independent": False}
-        )
+        M.EvidenceRule.from_dict({"kind": "input", "minimum_count": True, "independent": False})
     with pytest.raises(M.ObligationError, match="must be a boolean"):
         M.EvidenceRule.from_dict({"kind": "input", "independent": "yes"})
     for rule in (
@@ -558,14 +556,16 @@ def test_repository_and_independence_verifiers_report_edge_failures(tmp_path: Pa
     directory = tmp_path / "docs/proof.json"
     directory.mkdir(parents=True)
     assert M.verify_repository_evidence(repo, repo_root=tmp_path)[0] is False
-    assert M.verify_independent_receipt(repo, obligation_producer="worker", repo_root=tmp_path)[0] is False
-
-    receipt = _repo_evidence(
-        tmp_path, "review-edge", "review-finding", producer="reviewer"
+    assert (
+        M.verify_independent_receipt(repo, obligation_producer="worker", repo_root=tmp_path)[0]
+        is False
     )
-    assert M.verify_independent_receipt(
-        receipt, obligation_producer="worker", repo_root=None
-    )[0] is False
+
+    receipt = _repo_evidence(tmp_path, "review-edge", "review-finding", producer="reviewer")
+    assert (
+        M.verify_independent_receipt(receipt, obligation_producer="worker", repo_root=None)[0]
+        is False
+    )
     path = tmp_path / receipt.reference
     base = json.loads(path.read_text())
     mutations = [
@@ -577,9 +577,7 @@ def test_repository_and_independence_verifiers_report_edge_failures(tmp_path: Pa
         lambda row: row.update(attester_id="reviewer"),
         lambda row: row.update(artifact_sha256="bad"),
         lambda row: row.update(origin="wrong"),
-        lambda row: row.update(
-            origin="imported-external", host_capability="agy.agent.execution"
-        ),
+        lambda row: row.update(origin="imported-external", host_capability="agy.agent.execution"),
     ]
     for mutation in mutations:
         candidate = dict(base)
@@ -590,6 +588,9 @@ def test_repository_and_independence_verifiers_report_edge_failures(tmp_path: Pa
                 json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
             ).hexdigest()
         path.write_text(json.dumps(candidate), encoding="utf-8")
-        assert M.verify_independent_receipt(
-            receipt, obligation_producer="worker", repo_root=tmp_path
-        )[0] is False
+        assert (
+            M.verify_independent_receipt(receipt, obligation_producer="worker", repo_root=tmp_path)[
+                0
+            ]
+            is False
+        )

@@ -5,9 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-TARGET_PLUGINS = frozenset(
-    {"fleet-core", "mission-control", "multi-agent-consensus", "saga"}
-)
+TARGET_PLUGINS = frozenset({"fleet-core", "mission-control", "multi-agent-consensus", "saga"})
 SOURCE_PLUGIN_NAMES = frozenset({"team-execution", "verified-workflows"})
 _PLUGIN_RE = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 
@@ -44,9 +42,6 @@ def resolve_plugin_root(
         if active.is_absolute():
             candidates.append(active.parent / plugin_name)
     for candidate in candidates:
-        if (
-            candidate.is_dir()
-            and (candidate / "plugin.json").is_file()
-        ):
+        if candidate.is_dir() and (candidate / "plugin.json").is_file():
             return candidate.resolve()
     raise PluginResolutionError(f"could not resolve logical plugin {plugin_name!r}")

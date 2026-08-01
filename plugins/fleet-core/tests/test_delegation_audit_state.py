@@ -49,7 +49,9 @@ def test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence(
     assert STATE.active("session-1", root=tmp_path, now=4.0) is None
 
 
-def test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence_rejects_negative_cases() -> None:
+def test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence_rejects_negative_cases() -> (
+    None
+):
     assignments = [_assignment("a"), _assignment("b", "worker-2")]
     completions = [
         _completion("a", worker_id="wrong", event_id="replay"),

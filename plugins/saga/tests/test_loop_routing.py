@@ -89,7 +89,9 @@ def test_loop_routes_to_earliest_unsettled_required_obligation_idempotently() ->
     assert module.route_earliest_unsettled_required_obligation(contract, [first]) == expected
 
 
-def test_loop_routes_to_earliest_unsettled_required_obligation_idempotently_rejects_negative_cases() -> None:
+def test_loop_routes_to_earliest_unsettled_required_obligation_idempotently_rejects_negative_cases() -> (
+    None
+):
     module = _load()
     contract = _contract()
     later = _receipt(contract, "work-ready", "work")

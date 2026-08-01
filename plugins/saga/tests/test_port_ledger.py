@@ -827,9 +827,9 @@ def test_recording_preserves_campaign_decisions_packets_and_nonmigration_candida
         evidence,
         validated_at="2026-07-30T18:00:00Z",
     )
-    assert port_ledger._migration_preservation_errors(
-        planned, migrated, set(plan["candidates"])
-    ) == []
+    assert (
+        port_ledger._migration_preservation_errors(planned, migrated, set(plan["candidates"])) == []
+    )
     tampered = copy.deepcopy(migrated)
     tampered["candidates"][0]["decision"]["rationale"] += " Changed after approval."
     assert any(
@@ -970,9 +970,7 @@ def _redigest_evidence(evidence: dict[str, Any]) -> None:
             "exact mapped node set",
         ),
         (
-            lambda value: value["results"]["review-migration-evidence"].update(
-                dimensions=[]
-            ),
+            lambda value: value["results"]["review-migration-evidence"].update(dimensions=[]),
             "unknown field 'dimensions'",
         ),
     ],
@@ -1012,9 +1010,7 @@ def test_result_schema_rejects_workflow_identity_and_custom_coverage(field: str)
     result = copy.deepcopy(evidence["results"]["implement-migration-gate"])
     result[field] = {} if field == "coverage" else "workflow-specific-value"
     errors: list[str] = []
-    assert not port_ledger._validate_result(
-        result, "result", "implement-migration-gate", errors
-    )
+    assert not port_ledger._validate_result(result, "result", "implement-migration-gate", errors)
     assert any(f"unknown field '{field}'" in error for error in errors)
 
 
@@ -1076,9 +1072,7 @@ def test_generic_result_requires_completed_checks_and_declared_test_outcomes() -
     evidence = json.loads((FIXTURES / "migration-evidence-valid.json").read_text())
     result = copy.deepcopy(evidence["results"]["test-git-free-migration"])
     errors: list[str] = []
-    assert port_ledger._validate_result(
-        result, "result", "test-git-free-migration", errors
-    )
+    assert port_ledger._validate_result(result, "result", "test-git-free-migration", errors)
     assert errors == []
     result["pytest_outcomes"][0]["status"] = "failed"
     failed_errors: list[str] = []

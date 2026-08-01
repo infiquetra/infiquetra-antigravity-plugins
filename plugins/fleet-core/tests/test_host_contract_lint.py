@@ -33,10 +33,7 @@ def _known_capabilities() -> set[str]:
 
 def _planned_active_runtime_paths() -> set[str]:
     plan = yaml.safe_load(
-        (
-            REPO_ROOT
-            / "docs/ports/2026-07-30-saga-reliability/migration-plan.v1.yaml"
-        ).read_text()
+        (REPO_ROOT / "docs/ports/2026-07-30-saga-reliability/migration-plan.v1.yaml").read_text()
     )
     documentation_and_generation_paths = {
         "plugins/saga/docs/commands.md",

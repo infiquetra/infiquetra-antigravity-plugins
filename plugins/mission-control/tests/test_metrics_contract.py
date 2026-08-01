@@ -66,9 +66,7 @@ def test_metrics_contract_covers_throughput_cycle_age_and_state_time() -> None:
         ),
     ]
     with patch.object(sdlc_manager, "_graphql", side_effect=pages):
-        transitions = sdlc_manager._get_issue_column_times(
-            "infiquetra", "mission-control", 15
-        )
+        transitions = sdlc_manager._get_issue_column_times("infiquetra", "mission-control", 15)
     assert [(event["from"], event["to"]) for event in transitions] == [
         ("Ready", "Active"),
         ("Active", "Done"),
@@ -82,7 +80,9 @@ def test_metrics_contract_covers_throughput_cycle_age_and_state_time() -> None:
     assert "descriptive evidence, not routing, mutation, or completion authority" in skill
 
 
-def test_metrics_contract_covers_throughput_cycle_age_and_state_time_rejects_negative_cases() -> None:
+def test_metrics_contract_covers_throughput_cycle_age_and_state_time_rejects_negative_cases() -> (
+    None
+):
     incomplete = _history_page(
         [],
         total_count=1,

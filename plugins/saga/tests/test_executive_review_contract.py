@@ -6,7 +6,16 @@ ROOT = Path(__file__).parent.parent
 
 
 def _valid(text: str) -> bool:
-    return all(term in text for term in ("product clarity", "user value", "strategic coherence", "operator explicitly chooses", "never constitutes delivery approval"))
+    return all(
+        term in text
+        for term in (
+            "product clarity",
+            "user value",
+            "strategic coherence",
+            "operator explicitly chooses",
+            "never constitutes delivery approval",
+        )
+    )
 
 
 def test_executive_review_challenges_value_without_delivery_approval() -> None:
@@ -18,6 +27,8 @@ def test_executive_review_challenges_value_without_delivery_approval() -> None:
     assert _valid(skill)
 
 
-def test_executive_review_challenges_value_without_delivery_approval_rejects_negative_cases() -> None:
+def test_executive_review_challenges_value_without_delivery_approval_rejects_negative_cases() -> (
+    None
+):
     skill = (ROOT / "skills/founder-review/SKILL.md").read_text()
     assert not _valid(skill.replace("never constitutes delivery approval", "approves delivery", 1))

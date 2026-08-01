@@ -19,7 +19,10 @@ import pulse  # noqa: E402
 
 def _records() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    for provider, qualities in (("gemini-a", (0.9, 0.8, 0.9, 0.9, 0.8)), ("gemini-b", (0.5, 0.5, 0.4, 0.4, 0.3))):
+    for provider, qualities in (
+        ("gemini-a", (0.9, 0.8, 0.9, 0.9, 0.8)),
+        ("gemini-b", (0.5, 0.5, 0.4, 0.4, 0.3)),
+    ):
         for index, quality in enumerate(qualities, start=1):
             rows.append(
                 {
@@ -60,7 +63,9 @@ def test_provider_pulse_reports_quality_drift_without_routing_authority() -> Non
     assert set(report["drift"]) == {"gemini-a::review", "gemini-b::review"}
 
 
-def test_provider_pulse_reports_quality_drift_without_routing_authority_rejects_negative_cases() -> None:
+def test_provider_pulse_reports_quality_drift_without_routing_authority_rejects_negative_cases() -> (
+    None
+):
     sparse = _records()[:2]
     with pytest.raises(pulse.PulseError, match="insufficient evidence"):
         pulse.build_report(sparse, as_of="2026-07-31T12:00:00Z")

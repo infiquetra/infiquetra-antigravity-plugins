@@ -6,14 +6,24 @@ ROOT = Path(__file__).parent.parent
 
 
 def _valid(text: str) -> bool:
-    terms = ("approved units", "literal write sets", "dependency order", "exact checks", "preserve unrelated changes", "authority gates", "Never self-certify")
+    terms = (
+        "approved units",
+        "literal write sets",
+        "dependency order",
+        "exact checks",
+        "preserve unrelated changes",
+        "authority gates",
+        "Never self-certify",
+    )
     forbidden = (
         "may edit outside the literal write sets",
         "may bypass authority gates",
         "may self-certify completion",
         "failed checks may be reported as complete",
     )
-    return all(term in text for term in terms) and not any(term in text.lower() for term in forbidden)
+    return all(term in text for term in terms) and not any(
+        term in text.lower() for term in forbidden
+    )
 
 
 def test_work_obeys_units_write_sets_checks_and_authority_gates() -> None:

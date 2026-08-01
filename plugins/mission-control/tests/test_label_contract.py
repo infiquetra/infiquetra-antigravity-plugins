@@ -15,14 +15,16 @@ def _valid(skill: str, reference: str) -> bool:
     )
     forbidden = ("audit results authorize mutation", "unknown labels may be created implicitly")
     combined = skill + "\n" + reference
-    return all(term in combined for term in required) and not any(term in combined.lower() for term in forbidden)
+    return all(term in combined for term in required) and not any(
+        term in combined.lower() for term in forbidden
+    )
 
 
 def test_label_skill_preserves_taxonomy_and_mutation_gate() -> None:
     skill = (PLUGIN_ROOT / "skills/labels/SKILL.md").read_text(encoding="utf-8")
-    reference = (
-        PLUGIN_ROOT / "skills/labels/references/labels-reference.md"
-    ).read_text(encoding="utf-8")
+    reference = (PLUGIN_ROOT / "skills/labels/references/labels-reference.md").read_text(
+        encoding="utf-8"
+    )
 
     for label in ("capability", "enhancement", "defect", "exploration", "context-update"):
         assert f"`{label}`" in skill or f"`{label}`" in reference
@@ -34,9 +36,9 @@ def test_label_skill_preserves_taxonomy_and_mutation_gate() -> None:
 
 def test_label_skill_preserves_taxonomy_and_mutation_gate_rejects_negative_cases() -> None:
     skill = (PLUGIN_ROOT / "skills/labels/SKILL.md").read_text(encoding="utf-8")
-    reference = (
-        PLUGIN_ROOT / "skills/labels/references/labels-reference.md"
-    ).read_text(encoding="utf-8")
+    reference = (PLUGIN_ROOT / "skills/labels/references/labels-reference.md").read_text(
+        encoding="utf-8"
+    )
 
     assert "Reject unknown labels" in skill
     assert "never create one\nimplicitly from free-form text" in skill

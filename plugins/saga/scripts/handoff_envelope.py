@@ -126,8 +126,10 @@ def validate_handoff_envelope(value: object) -> list[str]:
         errors.append("handoff envelope schema is invalid")
     for name in ("artifacts", "evidence", "risks", "still_unauthorized"):
         rows = value.get(name)
-        if not isinstance(rows, list) or not rows or any(
-            not isinstance(item, str) or not item.strip() for item in rows
+        if (
+            not isinstance(rows, list)
+            or not rows
+            or any(not isinstance(item, str) or not item.strip() for item in rows)
         ):
             errors.append(f"handoff envelope {name} must be a non-empty string list")
     artifacts = value.get("artifacts")
@@ -187,8 +189,7 @@ def build_handoff_envelope(
         "evidence": list(evidence or [f"durable-source:{source_ref}"]),
         "risks": list(risks or ["recipient must validate current repository state"]),
         "still_unauthorized": list(
-            still_unauthorized
-            or ["issue-create", "board-update", "pr-create", "merge", "deploy"]
+            still_unauthorized or ["issue-create", "board-update", "pr-create", "merge", "deploy"]
         ),
         "lifecycle_phase": infer_lifecycle_phase(selected_source),
         "handoff_maturity": maturity,

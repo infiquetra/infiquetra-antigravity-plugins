@@ -87,9 +87,7 @@ def test_outcome_telemetry_never_converts_activity_or_spend_to_completion_reject
     assert stalled["complete"] is False
     assert stalled["liveness"]["stalled"] == ["a"]
     with pytest.raises(ValueError, match="canonical"):
-        C.telemetry_assessment(
-            spec, store, liveness={}, settlement_state="active-and-expensive"
-        )
+        C.telemetry_assessment(spec, store, liveness={}, settlement_state="active-and-expensive")
 
 
 # --------------------------------------------------------------------------- producer <-> consumer (R24)

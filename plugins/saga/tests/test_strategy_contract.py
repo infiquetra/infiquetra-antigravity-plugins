@@ -6,7 +6,18 @@ ROOT = Path(__file__).parent.parent
 
 
 def _valid(text: str) -> bool:
-    return all(term in text for term in ("operator's chosen direction", "considered alternatives", "constraints", "revisit conditions", "Rejected alternatives", "decision artifact", "delivery approval"))
+    return all(
+        term in text
+        for term in (
+            "operator's chosen direction",
+            "considered alternatives",
+            "constraints",
+            "revisit conditions",
+            "Rejected alternatives",
+            "decision artifact",
+            "delivery approval",
+        )
+    )
 
 
 def test_strategy_records_choice_alternatives_constraints_and_revisit_trigger() -> None:
@@ -18,6 +29,8 @@ def test_strategy_records_choice_alternatives_constraints_and_revisit_trigger() 
     assert "Not working on" in template
 
 
-def test_strategy_records_choice_alternatives_constraints_and_revisit_trigger_rejects_negative_cases() -> None:
+def test_strategy_records_choice_alternatives_constraints_and_revisit_trigger_rejects_negative_cases() -> (
+    None
+):
     skill = (ROOT / "skills/strategy/SKILL.md").read_text()
     assert not _valid(skill.replace("revisit conditions", "permanent", 1))
