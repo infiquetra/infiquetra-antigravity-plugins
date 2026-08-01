@@ -51,7 +51,7 @@
     {
       "role": "capability-catalog",
       "path": "plugins/fleet-core/references/antigravity-capability-probes.yaml",
-      "sha256": "b28e5ccea58023c1ed5cb61bd6a9ea24bc59e865cf394d1aba8633c4138293f1"
+      "sha256": "1918adc76ee178a9daf28f8b4c6f0c620a441eb29ccb22c6557e53db4c559e92"
     },
     {
       "role": "host-contract-selector",

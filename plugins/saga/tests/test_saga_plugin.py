@@ -92,7 +92,7 @@ def test_lifecycle_evidence_contracts_are_packaged_and_versioned() -> None:
         _read(PLUGIN_ROOT / "references" / "transition-receipt-schema.json")
     )
 
-    assert plugin_json["version"] == "1.10.0"
+    assert plugin_json["version"] == "1.11.0"
     newest_heading = next(
         line.removeprefix("## ").split(" - ", maxsplit=1)[0]
         for line in _read(PLUGIN_ROOT / "CHANGELOG.md").splitlines()

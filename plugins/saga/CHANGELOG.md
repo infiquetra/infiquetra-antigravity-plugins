@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.0 - 2026-08-01
+
+- Add one bounded AGY/Gemini release canary with deterministic-first preflight, observed runtime
+  capability evidence, structured mutation auditing, and a no-remote reference repository.
+- Keep native AGY plan mode separate from the edit-enabled live lifecycle while retaining its
+  existing standalone Saga plan capability contract.
+- Require complete mechanical evidence and an explicit five-dimension operator decision before a
+  live run can qualify the release.
+
 ## 1.10.0 - 2026-08-01
 
 - Add a sanitized reference-lifecycle conformance fixture that indexes deterministic capability,
