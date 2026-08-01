@@ -25,7 +25,7 @@ and deterministic preflight pass against this commit.
 - The 21-node deterministic conformance selection passed with all 18 scenarios.
 - Ruff, mypy, Bandit, and diff whitespace checks passed.
 - The controlled preflight passed with AGY 1.1.9, Antigravity 2.3.1, Gemini 3.1 Pro at high
-  effort, lifecycle-router execution, conversation resume, plugin checks, and sandbox isolation.
+  effort, lifecycle-router routing, conversation resume, plugin checks, and sandbox isolation.
 
 ## Residual Risk
 
@@ -41,3 +41,9 @@ paths even though AGY reported the fixture as its working directory. The bounded
 runtime-only absolute workspace and seed paths to each configured phase instruction. The committed
 configuration remains repository-relative and contains no host path. A focused regression test
 binds that behavior; no second live run was started by this repair.
+
+The replacement run then proved that lifecycle-router was correctly routing rather than executing:
+it selected `/impl-spec` and produced no `/ideate` artifact. Jeff approved splitting the roles.
+Lifecycle-router remains the controlled routing probe; the actual phases omit `--agent` and use
+Antigravity's default worker. Requested `default` and observed `unknown` values are recorded
+separately. No third run started before that approval.

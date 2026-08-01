@@ -204,7 +204,8 @@ def load_config(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, An
             "model",
             "effort",
             "resolved_model",
-            "agent",
+            "routing_agent",
+            "execution_agent",
             "sandbox",
             "profile",
             "folder_contract",
@@ -223,7 +224,8 @@ def load_config(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, An
         config["model"] != "gemini-3.1-pro"
         or config["effort"] != "high"
         or config["resolved_model"] != "gemini-3.1-pro-high"
-        or config["agent"] != "lifecycle-router"
+        or config["routing_agent"] != "lifecycle-router"
+        or config["execution_agent"] != "default"
         or config["sandbox"] is not True
     ):
         raise CanaryError("live-canary operator-approved runtime selection does not match")
@@ -541,7 +543,7 @@ def _capability_receipt(
         if str(identity.get("model", "")).endswith("-high")
         else "unknown",
         "controlled-agent-execution": "passed"
-        if identity.get("agent") == config["agent"]
+        if identity.get("agent") == config["routing_agent"]
         else "failed",
         "controlled-resume": "passed" if resumed else "failed",
         "controlled-plan-mode": (
@@ -651,7 +653,7 @@ def preflight(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any]
         cwd=probe_root,
         raw_path=probe_root / "identity.ndjson",
         config=config,
-        agent=str(config["agent"]),
+        agent=str(config["routing_agent"]),
         timeout=120,
     )
     conversation_id = _conversation_id(identity_events)
@@ -661,7 +663,7 @@ def preflight(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any]
         raw_path=probe_root / "resume.ndjson",
         config=config,
         conversation_id=conversation_id,
-        agent=str(config["agent"]),
+        agent=str(config["routing_agent"]),
         timeout=120,
     )
     resumed = resumed_summary["conversation_sha256"] == identity_summary["conversation_sha256"]
@@ -689,6 +691,8 @@ def preflight(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any]
         and not outside_target.exists()
         and {"run_command", "write_to_file"} <= sandbox_names
     )
+    if sandbox_summary["agent"] != "unknown":
+        raise CanaryError("AGY default execution agent is no longer reported as unknown")
 
     receipt = _capability_receipt(
         config=config,
@@ -717,7 +721,9 @@ def preflight(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any]
             "antigravity_host_version": receipt["antigravity_host_version"],
             "model": config["model"],
             "effort": config["effort"],
-            "agent": config["agent"],
+            "routing_agent": config["routing_agent"],
+            "execution_agent_requested": config["execution_agent"],
+            "execution_agent_observed": sandbox_summary["agent"],
             "sandbox": True,
         },
         "passed": True,
@@ -855,7 +861,6 @@ def run_canary(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any
             raw_path=run_root / "raw" / f"{phase}.ndjson",
             config=config,
             conversation_id=conversation_id,
-            agent=str(config["agent"]),
             mode="accept-edits",
             timeout=900,
         )
@@ -867,6 +872,8 @@ def run_canary(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any
             observed_id != conversation_id or summary["conversation_sha256"] != conversation_sha256
         ):
             raise CanaryError("live-canary conversation identity changed")
+        if summary["agent"] != preflight_record["runtime"]["execution_agent_observed"]:
+            raise CanaryError("live-canary execution agent observation changed")
         artifact_root = ARTIFACT_GROUPS.get(phase)
         if artifact_root is not None and not _artifact_bindings(workspace, artifact_root):
             raise CanaryError(f"live-canary phase {phase} produced no canonical artifact")
@@ -876,6 +883,7 @@ def run_canary(fixture_id: str, *, repo_root: Path = REPO_ROOT) -> dict[str, Any
                 "status": "passed",
                 "conversation_sha256": summary["conversation_sha256"],
                 "event_sha256": _digest_file(run_root / "raw" / f"{phase}.ndjson"),
+                "execution_agent_observed": summary["agent"],
                 "changed_paths": _git_changed_paths(workspace),
                 "tool_event_count": len(summary["tool_events"]),
             }
@@ -1013,7 +1021,9 @@ def verify_run_manifest(
             "antigravity_host_version",
             "model",
             "effort",
-            "agent",
+            "routing_agent",
+            "execution_agent_requested",
+            "execution_agent_observed",
             "sandbox",
         },
         "run runtime",
@@ -1028,7 +1038,9 @@ def verify_run_manifest(
     expected_runtime = {
         "model": config["model"],
         "effort": config["effort"],
-        "agent": config["agent"],
+        "routing_agent": config["routing_agent"],
+        "execution_agent_requested": config["execution_agent"],
+        "execution_agent_observed": "unknown",
         "sandbox": True,
     }
     if any(runtime[key] != expected for key, expected in expected_runtime.items()):
@@ -1056,6 +1068,7 @@ def verify_run_manifest(
                 "status",
                 "conversation_sha256",
                 "event_sha256",
+                "execution_agent_observed",
                 "changed_paths",
                 "tool_event_count",
             },
@@ -1063,6 +1076,8 @@ def verify_run_manifest(
         )
         if row["status"] != "passed" or row["conversation_sha256"] != conversation:
             raise CanaryError("run phase is not settled in the bound conversation")
+        if row["execution_agent_observed"] != runtime["execution_agent_observed"]:
+            raise CanaryError("run phase execution agent observation changed")
         if not isinstance(row["event_sha256"], str) or not _DIGEST.fullmatch(row["event_sha256"]):
             raise CanaryError("run phase event digest is invalid")
         if not isinstance(row["changed_paths"], list) or any(

@@ -14,10 +14,11 @@ uv run python scripts/run_agy_saga_canary.py verify \
 ```
 
 Preflight runs the deterministic fixture before any model call. It then proves the approved AGY
-version, Antigravity host version, model, effort, lifecycle-router execution, conversation resume,
-plugin state, runtime roots, and sandbox boundary. Native AGY plan mode is not required: the canary
-uses the Saga `/plan` command in edit-enabled sandbox mode because a durable plan is an expected
-output.
+version, Antigravity host version, model, effort, lifecycle-router routing, conversation resume,
+plugin state, runtime roots, and sandbox boundary. The lifecycle phases use Antigravity's unnamed
+default worker and record its observed name as `unknown`. Native AGY plan mode is not required: the
+canary uses the Saga `/plan` command in edit-enabled sandbox mode because a durable plan is an
+expected output.
 
 The run creates a fresh local Git repository with no remote. Raw stream events, prompts, workspace
 files, and machine paths remain under the ignored `.conformance-local/` directory. The runner stops

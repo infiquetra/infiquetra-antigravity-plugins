@@ -6,7 +6,8 @@
   "model": "gemini-3.1-pro",
   "effort": "high",
   "resolved_model": "gemini-3.1-pro-high",
-  "agent": "lifecycle-router",
+  "routing_agent": "lifecycle-router",
+  "execution_agent": "default",
   "sandbox": true,
   "profile": {
     "path": "plugins/saga/tests/fixtures/impl-spec/valid-profile/profile.json",

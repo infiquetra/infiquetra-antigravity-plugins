@@ -127,7 +127,9 @@ def _manifest(root: Path) -> dict[str, Any]:
             "antigravity_host_version": "2.3.1",
             "model": "gemini-3.1-pro",
             "effort": "high",
-            "agent": "lifecycle-router",
+            "routing_agent": "lifecycle-router",
+            "execution_agent_requested": "default",
+            "execution_agent_observed": "unknown",
             "sandbox": True,
         },
         "conversation_sha256": "a" * 64,
@@ -137,6 +139,7 @@ def _manifest(root: Path) -> dict[str, Any]:
                 "status": "passed",
                 "conversation_sha256": "a" * 64,
                 "event_sha256": "b" * 64,
+                "execution_agent_observed": "unknown",
                 "changed_paths": ["docs/example.md"],
                 "tool_event_count": 1,
             }
@@ -215,7 +218,8 @@ def test_config_binds_approved_inputs_and_exact_route() -> None:
 
     assert config["fixture_revision"] == 1
     assert config["resolved_model"] == "gemini-3.1-pro-high"
-    assert config["agent"] == "lifecycle-router"
+    assert config["routing_agent"] == "lifecycle-router"
+    assert config["execution_agent"] == "default"
     assert [row["id"] for row in config["phase_commands"]] == list(M.PHASES)
 
 
@@ -323,7 +327,9 @@ def test_approved_release_requires_every_dimension_and_canonical_decision(
         ("antigravity_host_version", "unknown", "host version is invalid"),
         ("model", "gemini-3.1-pro-preview", "approved configuration"),
         ("effort", "medium", "approved configuration"),
-        ("agent", "default", "approved configuration"),
+        ("routing_agent", "default", "approved configuration"),
+        ("execution_agent_requested", "lifecycle-router", "approved configuration"),
+        ("execution_agent_observed", "lifecycle-router", "approved configuration"),
         ("sandbox", False, "approved configuration"),
     ],
 )

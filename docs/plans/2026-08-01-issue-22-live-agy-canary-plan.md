@@ -30,8 +30,8 @@ or broad model matrix belongs to this issue.
   available.
 - The live plugin links resolve to the repository's main checkout. Development therefore uses the
   isolated issue worktree and does not change the installed plugin bytes before explicit authority.
-- Jeff approved `gemini-3.1-pro` with `high` effort, the `lifecycle-router` agent, and sandbox mode for
-  the bounded probes and single live run.
+- Jeff approved `gemini-3.1-pro` with `high` effort, `lifecycle-router` for the bounded routing probe,
+  Antigravity's default worker for phase execution, and sandbox mode.
 
 ## Requirements
 
@@ -54,9 +54,10 @@ has no Git remote and contains the bound implementation-spec profile, README fol
 local outcome contract, and deterministic validators required by the route.
 
 R5. The selected model and effort are explicit run inputs and must match an operator-approved pair.
-The first plan recommends `gemini-3.1-pro` and `high`. The runner also requests the installed
-`lifecycle-router` agent and sandbox mode and records what AGY actually reports; a requested value is
-never promoted as an observation.
+The first plan recommends `gemini-3.1-pro` and `high`. The runner requests the installed
+`lifecycle-router` only for the routing probe, uses Antigravity's default worker for phase execution,
+and keeps sandbox mode enabled. Requested and observed agent values remain separate; AGY currently
+reports its unnamed default worker as `unknown`.
 
 R6. `run --fixture reference-lifecycle` uses one fixed AGY argument template with no shell. It drives
 one conversation through `/ideate`, `/brainstorm`, `/impl-spec`, `/plan`, `/doc-review`, `/work`,
@@ -175,7 +176,8 @@ Then run the whole repository suite and GitHub checks before merge.
 ## Operator Gates
 
 1. Completed: AGY 1.1.9 is installed and provides headless slash-command expansion.
-2. Completed: Jeff approved `gemini-3.1-pro` with `high` effort, `lifecycle-router`, and sandbox mode.
+2. Completed: Jeff approved `gemini-3.1-pro` with `high` effort, `lifecycle-router` for routing, the
+   default Antigravity worker for execution, and sandbox mode.
 3. After the run, approve or reject the sanitized five-dimension Gemini comparison. Mechanical
    success cannot substitute for this decision.
 
