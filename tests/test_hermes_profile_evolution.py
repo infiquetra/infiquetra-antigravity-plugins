@@ -6,6 +6,7 @@ import io
 import json
 import os
 import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, cast
@@ -28,7 +29,12 @@ def _load_module(name: str, path: Path):
     return module
 
 
-request = _load_module("antigravity_profile_request", SCRIPT)
+_previous_dont_write_bytecode = sys.dont_write_bytecode
+try:
+    sys.dont_write_bytecode = True
+    request = _load_module("antigravity_profile_request", SCRIPT)
+finally:
+    sys.dont_write_bytecode = _previous_dont_write_bytecode
 
 
 class Result:
