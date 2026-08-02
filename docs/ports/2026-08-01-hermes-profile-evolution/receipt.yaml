@@ -1,0 +1,63 @@
+schema: antigravity.profile-evolution-port-receipt.v1
+port_id: 2026-08-01-hermes-profile-evolution
+approval_binding: c88d1b592adb68ad782d11bf17cb5e13895c9d9c1c5d8c37b99c9ebb3389e1a6
+target:
+  repository: infiquetra/infiquetra-antigravity-plugins
+  plugin: hermes-profile-evolution
+  version: 0.1.0
+producers:
+  classifier:
+    repository: infiquetra/team-mimir
+    source_commit: 9440dc744afc6553927fbde7f979ad433e0d1378
+    merge_commit: a21e2bc462d89ce38837a31a9727fae05c9e3447
+    fixture: plugins/hermes-profile-evolution/conformance/profile-change-classifier.v1.json
+    sha256: 04a73d33bec429081606b58851b53053059f2b90a9511f94d6ab26bbcaa34bfc
+  profile_request:
+    repository: infiquetra/infiquetra-hermes-plugins
+    source_commit: 292c62eb4dbff9a2b0d2683501a1cd00ed119f7b
+    merge_commit: 08e432ef5ed7e75dd84ecc301eecb975c27dd02d
+    fixture: plugins/hermes-profile-evolution/conformance/profile-request-cli.v1.json
+    sha256: b651eff9ac155758719f0fee59ad7dcf22fc6a81f11f27bc1668da0720eaf61c
+native_surfaces:
+  manifest: plugins/hermes-profile-evolution/plugin.json
+  command: plugins/hermes-profile-evolution/commands/hermes-profile-evolution.md
+  skill: plugins/hermes-profile-evolution/skills/hermes-profile-evolution/SKILL.md
+  transport: plugins/hermes-profile-evolution/scripts/profile_request.py
+behavior:
+  ordinary_repository: normal repository path without Hermes
+  profile_owned: canonical target suggestion and live dialogue
+  mixed_custody: one target suggestion; other custody remains outside the proposal
+  target_authority: target may decline, defer, ask questions, or make no change
+exclusions:
+  - hooks or hard write interception
+  - copied custody classifier
+  - invented doctor fields
+  - direct profile mutation
+  - offline queue or background processor
+  - credentials, routes, hosts, install, deploy, or live profile action
+  - Saga semantic-port ledger
+validation:
+  - command: uv run pytest -q --no-cov tests/test_hermes_profile_evolution.py
+    status: passed
+    detail: 39 passed; adapter coverage 83 percent
+  - command: uv run pytest -q --no-cov tests/test_validate_plugins.py
+    status: passed
+    detail: 4 passed
+  - command: uv run python scripts/validate_plugins.py
+    status: passed
+    detail: status ok; command and skill discovered
+  - command: uv run pytest
+    status: passed
+    detail: 1669 passed and 1 skipped
+  - command: uv run ruff check scoped paths
+    status: passed
+  - command: uv run mypy scoped paths
+    status: passed
+  - command: uv run bandit scoped paths
+    status: passed
+  - command: shasum -a 256 imported conformance and provenance files
+    status: passed
+    detail: imported bytes equal provenance digests
+  - command: generated-artifact audit
+    status: passed
+    detail: no cache bytes under the plugin or tests; pre-existing .serena untouched

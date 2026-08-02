@@ -348,3 +348,34 @@ GitHub issue #14.
 
 **Revisit when.** Routing integration begins, a v2 schema is required, or the
 legacy stored `retro` value is migrated with an explicit compatibility plan.
+
+---
+
+## 2026-08-02 — Keep profile evolution behind producer-owned contracts
+
+**Context.** The Antigravity recovery adapter must distinguish ordinary Team Mimir work from
+profile-owned influence without copying the Team Mimir classifier or inventing a Hermes command
+schema. The imported producer fixtures pin both contracts and their source provenance.
+
+**Decision.** Antigravity exposes only its native root manifest, command, and skill. Its thin Python
+transport verifies the imported fixture digests, executes the active Team Mimir repository's real
+`scripts/classify_profile_change.py`, and sends canonical proposal envelopes to
+`hermes profile-request` on standard input. Ordinary work never contacts Hermes. A profile-owned or
+mixed request may enter live dialogue only when its classifier result names exactly one target.
+
+**Rejected alternatives.** A copied classifier could agree with consumer-owned tests while drifting
+from Team Mimir. A hook would claim an Antigravity contract this repository cannot prove. An offline
+queue would change chat semantics and target autonomy. A Saga semantic-port ledger would add
+campaign machinery unrelated to this one adapter.
+
+**Rationale.** Producer-owned executable conformance makes compatibility independently observable.
+The adapter validates transport bounds and closed response shapes but leaves custody, proposal
+policy, credentials, routing, and mutation with their owners.
+
+**Revisit when.** Team Mimir or Hermes publishes a new schema version, or Antigravity documents and
+this repository proves a native hook contract. Do not infer support from a new field or happy-path
+response alone.
+
+**Refs.** Recovery approval binding
+`c88d1b592adb68ad782d11bf17cb5e13895c9d9c1c5d8c37b99c9ebb3389e1a6`; compact receipt
+`docs/ports/2026-08-01-hermes-profile-evolution/receipt.yaml`.
