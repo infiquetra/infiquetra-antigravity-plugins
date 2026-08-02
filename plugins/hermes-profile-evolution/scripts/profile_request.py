@@ -554,8 +554,7 @@ def _validate_status_output(payload: bytes, target: str, revision: str) -> None:
         or values[0].get("target") != target
         or values[0].get("proposal_revision_digest") != revision
         or values[0].get("result") not in {sample.get("result")}
-        or values[0].get("evidence_verification")
-        not in {sample.get("evidence_verification")}
+        or values[0].get("evidence_verification") not in {sample.get("evidence_verification")}
         or not isinstance(values[0].get("target"), str)
         or not PROFILE_RE.fullmatch(values[0]["target"])
         or not isinstance(values[0].get("proposal_revision_digest"), str)
@@ -584,8 +583,7 @@ def _validate_census_output(payload: bytes) -> None:
             or row.get("schema_version") != sample.get("schema_version")
             or row.get("record_type") != sample.get("record_type")
             or row.get("result") not in {sample.get("result")}
-            or row.get("evidence_verification")
-            not in {sample.get("evidence_verification")}
+            or row.get("evidence_verification") not in {sample.get("evidence_verification")}
             or row.get("commit_state") not in {sample.get("commit_state")}
             or row.get("drift_state") not in {sample.get("drift_state")}
             or row.get("recovery_state") not in {sample.get("recovery_state")}
