@@ -14,6 +14,7 @@ Google Antigravity plugins for Infiquetra engineering workflows.
 | `saga` | commands, skills |
 | `todoist` | tool |
 | `unifi` | agent, command, skills |
+| `hermes-profile-evolution` | command, skill, transport adapter |
 
 ## Portability Matrix
 
@@ -60,6 +61,9 @@ ln -s "$(pwd)/plugins/saga" ~/.gemini/config/plugins/saga
 ```
 
 Restart Antigravity after changing plugin links.
+
+The [Hermes profile evolution guide](plugins/hermes-profile-evolution/docs/usage.md) explains its
+installation, request flow, health check, and honest no-hook boundary.
 
 ## Verify
 
