@@ -39,9 +39,7 @@ def test_usage_documents_every_public_operator_action() -> None:
     for action in ("reply", "resume", "status", "doctor"):
         assert f'python3 "$PROFILE_ADAPTER" {action}' in usage
 
-    request_match = re.search(
-        r"request <<'JSON'\n(\{.*?\})\nJSON", usage, flags=re.DOTALL
-    )
+    request_match = re.search(r"request <<'JSON'\n(\{.*?\})\nJSON", usage, flags=re.DOTALL)
     assert request_match is not None
     request = json.loads(request_match.group(1))
     assert set(request) == {
