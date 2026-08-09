@@ -22,3 +22,7 @@ explicit `--team-mimir-root` argument. No absolute machine or source-checkout pa
 Unsupported features are explicit: there is no hook, hard enforcement, direct profile mutation,
 credential or host configuration, live installation, offline queue, copied classifier, invented
 doctor field, or Saga semantic-port ledger.
+
+For exact host commands and exit behavior, see the [usage guide](docs/usage.md). The
+[architecture guide](docs/architecture.md) shows why the command and target checkout use separate
+roots and where producer authority begins.

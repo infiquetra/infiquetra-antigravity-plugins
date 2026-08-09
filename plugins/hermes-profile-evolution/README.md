@@ -36,3 +36,15 @@ without printing its contents.
 uv run pytest tests/test_hermes_profile_evolution.py tests/test_validate_plugins.py
 uv run python scripts/validate_plugins.py
 ```
+
+## Operator guide
+
+- [Install and use the plugin](docs/usage.md)
+- [Understand the trust boundaries](docs/architecture.md)
+- [Develop and release the adapter](docs/development.md)
+- [Troubleshoot requests](docs/troubleshooting.md)
+
+The [Team Mimir operator hub](https://github.com/infiquetra/team-mimir/tree/main/docs/team/profile-evolution)
+covers deployment and activation. The
+[Hermes producer documentation](https://github.com/infiquetra/infiquetra-hermes-plugins/tree/main/docs/profile-evolution)
+owns dialogue and compatibility semantics.
