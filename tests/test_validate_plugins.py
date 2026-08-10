@@ -25,7 +25,7 @@ def test_native_validator_discovers_manifest_command_and_skill(tmp_path: Path) -
     status = validator.inspect_plugin(PLUGIN / "plugin.json", tmp_path / "install", False)
 
     assert status.name == "hermes-profile-evolution"
-    assert status.version == "0.1.0"
+    assert status.version == "0.1.1"
     assert status.commands == 1
     assert status.skills == 1
     assert status.agents == 0
