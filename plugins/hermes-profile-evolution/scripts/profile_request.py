@@ -23,7 +23,7 @@ HERMES_FIXTURE = CONFORMANCE_ROOT / "profile-request-cli.v1.json"
 PROVENANCE_FIXTURE = CONFORMANCE_ROOT / "provenance.json"
 MAX_INPUT_BYTES = 65_536
 MAX_OUTPUT_BYTES = 65_536
-SUBPROCESS_TIMEOUT_SECONDS = 20
+SUBPROCESS_TIMEOUT_SECONDS = 45
 PROFILE_RE = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
 OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
 DIGEST_RE = re.compile(r"^[a-f0-9]{64}$")
@@ -480,7 +480,7 @@ def _pinned_stdout(*case_ids: str) -> list[list[Any]]:
     return outputs
 
 
-def _validate_dialogue_output(payload: bytes, envelope: dict[str, Any]) -> None:
+def _validate_dialogue_output(payload: bytes, envelope: dict[str, Any]) -> bytes:
     values = _parse_json_stream(payload)
     samples = _pinned_stdout(
         "suggest",
@@ -507,8 +507,11 @@ def _validate_dialogue_output(payload: bytes, envelope: dict[str, Any]) -> None:
     ):
         raise RequestError("Hermes profile-request conformance is incompatible")
     choices = provider.get("choices")
+    provider_fields = set(provider)
+    provider_required = set(sample_provider)
+    provider_allowed = provider_required | {"created", "id", "model", "object", "usage"}
     if (
-        set(provider) != set(sample_provider)
+        not provider_required <= provider_fields <= provider_allowed
         or set(continuity) != set(sample_continuity)
         or continuity.get("proposal_id") != envelope["proposal_id"]
         or continuity.get("proposal_revision_digest") != envelope["revision_digest"]
@@ -517,9 +520,9 @@ def _validate_dialogue_output(payload: bytes, envelope: dict[str, Any]) -> None:
         or not choices
         or not all(
             isinstance(choice, dict)
-            and set(choice) == {"message"}
+            and {"message"} <= set(choice) <= {"finish_reason", "index", "message"}
             and isinstance(choice.get("message"), dict)
-            and set(choice["message"]) == {"content"}
+            and {"content"} <= set(choice["message"]) <= {"content", "role"}
             and isinstance(choice["message"].get("content"), str)
             and bool(choice["message"]["content"].strip())
             for choice in choices
@@ -537,9 +540,14 @@ def _validate_dialogue_output(payload: bytes, envelope: dict[str, Any]) -> None:
         or not isinstance(continuity.get("continuity_digest"), str)
         or not DIGEST_RE.fullmatch(continuity["continuity_digest"])
         or not _valid_timestamp(continuity.get("updated_at"))
-        or _contains_secret(values)
     ):
         raise RequestError("Hermes returned an unexpected dialogue response")
+    projection = {
+        "choices": [{"message": {"content": choice["message"]["content"]}} for choice in choices]
+    }
+    if _contains_secret([projection, continuity]):
+        raise RequestError("Hermes returned an unexpected dialogue response")
+    return b"\n".join((_canonical_json(projection), _canonical_json(continuity)))
 
 
 def _validate_status_output(payload: bytes, target: str, revision: str) -> None:
@@ -658,8 +666,7 @@ def dialogue(
         raise RequestError("message is supported only for reply")
     doctor(envelope["target"], runner=runner)
     output = _hermes_run(arguments, _canonical_json(envelope), runner=runner)
-    _validate_dialogue_output(output, envelope)
-    return output
+    return _validate_dialogue_output(output, envelope)
 
 
 def route_request(

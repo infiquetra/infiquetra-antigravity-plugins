@@ -15,7 +15,7 @@ python3 -c 'import json, pathlib; print(json.loads(pathlib.Path("plugins/hermes-
 uv run python scripts/validate_plugins.py
 ```
 
-The released manifest version is `0.1.0`. Restart Antigravity after installing
+The released manifest version is `0.1.1`. Restart Antigravity after installing
 or changing the plugin link.
 
 Set the two independent roots once. The first is the target Team Mimir checkout;

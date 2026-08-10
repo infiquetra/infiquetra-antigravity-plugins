@@ -606,6 +606,31 @@ def test_every_pinned_dialogue_success_shape_rejects_adversarial_mutations(
         assert "abcdefghijklmnop" not in str(error.value)
 
 
+def test_standard_chat_metadata_is_removed_to_the_producer_projection() -> None:
+    values = _hermes_stdout("suggest")
+    envelope = json.loads(HERMES_FIXTURE.read_text())["proposal_envelope"]
+    values[0].update(
+        {
+            "created": 1,
+            "id": "chatcmpl-public",
+            "model": "provider-model",
+            "object": "chat.completion",
+            "usage": {"total_tokens": 3},
+        }
+    )
+    values[0]["choices"][0].update({"finish_reason": "stop", "index": 0})
+    values[0]["choices"][0]["message"]["role"] = "assistant"
+
+    projected = request._validate_dialogue_output(_json_stream(values), envelope)
+
+    assert request._parse_json_stream(projected) == _hermes_stdout("suggest")
+
+
+def test_adapter_timeout_does_not_preempt_the_producer_transport() -> None:
+    assert request.SUBPROCESS_TIMEOUT_SECONDS == 45
+    assert request.SUBPROCESS_TIMEOUT_SECONDS > 30
+
+
 def test_pinned_status_success_shape_rejects_adversarial_mutations() -> None:
     values = _hermes_stdout("status")
     expected = values[0]
