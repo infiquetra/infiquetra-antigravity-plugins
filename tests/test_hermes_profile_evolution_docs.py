@@ -89,5 +89,5 @@ def test_cli_help_and_invalid_examples_have_documented_exit_contract() -> None:
 
 def test_released_contract_surfaces_remain_version_010() -> None:
     manifest = json.loads((PLUGIN / "plugin.json").read_text())
-    assert manifest["version"] == "0.1.0"
+    assert manifest["version"] == "0.1.1"
     assert (PLUGIN / "CHANGELOG.md").is_file()

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 - 2026-08-09
+
+- Allow the producer's bounded 30-second network request to finish before the adapter exits.
+- Project standard chat-completion responses onto the producer-declared public fields.
+- Remove provider-specific response metadata from successful dialogue.
+
 ## 0.1.0 - 2026-08-02
 
 - Add Antigravity-native command and skill discovery.
