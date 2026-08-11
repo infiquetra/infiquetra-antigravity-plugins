@@ -152,6 +152,16 @@ def test_imported_producer_fixtures_match_provenance() -> None:
     for row in provenance["artifacts"]:
         assert hashlib.sha256(paths[row["artifact"]].read_bytes()).hexdigest() == row["sha256"]
 
+    hermes_prov = next(
+        row for row in provenance["artifacts"] if row["artifact"] == "profile-request-cli.v1.json"
+    )
+    assert hermes_prov["producer_repository"] == "infiquetra/infiquetra-hermes-plugins"
+    assert hermes_prov["source_commit"] == "435b3660e86c41819462bc2b918d49c07a8497a6"
+    assert hermes_prov["merge_commit"] == "0fb5dfbc68c21732758167b613658f2a2a7ab9bc"
+    assert (
+        hermes_prov["sha256"] == "31bb58621853cf42814c15df68dde37db2d992bb675f012ff69ba37b66e01f72"
+    )
+
 
 @pytest.mark.parametrize(
     "case_id",
@@ -639,19 +649,25 @@ def test_pinned_status_success_shape_rejects_adversarial_mutations() -> None:
     request._validate_status_output(_json_stream(values), target, revision)
 
     mutations: list[list[Any]] = []
-    for field in expected:
+    for field in ("target", "proposal_revision_digest", "result", "evidence_verification"):
         mutated = deepcopy(values)
         mutated[0].pop(field)
         mutations.append(mutated)
     mutated = deepcopy(values)
     mutated[0]["private"] = "token=abcdefghijklmnop"
     mutations.append(mutated)
+    mutated = deepcopy(values)
+    mutated[0]["response_digest"] = (
+        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    )
+    mutations.append(mutated)
     for field, replacement in {
         "deadline": "not-a-timestamp",
-        "evidence_verification": "invented",
         "proposal_revision_digest": "z" * 64,
         "public_evidence_digest": "z" * 64,
+        "continuity_digest": "z" * 64,
         "result": "invented",
+        "evidence_verification": "invented",
         "target": "A",
     }.items():
         mutated = deepcopy(values)
@@ -662,6 +678,62 @@ def test_pinned_status_success_shape_rejects_adversarial_mutations() -> None:
         with pytest.raises(request.RequestError, match="unexpected status") as error:
             request._validate_status_output(_json_stream(mutated), target, revision)
         assert "abcdefghijklmnop" not in str(error.value)
+
+
+def test_status_validation_accepts_canonical_no_change_without_deadline() -> None:
+    target = "mimir-engineer"
+    revision = "ea46d3d8cdffcfb7b6e29b91e10dfba72f2e086bd84eb784bf477e1c9448112d"
+    valid_no_change = [
+        {
+            "evidence_verification": "verified",
+            "proposal_revision_digest": revision,
+            "public_evidence_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "result": "no_change",
+            "target": target,
+        }
+    ]
+    request._validate_status_output(_json_stream(valid_no_change), target, revision)
+
+
+def test_status_validation_accepts_all_producer_status_exits() -> None:
+    target = "brokkr"
+    revision = "ea46d3d8cdffcfb7b6e29b91e10dfba72f2e086bd84eb784bf477e1c9448112d"
+
+    rich_status = [
+        {
+            "target": target,
+            "proposal_revision_digest": revision,
+            "result": "adopted",
+            "evidence_verification": "verified",
+            "public_evidence_digest": "a" * 64,
+            "deadline": "2026-08-15T12:00:00Z",
+            "commit_state": "clean",
+            "drift_state": "none",
+            "recovery_state": "none",
+        }
+    ]
+    request._validate_status_output(_json_stream(rich_status), target, revision)
+
+    unanswered_status = [
+        {
+            "target": target,
+            "proposal_revision_digest": revision,
+            "result": "unanswered",
+            "evidence_verification": "unverified",
+            "continuity_digest": "c" * 64,
+        }
+    ]
+    request._validate_status_output(_json_stream(unanswered_status), target, revision)
+
+    unavailable_status = [
+        {
+            "target": target,
+            "proposal_revision_digest": revision,
+            "result": "unavailable",
+            "evidence_verification": "unverified",
+        }
+    ]
+    request._validate_status_output(_json_stream(unavailable_status), target, revision)
 
 
 def test_pinned_census_success_shape_rejects_adversarial_mutations() -> None:

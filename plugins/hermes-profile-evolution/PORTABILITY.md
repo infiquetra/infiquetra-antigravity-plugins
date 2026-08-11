@@ -6,8 +6,8 @@ This is an Antigravity-native consumer of two producer-owned contracts:
   `9440dc744afc6553927fbde7f979ad433e0d1378` and fixture SHA-256
   `04a73d33bec429081606b58851b53053059f2b90a9511f94d6ab26bbcaa34bfc`.
 - Hermes profile-request command schema version 1, source commit
-  `292c62eb4dbff9a2b0d2683501a1cd00ed119f7b` and fixture SHA-256
-  `b651eff9ac155758719f0fee59ad7dcf22fc6a81f11f27bc1668da0720eaf61c`.
+  `435b3660e86c41819462bc2b918d49c07a8497a6` and fixture SHA-256
+  `31bb58621853cf42814c15df68dde37db2d992bb675f012ff69ba37b66e01f72`.
 
 Antigravity supplies a root manifest, command, and skill. The Python adapter translates only
 between bounded Antigravity standard input and the producer command lines. It verifies fixture

@@ -74,6 +74,34 @@ ENVELOPE_FIELDS = {
     "evidence_references",
     "created_at",
 }
+ALLOWED_STATUS_FIELDS = {
+    "target",
+    "proposal_revision_digest",
+    "result",
+    "evidence_verification",
+    "commit_state",
+    "drift_state",
+    "recovery_state",
+    "public_evidence_digest",
+    "deadline",
+    "continuity_digest",
+}
+REQUIRED_STATUS_FIELDS = {
+    "target",
+    "proposal_revision_digest",
+    "result",
+    "evidence_verification",
+}
+STATUS_RESULTS = {
+    "pending",
+    "adopted",
+    "adapted",
+    "no_change",
+    "declined",
+    "unanswered",
+    "unavailable",
+}
+STATUS_VERIFICATIONS = {"verified", "unverified"}
 
 
 class RequestError(ValueError):
@@ -552,27 +580,42 @@ def _validate_dialogue_output(payload: bytes, envelope: dict[str, Any]) -> bytes
 
 def _validate_status_output(payload: bytes, target: str, revision: str) -> None:
     values = _parse_json_stream(payload)
-    samples = _pinned_stdout("status")
-    sample = samples[0][0] if len(samples[0]) == 1 else None
     if (
         len(values) != 1
         or not isinstance(values[0], dict)
-        or not isinstance(sample, dict)
-        or set(values[0]) != set(sample)
+        or not (REQUIRED_STATUS_FIELDS <= set(values[0]) <= ALLOWED_STATUS_FIELDS)
         or values[0].get("target") != target
         or values[0].get("proposal_revision_digest") != revision
-        or values[0].get("result") not in {sample.get("result")}
-        or values[0].get("evidence_verification") not in {sample.get("evidence_verification")}
         or not isinstance(values[0].get("target"), str)
         or not PROFILE_RE.fullmatch(values[0]["target"])
         or not isinstance(values[0].get("proposal_revision_digest"), str)
         or not DIGEST_RE.fullmatch(values[0]["proposal_revision_digest"])
-        or not isinstance(values[0].get("public_evidence_digest"), str)
-        or not DIGEST_RE.fullmatch(values[0]["public_evidence_digest"])
-        or not _valid_timestamp(values[0].get("deadline"))
+        or values[0].get("result") not in STATUS_RESULTS
+        or values[0].get("evidence_verification") not in STATUS_VERIFICATIONS
         or _contains_secret(values[0])
     ):
         raise RequestError("Hermes returned an unexpected status response")
+
+    public_evidence = values[0].get("public_evidence_digest")
+    if public_evidence is not None and (
+        not isinstance(public_evidence, str) or not DIGEST_RE.fullmatch(public_evidence)
+    ):
+        raise RequestError("Hermes returned an unexpected status response")
+
+    continuity_digest = values[0].get("continuity_digest")
+    if continuity_digest is not None and (
+        not isinstance(continuity_digest, str) or not DIGEST_RE.fullmatch(continuity_digest)
+    ):
+        raise RequestError("Hermes returned an unexpected status response")
+
+    deadline = values[0].get("deadline")
+    if deadline is not None and not _valid_timestamp(deadline):
+        raise RequestError("Hermes returned an unexpected status response")
+
+    for string_field in ("commit_state", "drift_state", "recovery_state"):
+        field_val = values[0].get(string_field)
+        if field_val is not None and not isinstance(field_val, str):
+            raise RequestError("Hermes returned an unexpected status response")
 
 
 def _validate_census_output(payload: bytes) -> None:
