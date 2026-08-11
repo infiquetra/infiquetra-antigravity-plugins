@@ -87,7 +87,7 @@ def test_cli_help_and_invalid_examples_have_documented_exit_contract() -> None:
     assert "doctor input is malformed" in invalid.stderr
 
 
-def test_released_contract_surfaces_remain_version_010() -> None:
+def test_released_contract_surfaces_remain_version_012() -> None:
     manifest = json.loads((PLUGIN / "plugin.json").read_text())
-    assert manifest["version"] == "0.1.1"
+    assert manifest["version"] == "0.1.2"
     assert (PLUGIN / "CHANGELOG.md").is_file()

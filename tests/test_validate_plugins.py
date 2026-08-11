@@ -25,7 +25,7 @@ def test_native_validator_discovers_manifest_command_and_skill(tmp_path: Path) -
     status = validator.inspect_plugin(PLUGIN / "plugin.json", tmp_path / "install", False)
 
     assert status.name == "hermes-profile-evolution"
-    assert status.version == "0.1.1"
+    assert status.version == "0.1.2"
     assert status.commands == 1
     assert status.skills == 1
     assert status.agents == 0
@@ -49,8 +49,8 @@ def test_compact_receipt_names_native_surfaces_and_exclusions() -> None:
     for value in (
         "9440dc744afc6553927fbde7f979ad433e0d1378",
         "04a73d33bec429081606b58851b53053059f2b90a9511f94d6ab26bbcaa34bfc",
-        "292c62eb4dbff9a2b0d2683501a1cd00ed119f7b",
-        "b651eff9ac155758719f0fee59ad7dcf22fc6a81f11f27bc1668da0720eaf61c",
+        "435b3660e86c41819462bc2b918d49c07a8497a6",
+        "31bb58621853cf42814c15df68dde37db2d992bb675f012ff69ba37b66e01f72",
         "commands/hermes-profile-evolution.md",
         "skills/hermes-profile-evolution/SKILL.md",
         "hooks",

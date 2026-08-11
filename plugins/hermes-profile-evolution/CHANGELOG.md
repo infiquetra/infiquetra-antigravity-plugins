@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 - 2026-08-10
+
+- Support canonical status responses for immediate `no_change` outcomes that legitimately omit `deadline`.
+- Enforce closed allowed status fields (`target`, `proposal_revision_digest`, `result`, `evidence_verification`, `public_evidence_digest`, `deadline`, `commit_state`, `drift_state`, `recovery_state`) while requiring core common status fields.
+- Reject unallowed/private status fields, `response_digest`, malformed evidence, and invalid deadline timestamps.
+
 ## 0.1.1 - 2026-08-09
 
 - Allow the producer's bounded 30-second network request to finish before the adapter exits.

@@ -25,6 +25,18 @@
 
 ---
 
+## 2026-08-10
+
+### Adapter status validators must validate closed field bounds rather than single conformance samples  {#hermes-status-optional-deadline}
+
+**Context.** Live canonical Hermes status responses for immediate `no_change` outcomes include core verification fields (`target`, `proposal_revision_digest`, `result`, `evidence_verification`, `public_evidence_digest`) but legitimately omit the proposal `deadline`.
+**Evidence.** Running `profile_request.py status` against live Hermes PR #40 producer outputs failed closed because `_validate_status_output` strict-checked equality against a single pinned `result: "adopted"` conformance sample that required `deadline`.
+**Mechanism.** Status outputs have mandatory core fields and optional fields (`deadline`, `public_evidence_digest`, `commit_state`, `drift_state`, `recovery_state`) that depend on proposal lifecycle disposition. Comparing exact key sets against a single lifecycle state sample falsely rejects valid status responses from alternate dispositions.
+**Fix.** Updated `_validate_status_output` in `plugins/hermes-profile-evolution/scripts/profile_request.py` to enforce required status keys, bound allowed keys against the closed canonical status field set (`ALLOWED_STATUS_FIELDS`), and validate `deadline` only when present.
+**Validation.** Unit tests in `tests/test_hermes_profile_evolution.py` verify canonical `no_change` without deadline passes, while secret keys, unallowed fields (`response_digest`), and malformed digests remain strictly rejected.
+**Generalizable rule.** Validate output schemas against the closed contract bounds of the domain rather than pinning exact key-set identity to a single example case.
+**Refs.** PR #40 Hermes profile evolution producer fix.
+
 ## 2026-07-26
 
 ### Consumer names must be closed before evaluating sparse capability receipts  {#capability-consumer-vacuous-pass}
