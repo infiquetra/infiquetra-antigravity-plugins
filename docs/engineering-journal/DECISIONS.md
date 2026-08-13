@@ -22,6 +22,34 @@
 
 ---
 
+## 2026-08-13
+
+### Bind Claude port plans to origin/main, not working-tree or feature-branch HEAD (commit pending) {#port-plan-origin-main-baseline}
+
+**Decision.** Port plans inventory Antigravity local `origin/main` and Claude local `origin/main`. Working-tree untracked files and a Claude feature-branch HEAD are not source candidates.
+
+**Rejected alternatives.** Treating the current checkout as current when it is behind `origin/main`; pinning `infiquetra-claude-plugins@541b36b9` (`feat(orchestrate): U5`) because it was session HEAD; using an untracked `plugins/hermes-profile-evolution/` copy as the Hermes baseline.
+
+**Rationale.** A stale checkout presents missing files as work to invent, which is worse than a known gap. `541b36b9` is not an ancestor of Claude `origin/main` and is inside the orchestrate non-goal. Antigravity `origin/main` already has the Hermes plugin (`18eaa18` and follow-ups through `e0f08ce`).
+
+**Revisit when.** A port campaign is intentionally bound to a named feature branch that the operator has approved as the source snapshot.
+
+**Refs.** Plan: `docs/plans/2026-08-13-claude-plugins-porting-plan.md`. Review: `docs/reviews/2026-08-13-claude-plugins-porting-plan-doc-review.md`. Learning: `{#stale-wt-untracked-vs-origin}`.
+
+### Schema v2 is additive on the Gemini registry (commit pending) {#models-json-schema-v2-additive}
+
+**Decision.** When porting Claude fleet-core schema v2, add `execution_classes`, `scalar_efforts`, and `root_orchestration_profiles`, plus `resolve_for_runtime()`. Keep Antigravity `models` (`gemini-3.1-pro`, `gemini-3.5-flash`) and `efforts` (`low`/`medium`/`high`/`xhigh`).
+
+**Rejected alternatives.** Replacing `models.json` with Claude's live `fable`/`opus`/`sonnet`/`haiku` vocabulary; importing Codex `lineage_models`/`lineage_efforts`; inventing execution-class aliases (`fast_read`, `deep_reason`, `heavy_refactor`).
+
+**Rationale.** Claude #715 itself treats `models`/`efforts` as the host's live vocabulary and the v2 objects as the portable subset. Antigravity `tier_palette.MODELS` and `CHEAP_MODELS` are derived from the Gemini registry.
+
+**Revisit when.** Antigravity publishes a multi-vendor live model list that should replace Gemini as `models`, or Claude changes the portable class names.
+
+**Refs.** Plan KTD1. Claude `13b02343`. Antigravity `plugins/fleet-core/scripts/fleet_commons/models.json` on `origin/main`.
+
+---
+
 ## 2026-07-30
 
 ### Use complete current trees and non-authoritative ranking for semantic ports (commit pending) {#semantic-port-ledger-current-tree-ranking}

@@ -25,6 +25,24 @@
 
 ---
 
+## 2026-08-13
+
+### A checkout behind origin/main presents untracked files as the only copy  {#stale-wt-untracked-vs-origin}
+
+**Context.** The 2026-08-13 Claude-to-Antigravity porting plan was drafted against the working tree. Local `HEAD` was twelve commits behind `origin/main`, and an untracked `plugins/hermes-profile-evolution/` tree sat beside that stale checkout.
+
+**Evidence.** Antigravity `origin/main` `e0f08ce5` already contains `plugins/hermes-profile-evolution/` (`18eaa18`, timeout fix `83a1f5a`, later PRs through #39) with `SUBPROCESS_TIMEOUT_SECONDS = 45`. The untracked working-tree adapter uses `timeout=10`. Claude pin `541b36b9` is `feat(orchestrate): U5` and is not an ancestor of Claude `origin/main` `ff236284`.
+
+**Mechanism.** An untracked directory plus a behind-`origin/main` checkout looks like "this plugin exists only locally and still needs the upstream boundary fixes." That is the opposite of the committed state. A plan that inventories the working tree therefore schedules destructive or duplicate work.
+
+**Fix (or queued).** Rebound `docs/plans/2026-08-13-claude-plugins-porting-plan.md` to both `origin/main` tips and turned U6 into a non-regression check.
+
+**Generalizable rule.** Before a plan says a file is missing, unimplemented, or only present untracked, read `origin/<default-branch>`, not just the working tree.
+
+**Refs.** Decision `{#port-plan-origin-main-baseline}`. Review: `docs/reviews/2026-08-13-claude-plugins-porting-plan-doc-review.md`.
+
+---
+
 ## 2026-08-10
 
 ### Adapter status validators must validate closed field bounds rather than single conformance samples  {#hermes-status-optional-deadline}
