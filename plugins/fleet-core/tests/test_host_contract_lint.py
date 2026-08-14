@@ -40,25 +40,37 @@ def _planned_active_runtime_paths() -> set[str]:
         "plugins/saga/scripts/render_docs_visuals.py",
         "plugins/saga/docs/assets/ownership-boundary-map.svg",
     }
-    return {
-        path
-        for candidate in plan["candidates"].values()
-        for path in candidate["target_paths"]
-        if path.startswith("plugins/")
-        and "/tests/" not in path
-        and any(
-            segment in path
-            for segment in (
-                "/commands/",
-                "/skills/",
-                "/agents/",
-                "/hooks/",
-                "/scripts/",
-                "/references/",
-                "/config/",
+    # The 2026-08-13 supersession removed concurrency-lease-policy and
+    # orphan-evidence-attestation from the migration mapping (ledger decision.state:
+    # superseded; both source modules deleted). Their SURVIVING modules
+    # remain active runtime paths and stay in the closed selector.
+    superseded_surviving_paths = {
+        "plugins/fleet-core/scripts/fleet_commons/concurrency_policy.py",
+        "plugins/fleet-core/scripts/fleet_commons/liveness_engine.py",
+        "plugins/fleet-core/scripts/fleet_commons/output_attestation.py",
+    }
+    return (
+        {
+            path
+            for candidate in plan["candidates"].values()
+            for path in candidate["target_paths"]
+            if path.startswith("plugins/")
+            and "/tests/" not in path
+            and any(
+                segment in path
+                for segment in (
+                    "/commands/",
+                    "/skills/",
+                    "/agents/",
+                    "/hooks/",
+                    "/scripts/",
+                    "/references/",
+                    "/config/",
+                )
             )
-        )
-    } - documentation_and_generation_paths
+        }
+        | superseded_surviving_paths
+    ) - documentation_and_generation_paths
 
 
 def test_selector_is_closed_and_equals_changed_active_runtime_paths() -> None:
@@ -69,7 +81,7 @@ def test_selector_is_closed_and_equals_changed_active_runtime_paths() -> None:
     assert selector["active_globs"] == []
     paths = LINT.selected_active_paths(REPO_ROOT, selector)
     assert REPO_ROOT / "plugins/saga/skills/work/SKILL.md" in paths
-    assert REPO_ROOT / "plugins/fleet-core/scripts/fleet_commons/lease_broker.py" in paths
+    assert REPO_ROOT / "plugins/fleet-core/scripts/fleet_commons/concurrency_policy.py" in paths
     assert all(path.is_file() for path in paths)
 
 

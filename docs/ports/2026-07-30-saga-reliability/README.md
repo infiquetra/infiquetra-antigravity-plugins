@@ -16,17 +16,28 @@ both zero. On 2026-07-30, Jeff recorded the complete operator decision mapping:
 `superseded`. The 19 blocked candidates require a host-capability change before
 they can be reconsidered.
 
+On 2026-08-13, two of those approved survivors — `concurrency-lease-policy` and
+`orphan-evidence-attestation` — were superseded by operator decision. Upstream
+Claude `e2ba7db5` (2026-08-07, #684/#703) deleted `lease_broker.py` and
+`orphan_evidence.py` and added a re-add guard, which met the recorded revisit
+trigger ("Reassess when source snapshots drift"), and the Antigravity port
+applies the same deletion. The ledger now holds 49 `approved-survivor`,
+3 `superseded`, 19 `blocked`, 8 `metadata-only`, and 1 `rejected`.
+
 Both inventory-only and plain validation pass. The maintainer rankings and
 proposed dispositions remain review inputs; they do not themselves approve or
 reject a candidate.
 
 The campaign has now been deterministically upgraded to
-`antigravity.semantic-port-ledger.v2`. Each of the exact 51 approved survivors
-has a `migrated` migration object bound to its owned edit-packet set, the current
-sanitized host receipt, exact Antigravity target paths, and one positive plus
-one negative Pytest node ID. The other 29 decisions are unchanged and carry no
-migration data. All 51 migrated rows reference the same canonical evidence
-manifest and validation time.
+`antigravity.semantic-port-ledger.v2`. Each of the exact 49 remaining approved
+survivors has a `migrated` migration object bound to its owned edit-packet set,
+the current sanitized host receipt, exact Antigravity target paths, and one
+positive plus one negative Pytest node ID. The other 31 decisions carry no
+migration data — the schema permits the closed migration object only on an
+`approved-survivor` row, so the two 2026-08-13 supersessions dropped their
+migration objects (their migration evidence remains in
+`migration-evidence.v1.json`). All 49 migrated rows reference the same canonical
+evidence manifest and validation time.
 
 ## Pinned planning snapshots
 
@@ -76,7 +87,10 @@ The closed migration mapping is:
 docs/ports/2026-07-30-saga-reliability/migration-plan.v1.yaml
 ```
 
-Its candidate keys equal the exact 51 approved stable IDs. Each row repeats the
+Its candidate keys equal the exact 49 remaining approved stable IDs. The two 2026-08-13
+supersessions sit outside the migration mapping; their surviving surfaces (bounded concurrency,
+liveness, and output attestation) remain active runtime paths and stay in the closed
+host-contract selector directly. Each row repeats the
 ledger semantic contract byte-for-byte and names a final Antigravity state,
 target paths, one positive Pytest node, one negative Pytest node, and explicit
 source-to-Antigravity differences. It is an implementation mapping, not a
@@ -194,7 +208,7 @@ python3 scripts/port_ledger.py validate --require-migrated \
   docs/ports/2026-07-30-saga-reliability/ledger.yaml
 ```
 
-The final `--require-migrated` validation passes with 51 migrated rows and no
+The final `--require-migrated` validation passes with 49 migrated rows and no
 planned or partial approved survivor.
 
 ## Release refresh
@@ -244,8 +258,9 @@ repository, installed plugin, user configuration, or host state.
 
 This campaign remains the semantic decision authority. GitHub issue #15 now
 consumes its exact 51 approved stable IDs through the closed migration mapping
-and records delivery separately without changing any operator decision.
-Blocked, metadata-only, rejected, and superseded candidates remain outside the
-migration mapping. Plugin implementation, version changes, full testing,
-evidence assembly, and migration recording are complete for issue #15. Issue
-#22 release qualification remains separate work.
+and records delivery separately without changing any operator decision. Two of
+those 51 were later superseded (see Current status) and dropped from the
+migration mapping. Blocked, metadata-only, rejected, and superseded candidates
+remain outside the migration mapping. Plugin implementation, version changes,
+full testing, evidence assembly, and migration recording are complete for issue
+#15. Issue #22 release qualification remains separate work.

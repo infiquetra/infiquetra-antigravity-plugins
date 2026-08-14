@@ -40,7 +40,7 @@ _COMPARISON_SUFFIXES = frozenset(
 REQUIRED_ACTIVE_GLOBS: tuple[str, ...] = ()
 REQUIRED_EXACT_PATHS: tuple[str, ...] = ()
 REQUIRED_COMPARISON_ROOTS = ("docs", "tests")
-_CANONICAL_SELECTOR_DIGEST = "08df27477f912819b88ff979e60416ec20ff124e9b3a5eda1cb2532fd6195629"
+_CANONICAL_SELECTOR_DIGEST = "9599c8b41fbedaf1a09938758a387325811a5e5f46fc41d4e70e6ed8a220b514"
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 _MD_ANNOTATION_RE = re.compile(r"^\s*<!--\s*antigravity-host-contract:\s*(\{.*\})\s*-->\s*$")
@@ -70,7 +70,7 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
         ),
         (
             "plugins/saga/scripts/execution_spec.py",
-            "a52d69f7c1a43a4835c8ef0fa9470fdb4911a3c0d157b7f8fb4a534fbe1cd4ba",
+            "8606bf5a22e5f89d249b689df076e86409903c111f4c4865e6e198e116496f5e",
             "28daab9cce391b8a09b00a723a53dda525084bd7af1c3eeca76bb93c594e8eef",
         ),
         (
@@ -105,7 +105,7 @@ _HISTORICAL_LINE_ALLOWLIST = frozenset(
         ),
         (
             "plugins/saga/skills/plan/SKILL.md",
-            "ff1abf4e863de09daaae0f90631ac2725a65cab4a8170dcd66c691c183f29cae",
+            "35242ca874b3dc0f499915df0f897b767095eaaa084e45ae717bbc1a46e791b9",
             "8f80c0c4421da48bcd3bc963685998fa4592419a6c8fdd9933a1036eb5c646b8",
         ),
         (

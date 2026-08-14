@@ -4,7 +4,7 @@
     "id": "reference-lifecycle",
     "revision": 1,
     "path": "plugins/saga/tests/fixtures/conformance/reference-lifecycle/fixture.json",
-    "sha256": "44ab63c6e75a5a7c4e8942c9f8b12218a0a734eddb73dbbf787fbf8a6163b646"
+    "sha256": "667e1047b7ca99372ab9122a78c4e1283593baecd50cb8ec74993004ce67df6c"
   },
   "semantic_contract": {
     "version": "saga-reliability-2026-07-26.v1",
@@ -30,6 +30,6 @@
     "approved_by": "operator",
     "approved_at": "2026-08-01T03:17:08Z",
     "reference": "https://github.com/infiquetra/infiquetra-antigravity-plugins/issues/22#issuecomment-5149547630",
-    "binding_sha256": "4401528cadedcefc1d6a132599bbfca409c383cb76a0096d2311a39872ace2ff"
+    "binding_sha256": "000c317b261db491bde405c801ba16e56e807ef066a71375557911a3532497d4"
   }
 }

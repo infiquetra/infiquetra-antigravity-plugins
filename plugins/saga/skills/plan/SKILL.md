@@ -227,6 +227,9 @@ table.
 - **Implementation Units** — with stable **U-IDs** (`U1.`, `U2.`), each independently landable, with
   per-unit test scenarios and repo-relative test-file paths. Feature-bearing units require real test
   scenarios; only non-feature units (config, scaffolding) may use `Test expectation: none -- [reason]`.
+  **Split the work so concurrent units never share a file (#671):** concurrent agents share one working
+  tree and have no cross-agent file lock. Disjoint files are safe in parallel; same-file work must be
+  merged into one unit or sequenced via explicit dependencies.
 - **Scope Boundaries** — what is explicitly out of scope, with `Deferred to Follow-Up Work` kept
   distinct from true non-goals.
 

@@ -1,1 +1,1709 @@
-{"campaign_id":"2026-07-30-saga-reliability","candidate_evidence":{"application-security-audit":{"negative_test_node_ids":["plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation","status":"pass"},{"node_id":"plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/multi-agent-consensus/skills/appsec-audit/SKILL.md","plugins/multi-agent-consensus/tests/test_appsec_audit.py"],"test_node_ids":["plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation"]},"bridge-receipt-contract":{"negative_test_node_ids":["plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown","status":"pass"},{"node_id":"plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/fleet-core/scripts/fleet_commons/bridge_receipt.py","plugins/fleet-core/tests/test_bridge_receipt.py"],"test_node_ids":["plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown"]},"codex-portability-contracts":{"negative_test_node_ids":["plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity","status":"pass"},{"node_id":"plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/docs/portability.md","plugins/saga/docs/README.md","plugins/saga/docs/model/saga-docs-model.yaml","plugins/saga/scripts/render_docs_visuals.py","plugins/saga/docs/assets/ownership-boundary-map.svg","plugins/saga/tests/test_saga_docs_coverage.py"],"test_node_ids":["plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity"]},"concurrency-lease-policy":{"negative_test_node_ids":["plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership","status":"pass"},{"node_id":"plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/fleet-core/scripts/fleet_commons/concurrency_policy.py","plugins/fleet-core/scripts/fleet_commons/lease_broker.py","plugins/fleet-core/scripts/fleet_commons/liveness_engine.py","plugins/fleet-core/tests/test_concurrency_policy.py","plugins/fleet-core/tests/test_lease_broker.py"],"test_node_ids":["plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership"]},"cross-runtime-acceptance-tools":{"negative_test_node_ids":["plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts","status":"pass"},{"node_id":"plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/fleet-core/scripts/fleet_commons/saga_acceptance.py","plugins/fleet-core/references/saga-acceptance-contract.json","plugins/fleet-core/tests/test_saga_acceptance.py"],"test_node_ids":["plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts"]},"delegation-audit-state":{"negative_test_node_ids":["plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence","status":"pass"},{"node_id":"plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/fleet-core/scripts/fleet_commons/delegation_audit.py","plugins/fleet-core/scripts/fleet_commons/delegation_state.py","plugins/fleet-core/tests/test_delegation_audit_state.py"],"test_node_ids":["plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence"]},"mission-board-census-pagination":{"negative_test_node_ids":["plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete","status":"pass"},{"node_id":"plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/scripts/sdlc_manager.py","plugins/mission-control/tests/test_sdlc_manager.py"],"test_node_ids":["plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete"]},"mission-board-operations":{"negative_test_node_ids":["plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status","status":"pass"},{"node_id":"plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/commands/board.md","plugins/mission-control/skills/board/SKILL.md","plugins/mission-control/skills/board/references/graphql-queries.md","plugins/mission-control/skills/board/references/kanban-workflow.md","plugins/mission-control/tests/test_board_add_multi_project.py","plugins/mission-control/tests/test_board_move_exit.py","plugins/mission-control/tests/test_graphql_issue_resolution.py"],"test_node_ids":["plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status"]},"mission-control-runtime":{"negative_test_node_ids":["plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures","status":"pass"},{"node_id":"plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/scripts/sdlc_manager.py","plugins/mission-control/tests/test_sdlc_manager.py"],"test_node_ids":["plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures"]},"mission-executor-profile-policy":{"negative_test_node_ids":["plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry","status":"pass"},{"node_id":"plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/scripts/executor_profile_lint.py","plugins/mission-control/tests/test_executor_profile_lint.py"],"test_node_ids":["plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry"]},"mission-flow-metrics":{"negative_test_node_ids":["plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time","status":"pass"},{"node_id":"plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/commands/metrics.md","plugins/mission-control/skills/metrics/SKILL.md","plugins/mission-control/skills/metrics/references/metrics-targets.md","plugins/mission-control/tests/test_metrics_contract.py"],"test_node_ids":["plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time"]},"mission-issue-contract":{"negative_test_node_ids":["plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates","status":"pass"},{"node_id":"plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/config/sdlc-schema.json","plugins/mission-control/config/generated/check_issue_contract_parity.py","plugins/mission-control/config/generated/issue_contract_data.py","plugins/mission-control/config/generated/issue_contract_data.py.sha256","plugins/mission-control/config/generated/issue_contract_shim.py","plugins/mission-control/config/generated/issue_contract_shim.py.sha256","plugins/mission-control/scripts/sync_template_docs.py","plugins/mission-control/tests/test_issue_contract_parity.py","plugins/mission-control/tests/test_issue_source_artifacts.py","plugins/mission-control/tests/test_prompt_alignment.py","plugins/mission-control/tests/test_template_sync.py"],"test_node_ids":["plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates"]},"mission-issue-preparation":{"negative_test_node_ids":["plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation","status":"pass"},{"node_id":"plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/commands/issue.md","plugins/mission-control/commands/triage.md","plugins/mission-control/scripts/sdlc_manager.py","plugins/mission-control/skills/issues/SKILL.md","plugins/mission-control/skills/issues/references/issue-types.md","plugins/mission-control/skills/issues/references/templates-reference.md","plugins/mission-control/tests/test_issue_create_prepared.py","plugins/mission-control/tests/test_issue_prepare.py","plugins/mission-control/tests/test_issue_prepare_compile_approve.py","plugins/mission-control/tests/test_typed_exceptions.py"],"test_node_ids":["plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation"]},"mission-label-operations":{"negative_test_node_ids":["plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate","status":"pass"},{"node_id":"plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/skills/labels/SKILL.md","plugins/mission-control/skills/labels/references/labels-reference.md","plugins/mission-control/tests/test_label_contract.py"],"test_node_ids":["plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate"]},"mission-milestone-operations":{"negative_test_node_ids":["plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence","status":"pass"},{"node_id":"plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/skills/milestones/SKILL.md","plugins/mission-control/skills/milestones/references/objective-workflow.md","plugins/mission-control/tests/test_milestone_contract.py"],"test_node_ids":["plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence"]},"mission-project-flow":{"negative_test_node_ids":["plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation","status":"pass"},{"node_id":"plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/config/project-mappings.json","plugins/mission-control/skills/flow/SKILL.md","plugins/mission-control/tests/test_flow_subcommands.py","plugins/mission-control/tests/test_project_mappings_resolution.py"],"test_node_ids":["plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation"]},"mission-rollout-operations":{"negative_test_node_ids":["plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation","status":"pass"},{"node_id":"plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/mission-control/skills/rollout/SKILL.md","plugins/mission-control/skills/rollout/references/work-hierarchy.md","plugins/mission-control/tests/test_rollout_contract.py"],"test_node_ids":["plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation"]},"orphan-evidence-attestation":{"negative_test_node_ids":["plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation","status":"pass"},{"node_id":"plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/fleet-core/scripts/fleet_commons/orphan_evidence.py","plugins/fleet-core/scripts/fleet_commons/output_attestation.py","plugins/fleet-core/tests/fixtures/orphan-evidence/valid.json","plugins/fleet-core/tests/fixtures/orphan-evidence/duplicate-schema.json","plugins/fleet-core/tests/test_orphan_evidence.py"],"test_node_ids":["plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation"]},"repository-quality-guards":{"negative_test_node_ids":["plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps","status":"pass"},{"node_id":"plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["scripts/validate_plugins.py","plugins/fleet-core/tests/test_repository_quality_guards.py"],"test_node_ids":["plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps"]},"saga-artifact-promotion":{"negative_test_node_ids":["plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict","status":"pass"},{"node_id":"plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/promote.md","plugins/saga/scripts/promote_scan.py","plugins/saga/skills/promote/SKILL.md","plugins/saga/skills/promote/references/promotion-contract.md","plugins/saga/tests/test_promote_scan.py"],"test_node_ids":["plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict"]},"saga-code-review":{"negative_test_node_ids":["plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition","status":"pass"},{"node_id":"plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/code-review.md","plugins/saga/skills/code-review/SKILL.md","plugins/saga/skills/code-review/references/built-vs-planned.md","plugins/saga/skills/code-review/references/findings-schema.md","plugins/saga/skills/code-review/references/lens-catalog.md","plugins/saga/skills/code-review/references/validator.md","plugins/saga/tests/test_code_review_contract.py"],"test_node_ids":["plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition"]},"saga-cross-runtime-reconciliation":{"negative_test_node_ids":["plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative","status":"pass"},{"node_id":"plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/references/outcome-cross-runtime.md","plugins/saga/scripts/override_rate_reader.py","plugins/saga/scripts/reconcile.py","plugins/saga/scripts/reconcile_controller.py","plugins/saga/tests/test_cross_runtime_reconciliation.py"],"test_node_ids":["plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative"]},"saga-deploy-strategy":{"negative_test_node_ids":["plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release","status":"pass"},{"node_id":"plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/detect_deploy_strategy.py","plugins/saga/tests/test_detect_deploy_strategy.py"],"test_node_ids":["plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release"]},"saga-executive-review":{"negative_test_node_ids":["plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval","status":"pass"},{"node_id":"plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/ceo-review.md","plugins/saga/commands/founder-review.md","plugins/saga/skills/founder-review/SKILL.md","plugins/saga/skills/founder-review/references/ceo-cognition.md","plugins/saga/skills/founder-review/references/review-modes.md","plugins/saga/tests/test_executive_review_contract.py"],"test_node_ids":["plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval"]},"saga-external-action-boundary":{"negative_test_node_ids":["plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority","status":"pass"},{"node_id":"plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/external_action_adapters.py","plugins/saga/scripts/external_action_contract.py","plugins/saga/scripts/external_action_egress.py","plugins/saga/scripts/external_action_workspace.py","plugins/saga/tests/test_external_action_adapters.py"],"test_node_ids":["plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority"]},"saga-fleet-doctor":{"negative_test_node_ids":["plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable","status":"pass"},{"node_id":"plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/fleet-doctor.md","plugins/saga/docs/commands.md","plugins/saga/references/fleet-doctor-sources.md","plugins/saga/scripts/fleet_doctor.py","plugins/saga/scripts/host_capability_gate.py","plugins/saga/skills/fleet-doctor/SKILL.md","plugins/saga/tests/test_fleet_doctor.py"],"test_node_ids":["plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable"]},"saga-handoff":{"negative_test_node_ids":["plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority","status":"pass"},{"node_id":"plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/handoff.md","plugins/saga/references/handoff_failure_matrix.md","plugins/saga/scripts/handoff_envelope.py","plugins/saga/skills/handoff/SKILL.md","plugins/saga/tests/test_handoff_envelope.py"],"test_node_ids":["plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority"]},"saga-ideation":{"negative_test_node_ids":["plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact","status":"pass"},{"node_id":"plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/ideate.md","plugins/saga/skills/ideate/SKILL.md","plugins/saga/skills/ideate/references/convergence-and-partnership.md","plugins/saga/skills/ideate/references/ideation-artifact.md","plugins/saga/tests/test_ideate_contract.py"],"test_node_ids":["plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact"]},"saga-investigation":{"negative_test_node_ids":["plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty","status":"pass"},{"node_id":"plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/investigate.md","plugins/saga/skills/investigate/SKILL.md","plugins/saga/skills/investigate/references/debug-report.md","plugins/saga/skills/investigate/references/methodology.md","plugins/saga/skills/investigate/references/pattern-taxonomy.md","plugins/saga/tests/test_investigate_contract.py"],"test_node_ids":["plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty"]},"saga-lifecycle-settlement":{"negative_test_node_ids":["plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts","status":"pass"},{"node_id":"plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/references/lifecycle-obligation-contract.md","plugins/saga/references/lifecycle-obligation-schema.json","plugins/saga/references/saga-spec.md","plugins/saga/references/transition-receipt-schema.json","plugins/saga/scripts/lifecycle_obligations.py","plugins/saga/scripts/lifecycle_state.py","plugins/saga/scripts/saga.py","plugins/saga/scripts/transition_receipts.py","plugins/saga/tests/test_lifecycle_obligations.py","plugins/saga/tests/test_saga_saga.py","plugins/saga/tests/test_transition_receipts.py"],"test_node_ids":["plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts"]},"saga-loop-routing":{"negative_test_node_ids":["plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently","status":"pass"},{"node_id":"plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/agents/lifecycle-router.md","plugins/saga/commands/loop.md","plugins/saga/skills/loop/SKILL.md","plugins/saga/skills/loop/references/dispatch-table.md","plugins/saga/skills/loop/references/drive-and-resume.md","plugins/saga/skills/loop/references/generic-ask-compiler.md","plugins/saga/tests/test_loop_routing.py"],"test_node_ids":["plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently"]},"saga-manifest-provenance-ledgers":{"negative_test_node_ids":["plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner","status":"pass"},{"node_id":"plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/manifest_reader.py","plugins/saga/scripts/manifest_store.py","plugins/saga/scripts/provenance_manifest.py","plugins/saga/scripts/run_ledger.py","plugins/saga/tests/test_manifest_consumer_matrix.py","plugins/saga/tests/test_manifest_reader.py","plugins/saga/tests/test_manifest_store.py","plugins/saga/tests/test_run_ledger.py"],"test_node_ids":["plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner"]},"saga-office-hours":{"negative_test_node_ids":["plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim","status":"pass"},{"node_id":"plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/office-hours.md","plugins/saga/skills/office-hours/SKILL.md","plugins/saga/skills/office-hours/references/frame-diagnostic.md","plugins/saga/tests/test_office_hours_contract.py"],"test_node_ids":["plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim"]},"saga-operator-safety":{"negative_test_node_ids":["plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting","status":"pass"},{"node_id":"plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/references/command_dry_runs.md","plugins/saga/references/escape_hatches.md","plugins/saga/references/formatting-style.md","plugins/saga/references/harness-escalation-policy.md","plugins/saga/references/operator-choice.md","plugins/saga/scripts/journal_triggers.py","plugins/saga/tests/test_operator_safety_contract.py"],"test_node_ids":["plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting"]},"saga-optimization":{"negative_test_node_ids":["plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition","status":"pass"},{"node_id":"plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/optimize.md","plugins/saga/skills/optimize/SKILL.md","plugins/saga/skills/optimize/references/experiment-loop.md","plugins/saga/skills/optimize/references/metric-taxonomy.md","plugins/saga/tests/test_optimize_contract.py"],"test_node_ids":["plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition"]},"saga-outcome-board-integration":{"negative_test_node_ids":["plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded","status":"pass"},{"node_id":"plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/board_progression.py","plugins/saga/scripts/issue_progress.py","plugins/saga/scripts/outcome_board_sync.py","plugins/saga/scripts/outcome_github.py","plugins/saga/scripts/parse_issue.py","plugins/saga/tests/test_outcome_board_sync.py"],"test_node_ids":["plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded"]},"saga-outcome-economics-liveness":{"negative_test_node_ids":["plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion","status":"pass"},{"node_id":"plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/outcome_costs.py","plugins/saga/scripts/outcome_liveness.py","plugins/saga/tests/test_outcome_liveness.py","plugins/saga/tests/test_outcome_economics.py"],"test_node_ids":["plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion"]},"saga-outcome-merge-worktrees":{"negative_test_node_ids":["plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt","status":"pass"},{"node_id":"plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/merge_watcher.py","plugins/saga/scripts/outcome_merge.py","plugins/saga/scripts/outcome_worktrees.py","plugins/saga/tests/test_merge_watcher.py","plugins/saga/tests/test_outcome_merge_queue.py","plugins/saga/tests/test_outcome_worktrees.py"],"test_node_ids":["plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt"]},"saga-outcome-orchestration":{"negative_test_node_ids":["plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence","status":"pass"},{"node_id":"plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/outcome.md","plugins/saga/scripts/outcome.py","plugins/saga/scripts/outcome_decompose.py","plugins/saga/scripts/outcome_dispatcher.py","plugins/saga/scripts/outcome_edges.py","plugins/saga/scripts/outcome_gate_transport.py","plugins/saga/scripts/outcome_orchestrator.py","plugins/saga/scripts/outcome_projection.py","plugins/saga/scripts/outcome_reconcile.py","plugins/saga/scripts/outcome_report.py","plugins/saga/scripts/outcome_spec.py","plugins/saga/scripts/outcome_store.py","plugins/saga/skills/outcome/SKILL.md","plugins/saga/tests/test_outcome_completion.py","plugins/saga/tests/test_outcome_dispatcher.py","plugins/saga/tests/test_outcome_integration.py","plugins/saga/tests/test_outcome_reconcile.py","plugins/saga/tests/test_outcome_spec.py","plugins/saga/tests/test_outcome_store.py"],"test_node_ids":["plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence"]},"saga-planning":{"negative_test_node_ids":["plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority","status":"pass"},{"node_id":"plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/plan.md","plugins/saga/skills/plan/SKILL.md","plugins/saga/skills/plan/references/interrogation.md","plugins/saga/skills/plan/references/plan-sections.md","plugins/saga/tests/test_plan_contract.py"],"test_node_ids":["plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority"]},"saga-plugin-readiness":{"negative_test_node_ids":["plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping","status":"pass"},{"node_id":"plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/plugin_dependency_resolver.py","plugins/saga/tests/test_plugin_dependency_resolver.py"],"test_node_ids":["plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping"]},"saga-provider-pulse":{"negative_test_node_ids":["plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority","status":"pass"},{"node_id":"plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/pulse.md","plugins/saga/scripts/capability_elo.py","plugins/saga/scripts/provider_control_chart.py","plugins/saga/scripts/pulse.py","plugins/saga/scripts/second_opinion.py","plugins/saga/skills/pulse/SKILL.md","plugins/saga/skills/pulse/references/manual-verification.md","plugins/saga/tests/test_provider_pulse.py"],"test_node_ids":["plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority"]},"saga-quality-assurance":{"negative_test_node_ids":["plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence","status":"pass"},{"node_id":"plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/qa.md","plugins/saga/scripts/qa_health_score.py","plugins/saga/skills/qa/SKILL.md","plugins/saga/skills/qa/references/qa-report.md","plugins/saga/skills/qa/references/risk-taxonomy.md","plugins/saga/tests/test_qa_contract.py"],"test_node_ids":["plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence"]},"saga-requirements-brainstorm":{"negative_test_node_ids":["plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples","status":"pass"},{"node_id":"plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/brainstorm.md","plugins/saga/skills/brainstorm/SKILL.md","plugins/saga/skills/brainstorm/references/requirements-sections.md","plugins/saga/tests/test_brainstorm_contract.py"],"test_node_ids":["plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples"]},"saga-retrospective":{"negative_test_node_ids":["plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation","status":"pass"},{"node_id":"plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/retro.md","plugins/saga/skills/retro/SKILL.md","plugins/saga/skills/retro/references/retro-passes.md","plugins/saga/skills/retro/references/retro-report.md","plugins/saga/skills/retro/references/self-edit-safety.md","plugins/saga/tests/test_retro_contract.py"],"test_node_ids":["plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation"]},"saga-session-context-and-spores":{"negative_test_node_ids":["plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status","status":"pass"},{"node_id":"plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/discover_sessions.py","plugins/saga/scripts/extract_session_skeleton.py","plugins/saga/scripts/find_inflight_work.py","plugins/saga/scripts/load_saga_context.py","plugins/saga/scripts/saga_spore.py","plugins/saga/scripts/scaffold_checkpoint.py","plugins/saga/scripts/status_card.py","plugins/saga/tests/test_saga_spore.py","plugins/saga/tests/test_spore_seam_roundtrip.py","plugins/saga/tests/test_state_paths.py"],"test_node_ids":["plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status"]},"saga-ship-ceremony":{"negative_test_node_ids":["plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation","status":"pass"},{"node_id":"plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/scripts/ceremony_hazards.py","plugins/saga/scripts/reversibility_certificate.py","plugins/saga/scripts/ship_ceremony.py","plugins/saga/scripts/ship_undo.py","plugins/saga/tests/test_ceremony_hazards.py","plugins/saga/tests/test_ship_ceremony.py","plugins/saga/tests/test_ship_undo.py"],"test_node_ids":["plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation"]},"saga-specification":{"negative_test_node_ids":["plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how","status":"pass"},{"node_id":"plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/spec.md","plugins/saga/skills/spec/SKILL.md","plugins/saga/skills/spec/references/interrogation.md","plugins/saga/skills/spec/references/spec-template.md","plugins/saga/tests/test_spec_contract.py"],"test_node_ids":["plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how"]},"saga-strategy":{"negative_test_node_ids":["plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger","status":"pass"},{"node_id":"plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/strategy.md","plugins/saga/skills/strategy/SKILL.md","plugins/saga/skills/strategy/references/interview.md","plugins/saga/skills/strategy/references/strategy-template.md","plugins/saga/tests/test_strategy_contract.py"],"test_node_ids":["plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger"]},"saga-work-execution":{"negative_test_node_ids":["plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates","status":"pass"},{"node_id":"plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/saga/commands/work.md","plugins/saga/skills/work/SKILL.md","plugins/saga/skills/work/references/execution-strategy.md","plugins/saga/skills/work/references/pr-continuation-loop.md","plugins/saga/skills/work/references/test-and-gates.md","plugins/saga/tests/test_work_contract.py"],"test_node_ids":["plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates"]},"shared-runtime-resolution":{"negative_test_node_ids":["plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound_rejects_negative_cases"],"owning_result_ids":["issue-acceptance"],"pytest_outcomes":[{"node_id":"plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound","status":"pass"},{"node_id":"plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound_rejects_negative_cases","status":"pass"}],"reviewed_unchanged_paths":[],"target_paths":["plugins/fleet-core/scripts/fleet_commons/plugin_resolution.py","plugins/fleet-core/scripts/fleet_commons/workflow_compat.py","plugins/fleet-core/scripts/fleet_commons_shim.py","plugins/mission-control/scripts/fleet_commons_shim.py","plugins/saga/scripts/fleet_commons_shim.py","plugins/fleet-core/tests/test_fleet_commons.py","plugins/fleet-core/tests/test_fleet_commons_resolution.py","plugins/fleet-core/tests/test_workflow_compat.py"],"test_node_ids":["plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound"]}},"candidate_ids":["application-security-audit","bridge-receipt-contract","codex-portability-contracts","concurrency-lease-policy","cross-runtime-acceptance-tools","delegation-audit-state","mission-board-census-pagination","mission-board-operations","mission-control-runtime","mission-executor-profile-policy","mission-flow-metrics","mission-issue-contract","mission-issue-preparation","mission-label-operations","mission-milestone-operations","mission-project-flow","mission-rollout-operations","orphan-evidence-attestation","repository-quality-guards","saga-artifact-promotion","saga-code-review","saga-cross-runtime-reconciliation","saga-deploy-strategy","saga-executive-review","saga-external-action-boundary","saga-fleet-doctor","saga-handoff","saga-ideation","saga-investigation","saga-lifecycle-settlement","saga-loop-routing","saga-manifest-provenance-ledgers","saga-office-hours","saga-operator-safety","saga-optimization","saga-outcome-board-integration","saga-outcome-economics-liveness","saga-outcome-merge-worktrees","saga-outcome-orchestration","saga-planning","saga-plugin-readiness","saga-provider-pulse","saga-quality-assurance","saga-requirements-brainstorm","saga-retrospective","saga-session-context-and-spores","saga-ship-ceremony","saga-specification","saga-strategy","saga-work-execution","shared-runtime-resolution"],"host_binding":{"catalog_digest":"8c65e3bc2a97878804645443541624c255ee89a716f89e5b098b54f1bcf62ae4","receipt_sha256":"3dba3a5c1b39a894887392ccb7dadd37a9bbd69355e5d1fc5cca30d33ebceb75","schema":"antigravity.capabilities.v1","states":[{"capability":"agy.agent.execution","state":"unavailable"},{"capability":"agy.cli.flags","state":"unavailable"},{"capability":"agy.cli.version","state":"unavailable"},{"capability":"agy.conversation.resume","state":"unavailable"},{"capability":"agy.effort.selection","state":"unavailable"},{"capability":"agy.model.selection","state":"unavailable"},{"capability":"agy.plan.mode","state":"unavailable"},{"capability":"agy.sandbox.isolation","state":"unavailable"},{"capability":"agy.sequential.isolation","state":"unavailable"},{"capability":"antigravity.host.version","state":"unavailable"},{"capability":"antigravity.plugin.links","state":"passed"},{"capability":"antigravity.plugin.load","state":"unavailable"},{"capability":"antigravity.plugin.validation","state":"unavailable"},{"capability":"antigravity.runtime.roots","state":"unknown"}]},"ledger_schema":"antigravity.semantic-port-ledger.v2","manifest_sha256":"9e6e2944c7bef0a77d125c5d3a857da56253d9aa4b921a1912db5952feb76e61","results":{"issue-acceptance":{"assignment_id":"issue-acceptance","changed_paths":[],"checks":[{"check_id":"ledger-validation","detail":"The canonical ledger is complete and fully decided.","status":"pass"},{"check_id":"mapped-nodes","detail":"All 102 mapped positive and negative Pytest nodes passed.","status":"pass"},{"check_id":"plugin-suites","detail":"The four affected plugin suites passed 1463 tests with one skip.","status":"pass"},{"check_id":"ruff","detail":"Ruff passed for plugins and scripts.","status":"pass"},{"check_id":"mypy","detail":"Mypy passed for plugins and scripts.","status":"pass"},{"check_id":"documentation","detail":"Deterministic Saga documentation rendering is current.","status":"pass"},{"check_id":"plugin-validation","detail":"Repository plugin validation and the host-contract linter passed with zero unresolved findings.","status":"pass"},{"check_id":"sibling-repositories","detail":"Claude and Codex sibling repositories have no tracked or staged changes.","status":"pass"}],"findings":[],"no_change":true,"residual_risks":[],"result_schema":"assignment-result.v1","summary":"Issue 15 repository acceptance checks passed.","terminal_status":"completed"},"refresh-source":{"assignment_id":"refresh-source","changed_paths":[],"checks":[{"check_id":"current-bindings","detail":"Evidence bindings equal the current canonical ledger.","status":"pass"}],"findings":[],"no_change":true,"residual_risks":[],"result_schema":"assignment-result.v1","summary":"Current ledger source, decision, packet, and host bindings were recomputed.","terminal_status":"completed"}},"schema":"antigravity.semantic-port-migration-evidence.v1","source_binding":{"decision_sha256":"ef29738c8bf9ee1f84bec762ab6c2a87b2047c68e276aed972947febdc3823e1","operator_gate_state":"decided","packet_content_sha256":"272419e77ef1f591839b579d56646cfd95cdec87b39aedc4c637d46cf39d5f3f","refresh_assignment_id":"refresh-source","selected_surfaces_sha256":"f5e62e27fa26e4856369737b976b91228d96d595c90e29cb4721fd29f1b554d1","snapshot_commits":{"antigravity":"45463432612ff271c9a12b02aa1fab9390ba9ac1","claude":"0a572448556252c499752e5132617b4c9aa9c1a5","codex":"0c2072446c7e136caa274b5f637ca2c8c03725e4"}}}
+{
+  "campaign_id": "2026-07-30-saga-reliability",
+  "candidate_evidence": {
+    "application-security-audit": {
+      "negative_test_node_ids": [
+        "plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/multi-agent-consensus/skills/appsec-audit/SKILL.md",
+        "plugins/multi-agent-consensus/tests/test_appsec_audit.py"
+      ],
+      "test_node_ids": [
+        "plugins/multi-agent-consensus/tests/test_appsec_audit.py::test_appsec_audit_preserves_bounded_findings_and_validation"
+      ]
+    },
+    "bridge-receipt-contract": {
+      "negative_test_node_ids": [
+        "plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/fleet-core/scripts/fleet_commons/bridge_receipt.py",
+        "plugins/fleet-core/tests/test_bridge_receipt.py"
+      ],
+      "test_node_ids": [
+        "plugins/fleet-core/tests/test_bridge_receipt.py::test_bridge_receipt_distinguishes_requested_observed_and_unknown"
+      ]
+    },
+    "codex-portability-contracts": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/docs/portability.md",
+        "plugins/saga/docs/README.md",
+        "plugins/saga/docs/model/saga-docs-model.yaml",
+        "plugins/saga/scripts/render_docs_visuals.py",
+        "plugins/saga/docs/assets/ownership-boundary-map.svg",
+        "plugins/saga/tests/test_saga_docs_coverage.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_saga_docs_coverage.py::test_portability_page_maps_every_runtime_specific_contract_to_antigravity"
+      ]
+    },
+    "concurrency-lease-policy": {
+      "negative_test_node_ids": [
+        "plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/fleet-core/scripts/fleet_commons/concurrency_policy.py",
+        "plugins/fleet-core/scripts/fleet_commons/liveness_engine.py",
+        "plugins/fleet-core/tests/test_concurrency_policy.py"
+      ],
+      "test_node_ids": [
+        "plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership"
+      ]
+    },
+    "cross-runtime-acceptance-tools": {
+      "negative_test_node_ids": [
+        "plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/fleet-core/scripts/fleet_commons/saga_acceptance.py",
+        "plugins/fleet-core/references/saga-acceptance-contract.json",
+        "plugins/fleet-core/tests/test_saga_acceptance.py"
+      ],
+      "test_node_ids": [
+        "plugins/fleet-core/tests/test_saga_acceptance.py::test_saga_acceptance_compares_bounded_semantic_receipts"
+      ]
+    },
+    "delegation-audit-state": {
+      "negative_test_node_ids": [
+        "plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/fleet-core/scripts/fleet_commons/delegation_audit.py",
+        "plugins/fleet-core/scripts/fleet_commons/delegation_state.py",
+        "plugins/fleet-core/tests/test_delegation_audit_state.py"
+      ],
+      "test_node_ids": [
+        "plugins/fleet-core/tests/test_delegation_audit_state.py::test_delegation_audit_detects_missing_duplicate_and_wrong_owner_evidence"
+      ]
+    },
+    "mission-board-census-pagination": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/scripts/sdlc_manager.py",
+        "plugins/mission-control/tests/test_sdlc_manager.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_sdlc_manager.py::test_board_census_requires_every_page_before_complete"
+      ]
+    },
+    "mission-board-operations": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/commands/board.md",
+        "plugins/mission-control/skills/board/SKILL.md",
+        "plugins/mission-control/skills/board/references/graphql-queries.md",
+        "plugins/mission-control/skills/board/references/kanban-workflow.md",
+        "plugins/mission-control/tests/test_board_add_multi_project.py",
+        "plugins/mission-control/tests/test_board_move_exit.py",
+        "plugins/mission-control/tests/test_graphql_issue_resolution.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_board_move_exit.py::test_board_move_requires_resolved_item_field_and_status"
+      ]
+    },
+    "mission-control-runtime": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/scripts/sdlc_manager.py",
+        "plugins/mission-control/tests/test_sdlc_manager.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_sdlc_manager.py::test_runtime_normalizes_repository_inputs_and_typed_failures"
+      ]
+    },
+    "mission-executor-profile-policy": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/scripts/executor_profile_lint.py",
+        "plugins/mission-control/tests/test_executor_profile_lint.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_executor_profile_lint.py::test_executor_profile_accepts_only_current_gemini_registry"
+      ]
+    },
+    "mission-flow-metrics": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/commands/metrics.md",
+        "plugins/mission-control/skills/metrics/SKILL.md",
+        "plugins/mission-control/skills/metrics/references/metrics-targets.md",
+        "plugins/mission-control/tests/test_metrics_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_metrics_contract.py::test_metrics_contract_covers_throughput_cycle_age_and_state_time"
+      ]
+    },
+    "mission-issue-contract": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/config/sdlc-schema.json",
+        "plugins/mission-control/config/generated/check_issue_contract_parity.py",
+        "plugins/mission-control/config/generated/issue_contract_data.py",
+        "plugins/mission-control/config/generated/issue_contract_data.py.sha256",
+        "plugins/mission-control/config/generated/issue_contract_shim.py",
+        "plugins/mission-control/config/generated/issue_contract_shim.py.sha256",
+        "plugins/mission-control/scripts/sync_template_docs.py",
+        "plugins/mission-control/tests/test_issue_contract_parity.py",
+        "plugins/mission-control/tests/test_issue_source_artifacts.py",
+        "plugins/mission-control/tests/test_prompt_alignment.py",
+        "plugins/mission-control/tests/test_template_sync.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_issue_contract_parity.py::test_generated_issue_contract_matches_schema_and_templates"
+      ]
+    },
+    "mission-issue-preparation": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/commands/issue.md",
+        "plugins/mission-control/commands/triage.md",
+        "plugins/mission-control/scripts/sdlc_manager.py",
+        "plugins/mission-control/skills/issues/SKILL.md",
+        "plugins/mission-control/skills/issues/references/issue-types.md",
+        "plugins/mission-control/skills/issues/references/templates-reference.md",
+        "plugins/mission-control/tests/test_issue_create_prepared.py",
+        "plugins/mission-control/tests/test_issue_prepare.py",
+        "plugins/mission-control/tests/test_issue_prepare_compile_approve.py",
+        "plugins/mission-control/tests/test_typed_exceptions.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_issue_prepare_compile_approve.py::test_issue_preparation_requires_review_and_approval_before_mutation"
+      ]
+    },
+    "mission-label-operations": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/skills/labels/SKILL.md",
+        "plugins/mission-control/skills/labels/references/labels-reference.md",
+        "plugins/mission-control/tests/test_label_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_label_contract.py::test_label_skill_preserves_taxonomy_and_mutation_gate"
+      ]
+    },
+    "mission-milestone-operations": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/skills/milestones/SKILL.md",
+        "plugins/mission-control/skills/milestones/references/objective-workflow.md",
+        "plugins/mission-control/tests/test_milestone_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_milestone_contract.py::test_milestone_skill_requires_objective_progress_and_risk_evidence"
+      ]
+    },
+    "mission-project-flow": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/config/project-mappings.json",
+        "plugins/mission-control/skills/flow/SKILL.md",
+        "plugins/mission-control/tests/test_flow_subcommands.py",
+        "plugins/mission-control/tests/test_project_mappings_resolution.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_project_mappings_resolution.py::test_flow_resolves_project_field_issue_and_repository_before_mutation"
+      ]
+    },
+    "mission-rollout-operations": {
+      "negative_test_node_ids": [
+        "plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/mission-control/skills/rollout/SKILL.md",
+        "plugins/mission-control/skills/rollout/references/work-hierarchy.md",
+        "plugins/mission-control/tests/test_rollout_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation"
+      ]
+    },
+    "orphan-evidence-attestation": {
+      "negative_test_node_ids": [
+        "plugins/fleet-core/tests/test_output_attestation.py::test_output_attestation_requires_owner_shape_and_run_binding_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/fleet-core/tests/test_output_attestation.py::test_output_attestation_requires_owner_shape_and_run_binding",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/fleet-core/tests/test_output_attestation.py::test_output_attestation_requires_owner_shape_and_run_binding_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/fleet-core/scripts/fleet_commons/output_attestation.py",
+        "plugins/fleet-core/tests/fixtures/orphan-evidence/valid.json",
+        "plugins/fleet-core/tests/fixtures/orphan-evidence/duplicate-schema.json",
+        "plugins/fleet-core/tests/test_output_attestation.py"
+      ],
+      "test_node_ids": [
+        "plugins/fleet-core/tests/test_output_attestation.py::test_output_attestation_requires_owner_shape_and_run_binding"
+      ]
+    },
+    "repository-quality-guards": {
+      "negative_test_node_ids": [
+        "plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "scripts/validate_plugins.py",
+        "plugins/fleet-core/tests/test_repository_quality_guards.py"
+      ],
+      "test_node_ids": [
+        "plugins/fleet-core/tests/test_repository_quality_guards.py::test_validate_plugins_rejects_fake_fixture_ownership_and_test_shape_gaps"
+      ]
+    },
+    "saga-artifact-promotion": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/promote.md",
+        "plugins/saga/scripts/promote_scan.py",
+        "plugins/saga/skills/promote/SKILL.md",
+        "plugins/saga/skills/promote/references/promotion-contract.md",
+        "plugins/saga/tests/test_promote_scan.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_promote_scan.py::test_promotion_requires_canonical_target_provenance_and_no_conflict"
+      ]
+    },
+    "saga-code-review": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/code-review.md",
+        "plugins/saga/skills/code-review/SKILL.md",
+        "plugins/saga/skills/code-review/references/built-vs-planned.md",
+        "plugins/saga/skills/code-review/references/findings-schema.md",
+        "plugins/saga/skills/code-review/references/lens-catalog.md",
+        "plugins/saga/skills/code-review/references/validator.md",
+        "plugins/saga/tests/test_code_review_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_code_review_contract.py::test_code_review_requires_plan_comparison_typed_findings_and_disposition"
+      ]
+    },
+    "saga-cross-runtime-reconciliation": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/references/outcome-cross-runtime.md",
+        "plugins/saga/scripts/override_rate_reader.py",
+        "plugins/saga/scripts/reconcile.py",
+        "plugins/saga/scripts/reconcile_controller.py",
+        "plugins/saga/tests/test_cross_runtime_reconciliation.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_cross_runtime_reconciliation.py::test_reconciliation_keeps_repository_truth_authoritative"
+      ]
+    },
+    "saga-deploy-strategy": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/detect_deploy_strategy.py",
+        "plugins/saga/tests/test_detect_deploy_strategy.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_detect_deploy_strategy.py::test_deploy_strategy_detects_intent_without_executing_release"
+      ]
+    },
+    "saga-executive-review": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/ceo-review.md",
+        "plugins/saga/commands/founder-review.md",
+        "plugins/saga/skills/founder-review/SKILL.md",
+        "plugins/saga/skills/founder-review/references/ceo-cognition.md",
+        "plugins/saga/skills/founder-review/references/review-modes.md",
+        "plugins/saga/tests/test_executive_review_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_executive_review_contract.py::test_executive_review_challenges_value_without_delivery_approval"
+      ]
+    },
+    "saga-external-action-boundary": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/external_action_adapters.py",
+        "plugins/saga/scripts/external_action_contract.py",
+        "plugins/saga/scripts/external_action_egress.py",
+        "plugins/saga/scripts/external_action_workspace.py",
+        "plugins/saga/tests/test_external_action_adapters.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_external_action_adapters.py::test_external_action_requires_intent_workspace_adapter_and_authority"
+      ]
+    },
+    "saga-fleet-doctor": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/fleet-doctor.md",
+        "plugins/saga/docs/commands.md",
+        "plugins/saga/references/fleet-doctor-sources.md",
+        "plugins/saga/scripts/fleet_doctor.py",
+        "plugins/saga/scripts/host_capability_gate.py",
+        "plugins/saga/skills/fleet-doctor/SKILL.md",
+        "plugins/saga/tests/test_fleet_doctor.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_fleet_doctor.py::test_fleet_doctor_blocks_required_unknown_failed_and_unavailable"
+      ]
+    },
+    "saga-handoff": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/handoff.md",
+        "plugins/saga/references/handoff_failure_matrix.md",
+        "plugins/saga/scripts/handoff_envelope.py",
+        "plugins/saga/skills/handoff/SKILL.md",
+        "plugins/saga/tests/test_handoff_envelope.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_handoff_envelope.py::test_handoff_names_artifacts_evidence_risks_and_external_authority"
+      ]
+    },
+    "saga-ideation": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/ideate.md",
+        "plugins/saga/skills/ideate/SKILL.md",
+        "plugins/saga/skills/ideate/references/convergence-and-partnership.md",
+        "plugins/saga/skills/ideate/references/ideation-artifact.md",
+        "plugins/saga/tests/test_ideate_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_ideate_contract.py::test_ideation_preserves_seeds_alternatives_disagreement_and_artifact"
+      ]
+    },
+    "saga-investigation": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/investigate.md",
+        "plugins/saga/skills/investigate/SKILL.md",
+        "plugins/saga/skills/investigate/references/debug-report.md",
+        "plugins/saga/skills/investigate/references/methodology.md",
+        "plugins/saga/skills/investigate/references/pattern-taxonomy.md",
+        "plugins/saga/tests/test_investigate_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_investigate_contract.py::test_investigation_separates_observation_hypothesis_experiment_and_uncertainty"
+      ]
+    },
+    "saga-lifecycle-settlement": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/references/lifecycle-obligation-contract.md",
+        "plugins/saga/references/lifecycle-obligation-schema.json",
+        "plugins/saga/references/saga-spec.md",
+        "plugins/saga/references/transition-receipt-schema.json",
+        "plugins/saga/scripts/lifecycle_obligations.py",
+        "plugins/saga/scripts/lifecycle_state.py",
+        "plugins/saga/scripts/saga.py",
+        "plugins/saga/scripts/transition_receipts.py",
+        "plugins/saga/tests/test_lifecycle_obligations.py",
+        "plugins/saga/tests/test_saga_saga.py",
+        "plugins/saga/tests/test_transition_receipts.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_lifecycle_obligations.py::test_lifecycle_advances_only_when_required_obligations_have_independent_receipts"
+      ]
+    },
+    "saga-loop-routing": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/agents/lifecycle-router.md",
+        "plugins/saga/commands/loop.md",
+        "plugins/saga/skills/loop/SKILL.md",
+        "plugins/saga/skills/loop/references/dispatch-table.md",
+        "plugins/saga/skills/loop/references/drive-and-resume.md",
+        "plugins/saga/skills/loop/references/generic-ask-compiler.md",
+        "plugins/saga/tests/test_loop_routing.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_loop_routing.py::test_loop_routes_to_earliest_unsettled_required_obligation_idempotently"
+      ]
+    },
+    "saga-manifest-provenance-ledgers": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/manifest_reader.py",
+        "plugins/saga/scripts/manifest_store.py",
+        "plugins/saga/scripts/provenance_manifest.py",
+        "plugins/saga/scripts/run_ledger.py",
+        "plugins/saga/tests/test_manifest_consumer_matrix.py",
+        "plugins/saga/tests/test_manifest_reader.py",
+        "plugins/saga/tests/test_manifest_store.py",
+        "plugins/saga/tests/test_run_ledger.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_manifest_store.py::test_manifest_round_trip_binds_input_output_digest_and_owner"
+      ]
+    },
+    "saga-office-hours": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/office-hours.md",
+        "plugins/saga/skills/office-hours/SKILL.md",
+        "plugins/saga/skills/office-hours/references/frame-diagnostic.md",
+        "plugins/saga/tests/test_office_hours_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_office_hours_contract.py::test_office_hours_returns_frame_and_route_without_completion_claim"
+      ]
+    },
+    "saga-operator-safety": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/references/command_dry_runs.md",
+        "plugins/saga/references/escape_hatches.md",
+        "plugins/saga/references/formatting-style.md",
+        "plugins/saga/references/harness-escalation-policy.md",
+        "plugins/saga/references/operator-choice.md",
+        "plugins/saga/scripts/journal_triggers.py",
+        "plugins/saga/tests/test_operator_safety_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_operator_safety_contract.py::test_operator_safety_preserves_choice_escalation_escape_and_formatting"
+      ]
+    },
+    "saga-optimization": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/optimize.md",
+        "plugins/saga/skills/optimize/SKILL.md",
+        "plugins/saga/skills/optimize/references/experiment-loop.md",
+        "plugins/saga/skills/optimize/references/metric-taxonomy.md",
+        "plugins/saga/tests/test_optimize_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_optimize_contract.py::test_optimization_requires_baseline_change_measurement_and_stop_condition"
+      ]
+    },
+    "saga-outcome-board-integration": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/board_progression.py",
+        "plugins/saga/scripts/issue_progress.py",
+        "plugins/saga/scripts/outcome_board_sync.py",
+        "plugins/saga/scripts/outcome_github.py",
+        "plugins/saga/scripts/parse_issue.py",
+        "plugins/saga/tests/test_outcome_board_sync.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_outcome_board_sync.py::test_outcome_board_reconciliation_is_idempotent_and_authority_bounded"
+      ]
+    },
+    "saga-outcome-economics-liveness": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/outcome_costs.py",
+        "plugins/saga/scripts/outcome_liveness.py",
+        "plugins/saga/tests/test_outcome_liveness.py",
+        "plugins/saga/tests/test_outcome_economics.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_outcome_economics.py::test_outcome_telemetry_never_converts_activity_or_spend_to_completion"
+      ]
+    },
+    "saga-outcome-merge-worktrees": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/merge_watcher.py",
+        "plugins/saga/scripts/outcome_merge.py",
+        "plugins/saga/scripts/outcome_worktrees.py",
+        "plugins/saga/tests/test_merge_watcher.py",
+        "plugins/saga/tests/test_outcome_merge_queue.py",
+        "plugins/saga/tests/test_outcome_worktrees.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_outcome_merge_queue.py::test_outcome_merge_settles_only_from_verified_integration_receipt"
+      ]
+    },
+    "saga-outcome-orchestration": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/outcome.md",
+        "plugins/saga/scripts/outcome.py",
+        "plugins/saga/scripts/outcome_decompose.py",
+        "plugins/saga/scripts/outcome_dispatcher.py",
+        "plugins/saga/scripts/outcome_edges.py",
+        "plugins/saga/scripts/outcome_gate_transport.py",
+        "plugins/saga/scripts/outcome_orchestrator.py",
+        "plugins/saga/scripts/outcome_projection.py",
+        "plugins/saga/scripts/outcome_reconcile.py",
+        "plugins/saga/scripts/outcome_report.py",
+        "plugins/saga/scripts/outcome_spec.py",
+        "plugins/saga/scripts/outcome_store.py",
+        "plugins/saga/skills/outcome/SKILL.md",
+        "plugins/saga/tests/test_outcome_completion.py",
+        "plugins/saga/tests/test_outcome_dispatcher.py",
+        "plugins/saga/tests/test_outcome_integration.py",
+        "plugins/saga/tests/test_outcome_reconcile.py",
+        "plugins/saga/tests/test_outcome_spec.py",
+        "plugins/saga/tests/test_outcome_store.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_outcome_completion.py::test_outcome_refuses_completion_without_owned_leaf_and_settlement_evidence"
+      ]
+    },
+    "saga-planning": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/plan.md",
+        "plugins/saga/skills/plan/SKILL.md",
+        "plugins/saga/skills/plan/references/interrogation.md",
+        "plugins/saga/skills/plan/references/plan-sections.md",
+        "plugins/saga/tests/test_plan_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_plan_contract.py::test_plan_contract_requires_decisions_files_dependencies_tests_and_authority"
+      ]
+    },
+    "saga-plugin-readiness": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/plugin_dependency_resolver.py",
+        "plugins/saga/tests/test_plugin_dependency_resolver.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_plugin_dependency_resolver.py::test_plugin_readiness_resolves_target_plugins_and_consensus_mapping"
+      ]
+    },
+    "saga-provider-pulse": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/pulse.md",
+        "plugins/saga/scripts/capability_elo.py",
+        "plugins/saga/scripts/provider_control_chart.py",
+        "plugins/saga/scripts/pulse.py",
+        "plugins/saga/scripts/second_opinion.py",
+        "plugins/saga/skills/pulse/SKILL.md",
+        "plugins/saga/skills/pulse/references/manual-verification.md",
+        "plugins/saga/tests/test_provider_pulse.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_provider_pulse.py::test_provider_pulse_reports_quality_drift_without_routing_authority"
+      ]
+    },
+    "saga-quality-assurance": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/qa.md",
+        "plugins/saga/scripts/qa_health_score.py",
+        "plugins/saga/skills/qa/SKILL.md",
+        "plugins/saga/skills/qa/references/qa-report.md",
+        "plugins/saga/skills/qa/references/risk-taxonomy.md",
+        "plugins/saga/tests/test_qa_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_qa_contract.py::test_qa_requires_risk_scenarios_checks_failure_disposition_and_independence"
+      ]
+    },
+    "saga-requirements-brainstorm": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/brainstorm.md",
+        "plugins/saga/skills/brainstorm/SKILL.md",
+        "plugins/saga/skills/brainstorm/references/requirements-sections.md",
+        "plugins/saga/tests/test_brainstorm_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_brainstorm_contract.py::test_brainstorm_requires_requirements_assumptions_actors_and_acceptance_examples"
+      ]
+    },
+    "saga-retrospective": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/retro.md",
+        "plugins/saga/skills/retro/SKILL.md",
+        "plugins/saga/skills/retro/references/retro-passes.md",
+        "plugins/saga/skills/retro/references/retro-report.md",
+        "plugins/saga/skills/retro/references/self-edit-safety.md",
+        "plugins/saga/tests/test_retro_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_retro_contract.py::test_retro_records_evidence_backed_learning_without_state_mutation"
+      ]
+    },
+    "saga-session-context-and-spores": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/discover_sessions.py",
+        "plugins/saga/scripts/extract_session_skeleton.py",
+        "plugins/saga/scripts/find_inflight_work.py",
+        "plugins/saga/scripts/load_saga_context.py",
+        "plugins/saga/scripts/saga_spore.py",
+        "plugins/saga/scripts/scaffold_checkpoint.py",
+        "plugins/saga/scripts/status_card.py",
+        "plugins/saga/tests/test_saga_spore.py",
+        "plugins/saga/tests/test_spore_seam_roundtrip.py",
+        "plugins/saga/tests/test_state_paths.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_spore_seam_roundtrip.py::test_session_reconstruction_uses_bounded_canonical_evidence_and_truthful_status"
+      ]
+    },
+    "saga-ship-ceremony": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/scripts/ceremony_hazards.py",
+        "plugins/saga/scripts/reversibility_certificate.py",
+        "plugins/saga/scripts/ship_ceremony.py",
+        "plugins/saga/scripts/ship_undo.py",
+        "plugins/saga/tests/test_ceremony_hazards.py",
+        "plugins/saga/tests/test_ship_ceremony.py",
+        "plugins/saga/tests/test_ship_undo.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_ship_ceremony.py::test_ship_ceremony_requires_hazards_reversibility_receipt_and_confirmation"
+      ]
+    },
+    "saga-specification": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/spec.md",
+        "plugins/saga/skills/spec/SKILL.md",
+        "plugins/saga/skills/spec/references/interrogation.md",
+        "plugins/saga/skills/spec/references/spec-template.md",
+        "plugins/saga/tests/test_spec_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_spec_contract.py::test_spec_defines_outcome_scope_failures_and_acceptance_without_how"
+      ]
+    },
+    "saga-strategy": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/strategy.md",
+        "plugins/saga/skills/strategy/SKILL.md",
+        "plugins/saga/skills/strategy/references/interview.md",
+        "plugins/saga/skills/strategy/references/strategy-template.md",
+        "plugins/saga/tests/test_strategy_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_strategy_contract.py::test_strategy_records_choice_alternatives_constraints_and_revisit_trigger"
+      ]
+    },
+    "saga-work-execution": {
+      "negative_test_node_ids": [
+        "plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/saga/commands/work.md",
+        "plugins/saga/skills/work/SKILL.md",
+        "plugins/saga/skills/work/references/execution-strategy.md",
+        "plugins/saga/skills/work/references/pr-continuation-loop.md",
+        "plugins/saga/skills/work/references/test-and-gates.md",
+        "plugins/saga/tests/test_work_contract.py"
+      ],
+      "test_node_ids": [
+        "plugins/saga/tests/test_work_contract.py::test_work_obeys_units_write_sets_checks_and_authority_gates"
+      ]
+    },
+    "shared-runtime-resolution": {
+      "negative_test_node_ids": [
+        "plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound_rejects_negative_cases"
+      ],
+      "owning_result_ids": [
+        "issue-acceptance"
+      ],
+      "pytest_outcomes": [
+        {
+          "node_id": "plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound",
+          "status": "pass"
+        },
+        {
+          "node_id": "plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound_rejects_negative_cases",
+          "status": "pass"
+        }
+      ],
+      "reviewed_unchanged_paths": [],
+      "target_paths": [
+        "plugins/fleet-core/scripts/fleet_commons/plugin_resolution.py",
+        "plugins/fleet-core/scripts/fleet_commons/workflow_compat.py",
+        "plugins/fleet-core/scripts/fleet_commons_shim.py",
+        "plugins/mission-control/scripts/fleet_commons_shim.py",
+        "plugins/saga/scripts/fleet_commons_shim.py",
+        "plugins/fleet-core/tests/test_fleet_commons.py",
+        "plugins/fleet-core/tests/test_fleet_commons_resolution.py",
+        "plugins/fleet-core/tests/test_workflow_compat.py"
+      ],
+      "test_node_ids": [
+        "plugins/fleet-core/tests/test_fleet_commons_resolution.py::test_shared_runtime_resolution_is_logical_portable_and_target_bound"
+      ]
+    }
+  },
+  "candidate_ids": [
+    "application-security-audit",
+    "bridge-receipt-contract",
+    "codex-portability-contracts",
+    "concurrency-lease-policy",
+    "cross-runtime-acceptance-tools",
+    "delegation-audit-state",
+    "mission-board-census-pagination",
+    "mission-board-operations",
+    "mission-control-runtime",
+    "mission-executor-profile-policy",
+    "mission-flow-metrics",
+    "mission-issue-contract",
+    "mission-issue-preparation",
+    "mission-label-operations",
+    "mission-milestone-operations",
+    "mission-project-flow",
+    "mission-rollout-operations",
+    "orphan-evidence-attestation",
+    "repository-quality-guards",
+    "saga-artifact-promotion",
+    "saga-code-review",
+    "saga-cross-runtime-reconciliation",
+    "saga-deploy-strategy",
+    "saga-executive-review",
+    "saga-external-action-boundary",
+    "saga-fleet-doctor",
+    "saga-handoff",
+    "saga-ideation",
+    "saga-investigation",
+    "saga-lifecycle-settlement",
+    "saga-loop-routing",
+    "saga-manifest-provenance-ledgers",
+    "saga-office-hours",
+    "saga-operator-safety",
+    "saga-optimization",
+    "saga-outcome-board-integration",
+    "saga-outcome-economics-liveness",
+    "saga-outcome-merge-worktrees",
+    "saga-outcome-orchestration",
+    "saga-planning",
+    "saga-plugin-readiness",
+    "saga-provider-pulse",
+    "saga-quality-assurance",
+    "saga-requirements-brainstorm",
+    "saga-retrospective",
+    "saga-session-context-and-spores",
+    "saga-ship-ceremony",
+    "saga-specification",
+    "saga-strategy",
+    "saga-work-execution",
+    "shared-runtime-resolution"
+  ],
+  "host_binding": {
+    "catalog_digest": "8c65e3bc2a97878804645443541624c255ee89a716f89e5b098b54f1bcf62ae4",
+    "receipt_sha256": "3dba3a5c1b39a894887392ccb7dadd37a9bbd69355e5d1fc5cca30d33ebceb75",
+    "schema": "antigravity.capabilities.v1",
+    "states": [
+      {
+        "capability": "agy.agent.execution",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.cli.flags",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.cli.version",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.conversation.resume",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.effort.selection",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.model.selection",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.plan.mode",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.sandbox.isolation",
+        "state": "unavailable"
+      },
+      {
+        "capability": "agy.sequential.isolation",
+        "state": "unavailable"
+      },
+      {
+        "capability": "antigravity.host.version",
+        "state": "unavailable"
+      },
+      {
+        "capability": "antigravity.plugin.links",
+        "state": "passed"
+      },
+      {
+        "capability": "antigravity.plugin.load",
+        "state": "unavailable"
+      },
+      {
+        "capability": "antigravity.plugin.validation",
+        "state": "unavailable"
+      },
+      {
+        "capability": "antigravity.runtime.roots",
+        "state": "unknown"
+      }
+    ]
+  },
+  "ledger_schema": "antigravity.semantic-port-ledger.v2",
+  "manifest_sha256": "9e6e2944c7bef0a77d125c5d3a857da56253d9aa4b921a1912db5952feb76e61",
+  "results": {
+    "issue-acceptance": {
+      "assignment_id": "issue-acceptance",
+      "changed_paths": [],
+      "checks": [
+        {
+          "check_id": "ledger-validation",
+          "detail": "The canonical ledger is complete and fully decided.",
+          "status": "pass"
+        },
+        {
+          "check_id": "mapped-nodes",
+          "detail": "All 102 mapped positive and negative Pytest nodes passed.",
+          "status": "pass"
+        },
+        {
+          "check_id": "plugin-suites",
+          "detail": "The four affected plugin suites passed 1463 tests with one skip.",
+          "status": "pass"
+        },
+        {
+          "check_id": "ruff",
+          "detail": "Ruff passed for plugins and scripts.",
+          "status": "pass"
+        },
+        {
+          "check_id": "mypy",
+          "detail": "Mypy passed for plugins and scripts.",
+          "status": "pass"
+        },
+        {
+          "check_id": "documentation",
+          "detail": "Deterministic Saga documentation rendering is current.",
+          "status": "pass"
+        },
+        {
+          "check_id": "plugin-validation",
+          "detail": "Repository plugin validation and the host-contract linter passed with zero unresolved findings.",
+          "status": "pass"
+        },
+        {
+          "check_id": "sibling-repositories",
+          "detail": "Claude and Codex sibling repositories have no tracked or staged changes.",
+          "status": "pass"
+        }
+      ],
+      "findings": [],
+      "no_change": true,
+      "residual_risks": [],
+      "result_schema": "assignment-result.v1",
+      "summary": "Issue 15 repository acceptance checks passed.",
+      "terminal_status": "completed"
+    },
+    "refresh-source": {
+      "assignment_id": "refresh-source",
+      "changed_paths": [],
+      "checks": [
+        {
+          "check_id": "current-bindings",
+          "detail": "Evidence bindings equal the current canonical ledger.",
+          "status": "pass"
+        }
+      ],
+      "findings": [],
+      "no_change": true,
+      "residual_risks": [],
+      "result_schema": "assignment-result.v1",
+      "summary": "Current ledger source, decision, packet, and host bindings were recomputed.",
+      "terminal_status": "completed"
+    }
+  },
+  "schema": "antigravity.semantic-port-migration-evidence.v1",
+  "source_binding": {
+    "decision_sha256": "ef29738c8bf9ee1f84bec762ab6c2a87b2047c68e276aed972947febdc3823e1",
+    "operator_gate_state": "decided",
+    "packet_content_sha256": "272419e77ef1f591839b579d56646cfd95cdec87b39aedc4c637d46cf39d5f3f",
+    "refresh_assignment_id": "refresh-source",
+    "selected_surfaces_sha256": "f5e62e27fa26e4856369737b976b91228d96d595c90e29cb4721fd29f1b554d1",
+    "snapshot_commits": {
+      "antigravity": "45463432612ff271c9a12b02aa1fab9390ba9ac1",
+      "claude": "0a572448556252c499752e5132617b4c9aa9c1a5",
+      "codex": "0c2072446c7e136caa274b5f637ca2c8c03725e4"
+    }
+  }
+}

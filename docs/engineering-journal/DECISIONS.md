@@ -24,6 +24,30 @@
 
 ## 2026-08-13
 
+### Approval tables render from the native outcome spec, not an ExecutionSpec  {#approval-table-native-outcome}
+
+**Decision.** The ported `spec_table.py` renders the approval table from Antigravity's committed `docs/outcomes/<id>/outcome-spec.json` via a native `--outcome` mode (`render_outcome`), wired into the `outcome` skill at the `approve`/`advance` dispatch points. Plan step 5 and work-before-execution keep their existing approval surfaces and never author an `ExecutionSpec`.
+
+**Rejected alternatives.** Authoring Claude-lineage `ExecutionSpec` JSONs at plan/work time (violates the plan skill's 5.2a guard); wiring the table to points with no structured spec artifact (renders nothing real).
+
+**Rationale.** An operator cannot approve what they cannot read, but Antigravity's outcome layer owns a different, concurrent-DAG spec schema. The table must render from the artifact that actually exists at each approval gate, without importing the Claude execution path.
+
+**Revisit when.** Antigravity gains an execution-spec authoring flow with its own JSON artifact; then the Claude-source `render` path gets a native producer.
+
+**Refs.** Porting Plan U2/R6, `plugins/saga/scripts/spec_table.py`, `plugins/saga/skills/outcome/SKILL.md`.
+
+### Enforce same-file concurrency safety via compile-time wave conflict halting (commit pending) {#wave-file-collision-halt}
+
+**Decision.** Enforce same-file concurrency safety during execution-spec compilation by computing wave file sets and halting if two concurrent tasks in the same topological barrier wave declare overlapping write paths (`assert_no_wave_file_conflicts`). Unwind the dead runtime `lease_broker` abstraction.
+
+**Rejected alternatives.** Runtime file lease brokers; optimistic file locking during team execution; allowing overlapping file writes within the same barrier wave.
+
+**Rationale.** File collisions during multi-agent team execution are deterministic structural bugs in task decomposition. Detecting and halting during execution plan emission eliminates runtime races, file corruption, and deadlocks without requiring distributed leasing overhead.
+
+**Revisit when.** Dynamic branch-based worktrees allow concurrent modification of the same repository file on distinct Git branches that are reconciled via semantic merge drivers.
+
+**Refs.** Porting Plan U4, U7, `plugins/saga/scripts/execution_spec.py`, `plugins/saga/scripts/team_emitter.py`.
+
 ### Bind Claude port plans to origin/main, not working-tree or feature-branch HEAD (commit pending) {#port-plan-origin-main-baseline}
 
 **Decision.** Port plans inventory Antigravity local `origin/main` and Claude local `origin/main`. Working-tree untracked files and a Claude feature-branch HEAD are not source candidates.

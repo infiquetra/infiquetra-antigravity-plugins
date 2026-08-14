@@ -61,7 +61,7 @@ Upstream commit order on 2026-07-27: `faecb8a3` (R6) precedes `b3c13006` (R3), s
 
 ### `fleet-core` Tier Vocabulary & Execution Classes
 
-R1. Add schema version 2 keys `execution_classes`, `scalar_efforts`, and `root_orchestration_profiles` to `plugins/fleet-core/scripts/fleet_commons/models.json`. Keep the existing Gemini `models` (`gemini-3.1-pro`, `gemini-3.5-flash`) and existing `efforts` (`low`, `medium`, `high`, `xhigh`). Do not replace them with Claude's live `fable`/`opus`/`sonnet`/`haiku` list.
+R1. Add schema version 2 keys `execution_classes`, `scalar_efforts`, and `root_orchestration_profiles` to `plugins/fleet-core/scripts/fleet_commons/models.json`. Update the Gemini `models` catalog to include `gemini-3.1-pro`, `gemini-3.7-flash`, `gemini-3.6-flash`, and `gemini-3.5-flash` with their respective effort ceilings and rank orderings, alongside existing `efforts` (`low`, `medium`, `high`, `xhigh`). Do not replace them with Claude's live `fable`/`opus`/`sonnet`/`haiku` list.
 
 R2. Add `resolve_for_runtime()` and `adapt_runtime_argv()` in `plugins/fleet-core/scripts/fleet_commons/tier_resolver.py` beside the existing `resolve()` API. Collapse `grok` and `muse` `max` to `xhigh`, and `agy` `max` and `xhigh` to `high`. Return structured `RuntimeResolution` objects. Existing `resolve()` callers stay on Gemini `models` / `efforts`.
 
@@ -73,7 +73,7 @@ R4. Harden refute-N verify panels in `plugins/saga/scripts/execution_spec.py` by
 
 R5. Fix pre-push git invocation parsing in `plugins/saga/hooks/pre_push_gate_hook.py` to inspect structured command argv rather than the current regex over the raw command string.
 
-R6. Port the execution-spec approval table module `plugins/saga/scripts/spec_table.py` and render it at every backend approval point (`plan` step 5, `work` before execution, and `outcome` dispatch).
+R6. Port the execution-spec approval table module `plugins/saga/scripts/spec_table.py` and render it at every backend approval point that has a structured spec artifact. In Antigravity that is the outcome dispatch surface: `render_outcome` (the native `--outcome` mode) renders the approval table from the committed `docs/outcomes/<id>/outcome-spec.json` before `approve` and each `advance` dispatch wave. Plan step 5 and work-before-execution keep their existing approval surfaces (the plan's own unit tables) and never author an `ExecutionSpec` (plan skill 5.2a guard); the Claude-source `render` path stays test-covered for ported parity.
 
 ### Ecosystem Plugins & Skills
 
@@ -91,7 +91,7 @@ R10. Verify that quality guards, doctor checks (`scripts/validate_plugins.py --s
 
 ## Key Technical Decisions
 
-KTD1. **Schema v2 is additive on the Gemini registry.** Import Claude #715's portable subset (`execution_classes`, `scalar_efforts`, `root_orchestration_profiles`) and the six-runtime resolver. Do not import Claude's live `models`/`efforts` and do not import Codex's `lineage_models`/`lineage_efforts` key layout. Existing `resolve()` callers and `tier_palette.MODELS` stay on Gemini.
+KTD1. **Schema v2 is additive on the Gemini registry.** Import Claude #715's portable subset (`execution_classes`, `scalar_efforts`, `root_orchestration_profiles`) and the six-runtime resolver. Update the Gemini models catalog with `gemini-3.1-pro`, `gemini-3.7-flash`, `gemini-3.6-flash`, and `gemini-3.5-flash`. Do not import Claude's live `models`/`efforts` (`fable`/`opus`/`sonnet`/`haiku`) and do not import Codex's `lineage_models`/`lineage_efforts` key layout. Existing `resolve()` callers and `tier_palette.MODELS` stay on Gemini.
 
 KTD2. **Worktree registry over file leases.** Antigravity concurrency relies on isolated git worktrees (`outcome_worktrees.py`) and explicit unit dependency graphs. `lease_broker.py` is deleted after the ledger supersede in U7.
 
@@ -118,6 +118,7 @@ Add schema v2 beside the Gemini registry and add the per-runtime resolver.
 - `plugins/fleet-core/scripts/fleet_commons/models.json`
 - `plugins/fleet-core/scripts/fleet_commons/tier_resolver.py`
 - `plugins/fleet-core/scripts/fleet_commons/tier_palette.py`
+- `plugins/fleet-core/scripts/fleet_commons/cost_weights.json` (gemini-3.7/3.6-flash rows)
 - `plugins/fleet-core/tests/test_fleet_core_execution_classes.py` (new; Antigravity keeps fleet-core tests under the plugin, not repo-root `tests/`)
 
 **Approach:** Copy the portable v2 objects and `resolve_for_runtime` / `adapt_runtime_argv` from Claude `13b02343`. Leave `resolve()`, `ROLE_TIER_ALIASES`, and `models`/`efforts` in place. Use the upstream class names, not invented aliases.
@@ -146,11 +147,13 @@ Replace the pre-push regex and add the approval table module.
 **Files:**
 
 - `plugins/saga/hooks/pre_push_gate_hook.py`
-- `plugins/saga/scripts/spec_table.py` (new module port)
+- `plugins/saga/scripts/spec_table.py` (new module port, plus the native `--outcome` renderer)
+- `plugins/saga/skills/outcome/SKILL.md` (approval-table step at `approve`/`advance` dispatch)
+- `tools/gate-manifest.json` (single-source gate manifest the hook reads)
 - `plugins/saga/tests/test_pre_push_gate.py` (new)
 - `plugins/saga/tests/test_spec_table.py` (new)
 
-**Approach:** Replace `_is_git_push_command`'s regex with the upstream `shlex` tokenizer (`punctuation_chars=True`, git global opts with values skipped). Port `spec_table.py` from `faecb8a3` and call it from plan step 5, work-before-execution, and outcome dispatch.
+**Approach:** Replace `_is_git_push_command`'s regex with the upstream `shlex` tokenizer (`punctuation_chars=True`, git global opts with values skipped). Port `spec_table.py` from `faecb8a3`, add the native `--outcome` renderer (`render_outcome` over `outcome-spec.json`), and wire it into the `outcome` skill at the `approve`/`advance` dispatch points. Plan step 5 and work-before-execution keep their existing approval surfaces and never author an `ExecutionSpec`.
 
 **Patterns to follow:** Claude `plugins/saga/hooks/pre_push_gate_hook.py` at `fe3bf9f3`; current Antigravity hook's silent-on-pass / exit-2 contract.
 
@@ -160,6 +163,7 @@ Replace the pre-push regex and add the approval table module.
 - Edge: `git -C /repo push` is a push; `git commit -m 'git push'` is not; `echo 'git push'` is not.
 - Error: `git push&&echo ok` still counts as a push (plain `shlex.split` would miss it).
 - Happy path: an execution-spec approval table renders on backend approval transitions.
+- Happy path: `spec_table.py --outcome` renders the node/flags/sandbox approval table from an `outcome-spec.json`, with destructive and gated nodes named in approval warnings.
 
 **Verification:** `uv run pytest plugins/saga/tests/test_pre_push_gate.py plugins/saga/tests/test_spec_table.py` passes.
 
@@ -176,8 +180,7 @@ Harden verify-panel math after the collision-guard edit of the same file.
 **Files:**
 
 - `plugins/saga/scripts/execution_spec.py`
-- `plugins/saga/tests/test_saga_execution_spec.py` (new)
-- `plugins/saga/tests/test_workflow_emitter.py` (new)
+- `plugins/saga/tests/test_verify_panel_severity_axis.py` (new; shipped name — the upstream `test_saga_execution_spec.py`/`test_workflow_emitter.py` split was not adopted)
 
 **Approach:** Port the `#686` severity axis and change the declared quorum floor from `(n + 1) // 2` to `n // 2 + 1`. Keep `_emit_panel_reconciliation` as the single emitter.
 
@@ -189,7 +192,7 @@ Harden verify-panel math after the collision-guard edit of the same file.
 - Happy path: `refuted_deliverable` gates; `advisory_corrections` do not.
 - Error: a malformed verifier payload without both required arrays is treated as missing, not as an accept.
 
-**Verification:** `uv run pytest plugins/saga/tests/test_saga_execution_spec.py plugins/saga/tests/test_workflow_emitter.py` passes.
+**Verification:** `uv run pytest plugins/saga/tests/test_verify_panel_severity_axis.py` passes.
 
 ### U4. `saga` Concurrency Safety — Halt on Concurrent File Collisions
 
@@ -290,6 +293,7 @@ Delete the unused lease modules and record the ledger supersede.
 - Remove `plugins/fleet-core/scripts/fleet_commons/lease_broker.py`
 - Remove `plugins/fleet-core/scripts/fleet_commons/orphan_evidence.py`
 - Remove `plugins/fleet-core/tests/test_lease_broker.py` and `plugins/fleet-core/tests/test_orphan_evidence.py`
+- Add `plugins/fleet-core/tests/test_output_attestation.py` (the orphan-fencing coverage refactor, upstream `tests/test_output_attestation.py`)
 - Add `plugins/fleet-core/tests/test_no_lease_broker_readd.py`
 - Update `plugins/fleet-core/tests/test_concurrency_policy.py` and `plugins/fleet-core/tests/test_host_contract_lint.py`
 - Update `plugins/fleet-core/references/antigravity-host-contract-surfaces.json`

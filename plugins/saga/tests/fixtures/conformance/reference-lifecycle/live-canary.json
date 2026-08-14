@@ -23,7 +23,7 @@
   },
   "baseline_manifest": {
     "path": "docs/conformance/baselines/reference-lifecycle/manifest.yaml",
-    "sha256": "2ec7bbbeb98aedc7e6aaf1c79571e0602d4fc37e96204d8f0ca62d6be01f3363"
+    "sha256": "e99f6aae59f8191fbac5ef4efa392e00ae22448986de7155c4fb37e01603e0d2"
   },
   "phase_commands": [
     {

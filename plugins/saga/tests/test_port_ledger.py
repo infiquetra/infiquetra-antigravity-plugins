@@ -575,11 +575,11 @@ def test_first_campaign_owns_every_packet_and_records_exact_decisions() -> None:
     assert inventory_errors(ledger) == []
     assert Counter(candidate["decision"]["state"] for candidate in candidates) == Counter(
         {
-            "approved-survivor": 51,
+            "approved-survivor": 49,
             "blocked": 19,
             "metadata-only": 8,
             "rejected": 1,
-            "superseded": 1,
+            "superseded": 3,
         }
     )
     assert sum(len(candidate["edit_packet_ids"]) for candidate in candidates) == len(packets)
@@ -766,9 +766,11 @@ def test_real_migration_plan_equals_ratified_survivors_contracts_packets_and_nod
         for candidate in ledger["candidates"]
         if candidate["decision"]["state"] == "approved-survivor"
     }
-    assert len(approved) == len(plan["candidates"]) == 51
+    # The two 2026-08-13 supersessions sit outside the migration mapping; the plan
+    # carries exactly the 49 remaining approved survivors.
+    assert len(approved) == len(plan["candidates"]) == 49
     assert set(approved) == set(plan["candidates"])
-    assert len(port_ledger.migration_plan_nodes(plan)) == 102
+    assert len(port_ledger.migration_plan_nodes(plan)) == 98
     for candidate_id, candidate in approved.items():
         assert (
             plan["candidates"][candidate_id]["semantic_contract"] == candidate["semantic_contract"]
@@ -1290,7 +1292,7 @@ def test_non_git_cli_paths_render_results_and_failures(tmp_path: Path, capsys) -
     output = capsys.readouterr().out
     assert "test_release_refresh_uses_controlled_temporary_repositories" not in output
     assert port_ledger.main(["test-nodes", str(plan_path)]) == 0
-    assert len(capsys.readouterr().out.splitlines()) == 102
+    assert len(capsys.readouterr().out.splitlines()) == 98
 
     invalid = tmp_path / "invalid.yaml"
     invalid.write_text("[unterminated", encoding="utf-8")
