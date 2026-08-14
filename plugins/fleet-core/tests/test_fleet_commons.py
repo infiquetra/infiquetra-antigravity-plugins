@@ -31,12 +31,16 @@ def test_fleet_core_version_matches_newest_changelog_heading() -> None:
 def test_tier_palette():
     palette = fleet_commons_shim.load("tier_palette")
     assert "gemini-3.1-pro" in palette.MODELS
+    assert "gemini-3.7-flash" in palette.MODELS
+    assert "gemini-3.6-flash" in palette.MODELS
     assert "gemini-3.5-flash" in palette.MODELS
     assert "low" in palette.EFFORTS
     assert "xhigh" in palette.EFFORTS
 
     assert palette.model_rank("gemini-3.1-pro") == 0
-    assert palette.model_rank("gemini-3.5-flash") == 1
+    assert palette.model_rank("gemini-3.7-flash") == 1
+    assert palette.model_rank("gemini-3.6-flash") == 2
+    assert palette.model_rank("gemini-3.5-flash") == 3
     assert palette.effort_rank("low") == 0
     assert palette.effort_rank("xhigh") == 3
 

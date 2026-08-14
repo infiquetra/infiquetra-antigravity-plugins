@@ -47,23 +47,6 @@ candidates:
     intentional_differences:
     - Curate one Antigravity page; do not copy Codex's portability tree or treat Codex
       paths as target truth.
-  concurrency-lease-policy:
-    semantic_contract: Parallel workers use bounded concurrency, durable leases, and
-      liveness rules that prevent duplicate or abandoned ownership.
-    final_antigravity_state: present
-    target_paths:
-    - plugins/fleet-core/scripts/fleet_commons/concurrency_policy.py
-    - plugins/fleet-core/scripts/fleet_commons/lease_broker.py
-    - plugins/fleet-core/scripts/fleet_commons/liveness_engine.py
-    - plugins/fleet-core/tests/test_concurrency_policy.py
-    - plugins/fleet-core/tests/test_lease_broker.py
-    test_node_ids:
-    - plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership
-    negative_test_node_ids:
-    - plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership_rejects_negative_cases
-    intentional_differences:
-    - Implement deterministic local lease semantics only; do not claim host scheduling
-      or isolation.
   cross-runtime-acceptance-tools:
     semantic_contract: Cross-runtime canaries compare the same bounded Saga behavior
       and produce reviewable compatibility evidence.
@@ -272,22 +255,6 @@ candidates:
     - plugins/mission-control/tests/test_rollout_contract.py::test_rollout_skill_separates_status_gap_analysis_and_mutation_rejects_negative_cases
     intentional_differences:
     - Keep census/status read-only and mutation separately authorized.
-  orphan-evidence-attestation:
-    semantic_contract: Worker output is accepted only when ownership, expected shape,
-      and attestation bind it to the originating run.
-    final_antigravity_state: present
-    target_paths:
-    - plugins/fleet-core/scripts/fleet_commons/orphan_evidence.py
-    - plugins/fleet-core/scripts/fleet_commons/output_attestation.py
-    - plugins/fleet-core/tests/fixtures/orphan-evidence/valid.json
-    - plugins/fleet-core/tests/fixtures/orphan-evidence/duplicate-schema.json
-    - plugins/fleet-core/tests/test_orphan_evidence.py
-    test_node_ids:
-    - plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation
-    negative_test_node_ids:
-    - plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation_rejects_negative_cases
-    intentional_differences:
-    - Use Antigravity run and worker identities; no model narration can attest itself.
   repository-quality-guards:
     semantic_contract: Repository-specific fixture, ownership, journal, and test-shape
       checks fail on misleading or incomplete evidence.

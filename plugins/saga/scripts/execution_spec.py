@@ -388,7 +388,65 @@ async function __retry(thunk, opts) {
 }"""
 
 
-_JS_VERIFIER_PROMPT_HELPER = r"""function __verifierPrompt(basePrompt, unitResult) {
+_JS_ADVISORY_HELPER = r"""const __advisories = []
+const __advisoryRounds = new Map()
+const __ADVISORY_ITEM_CAP = 50
+const __ADVISORY_ITEM_CHARS = 180
+function __renderAdvisory(a) {
+  var s
+  try {
+    if (a === null || a === undefined) s = "(empty advisory entry)"
+    else if (typeof a === "string") s = a
+    else s = String(a.claim || a.id || JSON.stringify(a))
+  } catch (e) {
+    s = "(unrenderable advisory entry)"
+  }
+  var t = s
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ")
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]+/g, " ")
+    .slice(0, __ADVISORY_ITEM_CHARS)
+  var tail = t.charCodeAt(t.length - 1)
+  if (tail >= 0xd800 && tail <= 0xdbff) t = t.slice(0, -1)
+  return t
+}
+function __halt(message) {
+  var e = new Error(message)
+  e.advisory_corrections = __advisories
+  return e
+}
+function __logAdvisory(unitId, reported, refuted) {
+  var round = (__advisoryRounds.get(unitId) || 0) + 1
+  __advisoryRounds.set(unitId, round)
+  var items = []
+  try {
+    for (var i = 0; i < reported.length; i++) {
+      var adv = Array.isArray(reported[i].advisory_corrections) ? reported[i].advisory_corrections : []
+      for (var j = 0; j < adv.length; j++) items.push(__renderAdvisory(adv[j]))
+    }
+  } catch (e) {
+    items.push(__renderAdvisory("(advisory harvest failed: " + String(e && e.message) + ")"))
+  }
+  if (items.length === 0) return items
+  var dropped = 0
+  if (items.length > __ADVISORY_ITEM_CAP) {
+    dropped = items.length - __ADVISORY_ITEM_CAP
+    items = items.slice(0, __ADVISORY_ITEM_CAP)
+  }
+  __advisories.push({ unit: unitId, round: round, corrections: items, dropped: dropped })
+  try {
+    log(`verify panel over ${unitId} (round ${round}): deliverable ${refuted ? "REFUTED" : "UPHELD"} with ${items.length + dropped} advisory correction(s) (narrative/rationale only, non-gating): ` +
+        items.join(" | ") + (dropped > 0 ? ` [+${dropped} suppressed]` : ""))
+  } catch (e) {
+    /* the non-gating accumulator must never be able to halt a run */
+  }
+  return items
+}"""
+
+
+_JS_VERIFIER_PROMPT_HELPER = r"""function __verifierPrompt(basePrompt, unitResult, passRule) {
+  var gatingBar = (passRule === "unanimous")
+    ? "EVERY reporting verifier"
+    : "a majority of the panel";
   var rendered;
   try {
     rendered = JSON.stringify(unitResult, null, 2);
@@ -410,10 +468,42 @@ ${repoLine}
   <path>. For named untracked output files, read the primary checkout path directly; never mutate
   the primary checkout.
 - Return examined_sha as the SHA you actually materialized or inspected. If you cannot see enough
-  evidence to judge, return a refuted entry explaining the visibility gap; do not emit prose-only
-  "nothing to verify" output.
+  evidence to judge, return a refuted_deliverable entry explaining the visibility gap; do not emit
+  prose-only "nothing to verify" output.
 
-UNIT RESULT INPUT (authoritative structured evidence):
+VERDICT CONTRACT — two separate buckets. Read this before you write anything.
+
+The unit result you are given contains BOTH a deliverable and a narrative. Sort every disagreement
+you find into exactly one of these. Getting the bucket right matters more than finding a lot.
+
+\`refuted_deliverable\` — GATING. A finding belongs here only if the unit's actual WORK is wrong:
+- A changed file is wrong, incomplete, or breaks something.
+- Required behavior is missing, or behavior the unit was told to preserve was destroyed.
+- A test is missing, wrong, asserts nothing, or does not test what it claims.
+- A claim in \`checks_run\` is FALSE — the command does not actually pass, or was not actually run,
+  or its reported result does not reproduce. Re-run the commands and check.
+- The unit says \`status: "done"\` but the work is not done.
+- You could not see enough to judge (visibility gap).
+A non-empty \`refuted_deliverable\` from ${gatingBar} KILLS the unit and HALTS the whole
+workflow. Put a finding here only if you would defend stopping the run over it.
+
+\`advisory_corrections\` — NON-GATING. A finding belongs here if the WORK is right but the unit's
+own account of it is wrong or misleading:
+- Its explanation of WHY something happened is factually incorrect.
+- It misattributes a change to the wrong function, file, or line.
+- It mischaracterizes a mechanism, or states a rationale that does not hold.
+- Its advice to a downstream unit rests on a wrong premise.
+These are recorded and handed to the driver. They do NOT stop the run. Report them fully and
+precisely — a wrong premise passed downstream causes real damage later, so this bucket is
+genuinely valuable, not a consolation prize.
+
+The test: if the unit's code, tests, and check results are all sound, then NOTHING goes in
+\`refuted_deliverable\`, no matter how wrong its prose is. Prose errors are advisory. Full stop.
+
+Both keys are REQUIRED and must be arrays. Use \`[]\` for an empty bucket — never omit either one.
+
+UNIT RESULT INPUT (structured evidence — the \`notes\` field is the unit's NARRATIVE, judge it
+under \`advisory_corrections\`; the changed files, tests, and \`checks_run\` are the DELIVERABLE):
 ${rendered}`;
 }"""
 
@@ -1198,6 +1288,72 @@ def dependency_layers(spec: ExecutionSpec) -> list[list[str]]:
 
 
 # ---------------------------------------------------------------------------
+# Concurrent-writer safety (#671) -- halt on file collisions within a wave
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WaveConflict:
+    """Two units scheduled to run concurrently that declare the same file (#671)."""
+
+    wave: int
+    """1-based index into ``dependency_layers`` — the parallel wave both units land in."""
+    left: str
+    right: str
+    files: tuple[str, ...]
+    """Every path both units declare, sorted."""
+
+    def describe(self) -> str:
+        shared = ", ".join(f"`{f}`" for f in self.files)
+        return f"wave {self.wave}: `{self.left}` and `{self.right}` both declare {shared}"
+
+
+def wave_file_conflicts(spec: ExecutionSpec) -> list[WaveConflict]:
+    """Units that would run in the same parallel wave while declaring the same file.
+
+    Concurrent agents share one working tree. There is no cross-agent file lock,
+    so two units editing one file race, and the loser's edit is either rejected on a
+    stale match or silently overwritten.
+
+    This reads the ``files`` every unit declares and compares EXACT paths across
+    each dependency layer.
+    """
+    layers = dependency_layers(spec)
+    by_id = {u.unit_id: u for u in spec.units}
+    conflicts: list[WaveConflict] = []
+    for index, layer in enumerate(layers, start=1):
+        if len(layer) < 2:
+            continue
+        for position, left in enumerate(layer):
+            for right in layer[position + 1 :]:
+                shared = set(by_id[left].files) & set(by_id[right].files)
+                if shared:
+                    conflicts.append(
+                        WaveConflict(
+                            wave=index,
+                            left=left,
+                            right=right,
+                            files=tuple(sorted(shared)),
+                        )
+                    )
+    return conflicts
+
+
+def assert_no_wave_file_conflicts(spec: ExecutionSpec) -> None:
+    """Raise ``SpecError`` naming every concurrent-writer collision in the spec."""
+    conflicts = wave_file_conflicts(spec)
+    if not conflicts:
+        return
+    detail = "; ".join(c.describe() for c in conflicts)
+    raise SpecError(
+        f"units scheduled to run concurrently declare the same file(s) — {detail}. "
+        f"Concurrent agents share one working tree and nothing fences their writes: add a "
+        f"depends_on so they sequence, or merge them into one unit (preferred — it also reuses "
+        f"the prompt cache)."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Emitter -- spec -> runnable Claude Code workflow script
 # ---------------------------------------------------------------------------
 
@@ -1336,7 +1492,9 @@ def _verifier_prompt(unit: Unit) -> str:
         f"REFUTE-N VERIFIER over unit {unit.unit_id} ({unit.label}). You are an adversarial "
         f"skeptic: attempt to REFUTE the unit's result, do NOT re-do its work. Read the unit's "
         f"output and the evidence it cites; for each claimed finding decide REFUTED (with a "
-        f"concrete reason) or UPHELD. Emit a structured verdict {{refuted: [...], upheld: [...], "
+        f"concrete reason) or UPHELD, and sort every refutation into the gating bucket or the "
+        f"advisory bucket per the VERDICT CONTRACT below. Emit a structured verdict "
+        f"{{refuted_deliverable: [...], advisory_corrections: [...], upheld: [...], "
         f"verifier_identity: ..., fallback_depth: ..., examined_sha: ...}}.",
         # U6/R8/KTD7: attributed verify-spawn. The emitter STAMPS the agent identity it knows
         # ({READONLY_VERIFIER_AGENT_TYPE}) and a fallback_depth of 0 -- a workflow agent() call
@@ -1406,18 +1564,24 @@ def _verifier_agent_opts(unit: Unit) -> list[str]:
 
 
 def _verifier_schema() -> dict[str, object]:
-    """StructuredOutput schema for refute-N verifier verdicts (#519)."""
+    """StructuredOutput schema for refute-N verifier verdicts (#519/#527/#686).
+
+    #686 severity axis: the single ``refuted`` bucket is RENAMED to ``refuted_deliverable``
+    (gating) and joined by ``advisory_corrections`` (non-gating). Both are required arrays.
+    """
     return {
         "type": "object",
         "properties": {
-            "refuted": {"type": "array"},
+            "refuted_deliverable": {"type": "array"},
+            "advisory_corrections": {"type": "array"},
             "upheld": {"type": "array"},
-            "verifier_identity": {"type": "string"},
+            "verifier_identity": {"type": "string", "minLength": 1},
             "fallback_depth": {},
-            "examined_sha": {"type": "string"},
+            "examined_sha": {"type": "string", "minLength": 1},
         },
         "required": [
-            "refuted",
+            "refuted_deliverable",
+            "advisory_corrections",
             "upheld",
             "verifier_identity",
             "fallback_depth",
@@ -1458,7 +1622,7 @@ def _emit_panel_reconciliation(
     panel = unit.verify
     assert panel is not None
     n = panel.n
-    floor = (n + 1) // 2  # plan KTD3: quorum floor, baked as a literal per panel
+    floor = n // 2 + 1  # plan KTD3: quorum floor, baked as a literal per panel
     verifier_prompt = _verifier_prompt(unit)
     verifier_opts = _verifier_agent_opts(unit)
 
@@ -1472,7 +1636,10 @@ def _emit_panel_reconciliation(
     lines.append(f"{indent}const {verdicts_var} = await parallel([")
     for _ in range(n):
         lines.append(f"{indent}  () => {_retry_open()}")
-        lines.append(f"{indent}    __verifierPrompt({_js_string(verifier_prompt)}, {result_var}),")
+        lines.append(
+            f"{indent}    __verifierPrompt({_js_string(verifier_prompt)}, {result_var}, "
+            f"{_js_string(panel.pass_rule)}),"
+        )
         lines.append(
             f"{indent}    {{ "
             + ", ".join(verifier_opts)
@@ -1482,15 +1649,18 @@ def _emit_panel_reconciliation(
     lines.append(f"{indent}])")
     # R1/R5: record which verifiers reported vs. runtime-missing; R3: recompute the pass-rule
     # threshold over the reporters, not the declared n (plan KTD1/KTD3). A verdict that is
-    # non-null but lacks a usable `.refuted` array is a runtime failure too (a verifier that
-    # returned a malformed/partial response is not distinguishable from one that returned a
-    # legitimate non-refuting verdict unless shape is checked here -- completeness_gate.py's
-    # classify() only gates the unit's own result, never verifier verdicts, so this is the only
-    # place malformed verdicts get caught).
+    # non-null but lacks a usable `.refuted_deliverable` OR `.advisory_corrections` array is a
+    # runtime failure too (a verifier that returned a malformed/partial response is not
+    # distinguishable from one that returned a legitimate non-refuting verdict unless shape is
+    # checked here -- completeness_gate.py's classify() only gates the unit's own result, never
+    # verifier verdicts, so this is the only place malformed verdicts get caught). #686 R6/KTD2:
+    # requiring BOTH buckets is what makes a legacy single-`refuted` verdict a runtime failure
+    # that counts toward the missing-verifier floor instead of being silently read as gating.
     valid_verdict_var = f"{name_prefix}valid_verifier_verdict"
     lines.append(
         f'{indent}const {valid_verdict_var} = (v) => v != null && typeof v === "object" && '
-        f"Array.isArray(v.refuted) && Array.isArray(v.upheld) && "
+        f"Array.isArray(v.refuted_deliverable) && Array.isArray(v.advisory_corrections) && "
+        f"Array.isArray(v.upheld) && "
         f'typeof v.verifier_identity === "string" && v.verifier_identity.length > 0 && '
         f'Object.prototype.hasOwnProperty.call(v, "fallback_depth") && '
         f'typeof v.examined_sha === "string" && v.examined_sha.length > 0'
@@ -1529,9 +1699,13 @@ def _emit_panel_reconciliation(
         f"{indent}const {missing_idx_var} = {verdicts_var}.map((v, i) => "
         f"(!{valid_verdict_var}(v) ? i + 1 : null)).filter((i) => i != null)"
     )
+    # #686 R2: the gate counts a verifier as refuting ONLY when its GATING bucket is non-empty.
+    # `advisory_corrections` is deliberately absent from this arithmetic -- a panel that found
+    # nothing but wrong prose upholds the unit (plan KTD5: this is the single gate site, so the
+    # one-shot panel, the iterate-to-consensus loop, and the #364 climb all change together).
     lines.append(
         f"{indent}const {refute_count_var} = {reported_var}.filter((v) => "
-        f"v.refuted.length > 0).length"
+        f"v.refuted_deliverable.length > 0).length"
     )
     if panel.pass_rule == "majority":
         lines.append(
@@ -1544,6 +1718,11 @@ def _emit_panel_reconciliation(
             f"Math.max(1, {reported_var}.length)  // unanimous over reporters"
         )
     lines.append(f"{indent}const {refuted_var} = {refute_count_var} >= {threshold_var}")
+    # #686 R4 / plan U1 site 4: harvest the NON-GATING bucket into the workflow-level
+    # `__advisories` accumulator and log it.
+    lines.append(
+        f"{indent}__logAdvisory({_js_string(unit.unit_id)}, {reported_var}, {refuted_var})"
+    )
     # R4/R5: annotate missing verifiers and hard-fail below the baked quorum floor before any
     # accept/disagree decision can be computed over too little evidence.
     lines.append(f"{indent}if ({missing_idx_var}.length > 0) {{")
@@ -1560,14 +1739,14 @@ def _emit_panel_reconciliation(
     lines.append(f"{indent}}}")
     lines.append(f"{indent}if ({reported_var}.length < {floor}) {{")
     lines.append(
-        f"{indent}  throw new Error(`verifier-under-strength: Unit {unit.unit_id} reported "
+        f"{indent}  throw __halt(`verifier-under-strength: Unit {unit.unit_id} reported "
         f"${{{reported_var}.length}}/{n} verifiers (quorum floor {floor}; "
         f"missing #${{{missing_idx_var}.join(', #')}})${{{fallback_marker_var}}}`)"
     )
     lines.append(f"{indent}}}")
 
     throw_line = (
-        f"throw new Error(`verifier-disagreement: Unit {unit.unit_id} refuted by "
+        f"throw __halt(`verifier-disagreement: Unit {unit.unit_id} refuted by "
         f"${{{refute_count_var}}}/${{{reported_var}.length}} reporting verifiers "
         f"(${{{missing_idx_var}.length}} missing)${{{fallback_marker_var}}}{throw_suffix}`)"
     )
@@ -1699,11 +1878,12 @@ def _emit_verify_panel(
     Renders a ``parallel([...])`` of ``unit.verify.n`` verifier ``agent()`` calls over the
     unit's result (each at the SAME ``{model, effort}`` tier as the unit per R4), then
     records which verifiers reported vs. runtime-missing (R1/R5) -- a ``null`` verdict slot
-    OR a non-null verdict lacking a usable ``.refuted`` array both count as missing, since
-    neither is a trustworthy signal -- and recomputes the pass-rule threshold over the
-    reporters (R3): ``majority`` => ``>= max(1, ceil(k/2))`` of the ``k`` reporting verifiers
-    refuted; ``unanimous`` => all ``k`` refuted. A quorum floor of ``ceil(n/2)`` of the
-    declared ``n`` (plan KTD3) marks the result UNDER-STRENGTH when under-met, but a
+    OR a non-null verdict lacking either of the required ``refuted_deliverable`` /
+    ``advisory_corrections`` arrays both count as missing, since neither is a trustworthy
+    signal -- and recomputes the pass-rule threshold over the reporters (R3): ``majority``
+    => ``>= max(1, ceil(k/2))`` of the ``k`` reporting verifiers refuted the deliverable;
+    ``unanimous`` => all ``k`` refuted. A strict-majority quorum floor of ``n // 2 + 1`` of
+    the declared ``n`` (plan KTD3) marks the result UNDER-STRENGTH when under-met, but a
     refutation still acts regardless (plan KTD4).
     (This is a panel-level signal, not per-finding survival: a generic emitter cannot match
     findings across verifiers, so it surfaces "did enough skeptics refute anything" for the
@@ -1714,7 +1894,7 @@ def _emit_verify_panel(
     panel = unit.verify
     assert panel is not None  # caller guards this
     n = panel.n
-    floor = (n + 1) // 2
+    floor = n // 2 + 1
 
     lines.append(f"// verify: refute-{n} panel over {unit.unit_id} (pass_rule: {panel.pass_rule};")
     lines.append(
@@ -2009,6 +2189,7 @@ def emit_workflow_script(
     records the path as the saga ``orchestration_ref``).
     """
     spec.validate()
+    assert_no_wave_file_conflicts(spec)
 
     # #365 U3: a session tier ceiling clamps every unit DOWN before rendering (the operator's live
     # cap is the final word and never raises a tier). Clamping the spec's units means spec.unit_by_id
@@ -2053,6 +2234,8 @@ def emit_workflow_script(
     # #364 R7/R8: workflow-level cord collector -- __gate pushes worker-initiated pull_cord
     # dispositions here; the single batched escalation check runs after every layer.
     lines.append("const __pulledCords = []")
+    lines.append("")
+    lines.append(_JS_ADVISORY_HELPER)
     lines.append("")
     lines.append(_JS_GATE_HELPER)
     lines.append("")
@@ -2167,6 +2350,9 @@ def emit_workflow_script(
         "    '. ONE batched escalation ask -- confirm climbs via /tier patch and re-emit.')"
     )
     lines.append("}")
+    lines.append("")
+    unit_map = ", ".join(f"{_js_string(u.unit_id)}: {_var(u.unit_id)}" for u in spec.units)
+    lines.append(f"return {{ units: {{ {unit_map} }}, advisory_corrections: __advisories }}")
     lines.append("")
 
     return "\n".join(lines)

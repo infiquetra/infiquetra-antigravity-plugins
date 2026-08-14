@@ -225,6 +225,7 @@ def emit_team_structure(
                 f"per-leaf tool restriction). Route this unit to inline or cc-workflows, or drop "
                 f"the restrictive sandbox. Halt-not-downgrade (R4)."
             )
+    mod.assert_no_wave_file_conflicts(spec)
     segments = mod.segment_units(spec)
 
     # #365 U3: a session tier ceiling clamps each POST-MERGE segment tier DOWN, BEFORE the #369

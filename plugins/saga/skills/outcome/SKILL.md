@@ -80,6 +80,17 @@ remain the cache-derived bundle for an ad-hoc move; the committed-branch path is
 Leaf work is **always** the native verbs on the leaf's own saga: `/resume <leaf-saga-id>`, `/work`,
 `/code-review`, `/qa`. Never shadow them.
 
+**Render the approval table before every backend approval.** An operator cannot approve what they
+cannot read. Before `approve <id>` and before each `advance` dispatch wave, render the native
+approval table from the committed spec and surface it beside the operator question:
+
+```bash
+python3 plugins/saga/scripts/spec_table.py docs/outcomes/<id>/outcome-spec.json --outcome --backend <backend>
+```
+
+The outcome layer never authors an `ExecutionSpec`; the table renders from the committed
+`outcome-spec.json` (nodes, flags, sandbox, and dependency order).
+
 ## How a reconcile tick works (`advance`)
 
 1. Load the canonical spec (branch) and open the store (git-common-dir cache).

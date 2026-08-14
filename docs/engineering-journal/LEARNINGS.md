@@ -27,6 +27,58 @@
 
 ## 2026-08-13
 
+### Doctor `install=missing` can be a dangling host symlink, not a missing plugin  {#doctor-dangling-symlink}
+
+**Context.** `scripts/validate_plugins.py --strict-install` reported `hermes-profile-evolution: install=missing` while the plugin directory existed in both the repo and the host install root.
+
+**Evidence.** `~/.gemini/config/plugins/hermes-profile-evolution` was a symlink to a since-deleted worktree path (`infiquetra-antigravity-plugins-worktrees/profile-evolution-g3-e0f08ce/...`). `inspect_install` checks `install_path.exists()`, which returns False for a dangling symlink, so the doctor read it as not installed.
+
+**Fix.** Repointed the host symlink at `plugins/hermes-profile-evolution` in the working repo (the same shape as the `fleet-core` link). Doctor returns `status: ok`.
+
+**Generalizable rule.** When the plugin doctor reports `install=missing` for a plugin that demonstrably exists in the repo, check `readlink` on the host install entry before touching any repository code — dangling symlinks fail `.exists()` and masquerade as absence.
+
+**Refs.** Porting Plan U8, `scripts/validate_plugins.py::inspect_install`.
+
+### Pre-push gate detection must parse shell syntax, not only the git invocation  {#pre-push-shell-prefixes}
+
+**Context.** The pre-push gate detects pushes by tokenizing the command; real pushes wrapped in shell prefixes or redirections went undetected and skipped the gate.
+
+**Evidence.** `sudo git push`, `command git push`, `env --chdir=/repo git push`, `2>&1 git push`, and backslash-newline continuations all tokenize with the `git` head behind a prefix the old head-scan did not skip; `git -C/path push` (attached short-option value) extracted no target; `git submodule foreach git push` reads as subcommand `submodule`; `git push && cd /other` resolved the gate against `/other`.
+
+**Fix.** `_skip_redirect_prefix` (leading fd/operator runs, incl. the `>&` single-token form), `_COMMAND_WRAPPERS` (one-level `sudo`/`command`/`nohup`), attached `--chdir=`/`-C=` env options, `-C<path>` in `_git_subcommand`, `_join_continuations` before line-splitting, `_nested_foreach_pushes` for submodule bodies, and `_cd_target` restricted to the leading segment.
+
+**Generalizable rule.** A command-line safety gate must account for everything the shell allows in FRONT of the command it guards; a wrapper or redirection prefix is the cheapest bypass.
+
+**Refs.** Porting Plan U2, `plugins/saga/hooks/pre_push_gate_hook.py`, `plugins/saga/tests/test_pre_push_gate.py`.
+
+### Strict majority quorum floor for verify panels requires n // 2 + 1, not (n + 1) // 2  {#quorum-floor-strict-majority}
+
+**Context.** Saga multi-agent consensus verify panels calculate a quorum threshold to reconcile independent verifier verdicts across parallel evaluation workers.
+
+**Evidence.** For even panel size $N=2$, the expression `(2 + 1) // 2` evaluates to 1, allowing a single dissenting vote to claim quorum rather than requiring unanimous agreement of 2. For $N=4$, `(4 + 1) // 2` evaluates to 2 instead of the strict majority 3.
+
+**Mechanism.** A strict majority requires $> N/2$. In integer division arithmetic, the floor of a strict majority is computed as `n // 2 + 1` (for odd $N=3 \implies 2$, for even $N=2 \implies 2$, $N=4 \implies 3$).
+
+**Fix.** Updated `plugins/saga/scripts/execution_spec.py:_emit_panel_reconciliation` to use `const floor = Math.floor(n / 2) + 1` / `n // 2 + 1`. Added verification tests in `plugins/saga/tests/test_verify_panel_severity_axis.py`.
+
+**Generalizable rule.** Quorum requiring a strict majority of $N$ participants must use `n // 2 + 1`, never `(n + 1) // 2` which evaluates to $\le N/2$ for all even $N$.
+
+**Refs.** Porting Plan U3 (`refute-N severity axis and quorum`).
+
+### Verifier severity separation prevents advisory feedback from blocking delivery  {#verifier-severity-separation}
+
+**Context.** Readonly verifiers evaluate deliverable correctness and frequently encounter minor formatting, documentation, or advisory suggestions alongside blocking flaws.
+
+**Evidence.** Under flat single-bucket evaluation, any reported finding was counted towards refutation quorum, causing minor advisory notes to falsely fail the build.
+
+**Mechanism.** Combining gating defects and non-gating suggestions in one unranked schema forces verifiers into a false dilemma: suppress helpful observations or fail the delivery.
+
+**Fix.** Split verifier schema into two explicit arrays: `refuted_deliverable` (which counts towards quorum and halts execution via `__halt`) and `advisory_corrections` (which are logged via `__logAdvisory` and returned in the run result envelope).
+
+**Generalizable rule.** Automated reviewers must separate blocking rejection criteria from non-blocking advisory suggestions at the schema level before quorum reconciliation.
+
+**Refs.** Porting Plan U3, `plugins/saga/scripts/execution_spec.py`, `plugins/saga/agents/readonly-verifier.md`.
+
 ### A checkout behind origin/main presents untracked files as the only copy  {#stale-wt-untracked-vs-origin}
 
 **Context.** The 2026-08-13 Claude-to-Antigravity porting plan was drafted against the working tree. Local `HEAD` was twelve commits behind `origin/main`, and an untracked `plugins/hermes-profile-evolution/` tree sat beside that stale checkout.

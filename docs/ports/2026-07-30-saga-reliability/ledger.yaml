@@ -10819,8 +10819,8 @@ candidates:
     liveness rules that prevent duplicate or abandoned ownership.
   adjacent_dependencies: []
   required_host_capabilities: []
-  antigravity_state: present
-  proposed_disposition: antigravity-adapt
+  antigravity_state: absent
+  proposed_disposition: superseded
   ranking:
     operator_value: 3
     antigravity_fit: 2
@@ -10832,36 +10832,15 @@ candidates:
   - A migration receipt cites candidate concurrency-lease-policy and all 10 owned
     packet IDs.
   decision:
-    state: approved-survivor
-    rationale: 'Maintainer recommendation only: antigravity-adapt remains pending
-      operator review. Operator value 3 reflects the capability contract; Antigravity
-      fit 2 reflects absent target coverage. Proof feasibility 4 reflects 10 exact
-      packets including 2 test packets; maintenance cost 2 reflects the claude, codex
-      surface breadth.'
-    revisit_trigger: Reassess when source snapshots drift or focused target evidence
-      proves the semantic gap has closed.
+    state: superseded
+    rationale: 'Superseded by source drift: upstream Claude e2ba7db5 (2026-08-07,
+      #684/#703) deleted lease_broker.py and orphan_evidence.py and added a re-add
+      guard, which meets the recorded revisit trigger. The Antigravity port applies
+      the same deletion, superseding the 2026-07-30 approved-survivor disposition.'
+    revisit_trigger: Reassess if a lease surface is reintroduced into the Antigravity
+      fleet-core plugin.
     operator: Jeff
-    decided_at: '2026-07-30T21:51:35Z'
-  migration:
-    state: migrated
-    target_paths:
-    - plugins/fleet-core/scripts/fleet_commons/concurrency_policy.py
-    - plugins/fleet-core/scripts/fleet_commons/lease_broker.py
-    - plugins/fleet-core/scripts/fleet_commons/liveness_engine.py
-    - plugins/fleet-core/tests/test_concurrency_policy.py
-    - plugins/fleet-core/tests/test_lease_broker.py
-    test_node_ids:
-    - plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership
-    negative_test_node_ids:
-    - plugins/fleet-core/tests/test_concurrency_policy.py::test_bounded_leases_prevent_duplicate_and_abandoned_ownership_rejects_negative_cases
-    intentional_differences:
-    - Implement deterministic local lease semantics only; do not claim host scheduling
-      or isolation.
-    packet_set_sha256: d873cc695bb76587f7561647d8d997e7bbc5d3a6dd88cdbc3de17b56f22d17b9
-    host_receipt_sha256: 3dba3a5c1b39a894887392ccb7dadd37a9bbd69355e5d1fc5cca30d33ebceb75
-    evidence_manifest_sha256: 9e6e2944c7bef0a77d125c5d3a857da56253d9aa4b921a1912db5952feb76e61
-    blocking_capabilities: []
-    validated_at: '2026-08-01T00:14:50Z'
+    decided_at: '2026-08-13T23:59:00Z'
 - id: consensus-orchestration
   title: Consensus Orchestration
   edit_packet_ids:
@@ -12680,8 +12659,8 @@ candidates:
     and attestation bind it to the originating run.
   adjacent_dependencies: []
   required_host_capabilities: []
-  antigravity_state: present
-  proposed_disposition: antigravity-adapt
+  antigravity_state: absent
+  proposed_disposition: superseded
   ranking:
     operator_value: 3
     antigravity_fit: 2
@@ -12693,35 +12672,15 @@ candidates:
   - A migration receipt cites candidate orphan-evidence-attestation and all 9 owned
     packet IDs.
   decision:
-    state: approved-survivor
-    rationale: 'Maintainer recommendation only: antigravity-adapt remains pending
-      operator review. Operator value 3 reflects the capability contract; Antigravity
-      fit 2 reflects absent target coverage. Proof feasibility 5 reflects 9 exact
-      packets including 3 test packets; maintenance cost 2 reflects the claude, codex
-      surface breadth.'
-    revisit_trigger: Reassess when source snapshots drift or focused target evidence
-      proves the semantic gap has closed.
+    state: superseded
+    rationale: 'Superseded by source drift: upstream Claude e2ba7db5 (2026-08-07,
+      #684/#703) deleted lease_broker.py and orphan_evidence.py and added a re-add
+      guard, which meets the recorded revisit trigger. The Antigravity port applies
+      the same deletion, superseding the 2026-07-30 approved-survivor disposition.'
+    revisit_trigger: Reassess if an attestation surface is reintroduced into the
+      Antigravity fleet-core plugin.
     operator: Jeff
-    decided_at: '2026-07-30T21:51:35Z'
-  migration:
-    state: migrated
-    target_paths:
-    - plugins/fleet-core/scripts/fleet_commons/orphan_evidence.py
-    - plugins/fleet-core/scripts/fleet_commons/output_attestation.py
-    - plugins/fleet-core/tests/fixtures/orphan-evidence/valid.json
-    - plugins/fleet-core/tests/fixtures/orphan-evidence/duplicate-schema.json
-    - plugins/fleet-core/tests/test_orphan_evidence.py
-    test_node_ids:
-    - plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation
-    negative_test_node_ids:
-    - plugins/fleet-core/tests/test_orphan_evidence.py::test_orphan_evidence_requires_owner_shape_and_run_attestation_rejects_negative_cases
-    intentional_differences:
-    - Use Antigravity run and worker identities; no model narration can attest itself.
-    packet_set_sha256: f2ed6a10ce8ef0b8166fa2d8a56b94039dde71a12f53ee32d5d60b42dc794ef6
-    host_receipt_sha256: 3dba3a5c1b39a894887392ccb7dadd37a9bbd69355e5d1fc5cca30d33ebceb75
-    evidence_manifest_sha256: 9e6e2944c7bef0a77d125c5d3a857da56253d9aa4b921a1912db5952feb76e61
-    blocking_capabilities: []
-    validated_at: '2026-08-01T00:14:50Z'
+    decided_at: '2026-08-13T23:59:00Z'
 - id: repository-quality-guards
   title: Repository Quality Guards
   edit_packet_ids:

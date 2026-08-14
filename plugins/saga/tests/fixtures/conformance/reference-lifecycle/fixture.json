@@ -20,7 +20,7 @@
     },
     {
       "path": "plugins/fleet-core/tests/test_host_contract_lint.py",
-      "sha256": "c6176b454a5f17a2f97cd346dfe8115fad85270bf7cf07e9c658700e013e31b9"
+      "sha256": "d0a701e0f2b86d41358db9a5d474d7ba3cf68191af1ca6e9e37d1c3e5412c823"
     },
     {
       "path": "plugins/multi-agent-consensus/tests/test_deliberation.py",
@@ -56,7 +56,7 @@
     {
       "role": "host-contract-selector",
       "path": "plugins/fleet-core/references/antigravity-host-contract-surfaces.json",
-      "sha256": "89bbcda0e3c555f66deb4fec15d05e51100f936ba3e2231a3b082b6b0bc81b5a"
+      "sha256": "34c67003bb6671d4c99578e91e76f33877be88b1060d18f491c803e49f2585b7"
     },
     {
       "role": "deliberation-cases",
