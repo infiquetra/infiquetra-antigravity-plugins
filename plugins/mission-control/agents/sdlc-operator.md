@@ -9,9 +9,9 @@ description: |
   <example>
   Context: User wants to set up a new initiative across projects.
   user: "We're starting a new initiative called 'ai-native-auth'. Set it up end-to-end."
-  assistant: "I'll use the sdlc-operator agent to create field options on the CAMPPS board, create the Objective issue, link the milestone, and update the canonical Initiative options list."
+  assistant: "I'll use the sdlc-operator agent to create the project-field options, establish the Objective scorecard, and link an optional milestone where useful."
   <commentary>
-  Multi-step operation affecting project fields + a parent Objective issue + milestone — needs orchestration.
+  Multi-step operation affecting project fields + scorecard + optional milestone — needs orchestration.
   </commentary>
   </example>
 
@@ -27,9 +27,9 @@ description: |
   <example>
   Context: Blueprint analysis for issue creation.
   user: "Review the blueprint and figure out what capability issues we need to create for the auth pilot."
-  assistant: "I'll use the sdlc-operator agent to analyze the blueprint and create appropriate capability cards as sub-issues of the Objective."
+  assistant: "I'll use the sdlc-operator agent to analyze the blueprint, create top-level capability cards, and assign the shared Objective field value."
   <commentary>
-  Requires reading blueprint context, deciding on issue types, creating issues with the sub-issue-first flow, and linking to the parent Objective.
+  Requires reading blueprint context, deciding on issue types, creating issues, and assigning Objective grouping without inventing a parent issue.
   </commentary>
   </example>
 
@@ -71,9 +71,10 @@ You are deeply familiar with the Infiquetra SDLC process as documented in the
 - **Work hierarchy**: Initiative → Objective → Capability (3 tiers). Initiative + Objective
   are **single-select project FIELDS** (decided 2026-05-03 — see
   `infiquetra-sdlc/docs/engineering-journal/DECISIONS.md`), NOT labels.
-- **6 issue types**: Capability, Enhancement, Defect, Exploration, Context-Update, Objective.
-  **Three are contract-bearing** (capability, enhancement, defect); **three are
-  non-actionable** (objective, exploration, context-update). Verified
+- **5 issue types**: Capability, Enhancement, Defect, Exploration, Context-Update.
+  Objective is never an issue type — it is a project FIELD plus an Outcome Scorecard doc.
+  **Three are contract-bearing** (capability, enhancement, defect); **two are
+  non-actionable** (exploration, context-update). Verified
   2026-05-04 against `infiquetra-sdlc/.github/ISSUE_TEMPLATE/*.yml`.
 
   Field availability is live-discovered; prompts skip fields that do not exist on the target
@@ -134,7 +135,7 @@ The plugin's `issue create` subcommand encodes the interactive version:
 
 ```bash
 # Sub-issue-first interactive flow (Phase C)
-python3 "$SCRIPT" issue create --repo <repo> --type <capability|enhancement|defect|exploration|context-update|objective>
+python3 "$SCRIPT" issue create --repo <repo> --type <capability|enhancement|defect|exploration|context-update>
 
 # With pre-supplied parent (skips the sub-issue prompt):
 python3 "$SCRIPT" issue create --repo <repo> --type capability \
@@ -148,7 +149,7 @@ This is a 10-step flow (full details in `issue_create` docstring):
 3. Project discovery (which project the repo maps to)
 4. Per-project schema discovery — silently skip prompts for missing fields
 5. Field-value prompts (Initiative, Objective, Status — defaults from `~/.gemini/sdlc-defaults.json`)
-6. Capability-adaptive prompts (XS/S/M/L/XL etc., for capability/objective types only)
+6. Capability-adaptive prompts (XS/S/M/L/XL etc., for capability cards only)
 7. Browser flow via `gh issue create --web`
 8. Operator pastes back the issue number
 9. Apply post-create metadata (labels, board add, fields, sub-issue link)
@@ -168,7 +169,7 @@ queue/source text that should become an issue only after review.
 ```bash
 python3 "$SCRIPT" issue prepare \
     --repo <repo> \
-    --type <capability|enhancement|defect|exploration|context-update|objective> \
+    --type <capability|enhancement|defect|exploration|context-update> \
     --team <asgard|campps> \
     --project <asgard|campps> \
     --risk <low|medium|high> \
@@ -218,7 +219,7 @@ python3 "$SCRIPT" flow link-sub-issue \
     --parent-repo campps-context-library --parent-number <P> \
     --child-repo <repo> --child-number <N>
 
-# 6. (Optional) Link to milestone if the parent Objective has one
+# 6. (Optional) Link to milestone if the card's Objective has one
 python3 "$SCRIPT" milestones link --repo <repo> --issue <N> --milestone <M>
 
 # 7. Pre-flight validate the card body
@@ -246,8 +247,9 @@ python3 "$SCRIPT" board standup --project campps
 
 ### New Initiative + Objective Setup (end-to-end)
 
-Sets up the project-field options for an Initiative, creates the Objective issue, and links
-its milestone when useful. Live-discover fields first; create missing fields per
+Sets up the project-field options for an Initiative, creates the Outcome Scorecard in the
+owning context library, and links an optional milestone when useful. It never creates an
+Objective issue. Live-discover fields first; create missing fields per
 `infiquetra-sdlc/docs/operations/operational-reference.md`.
 
 ```bash
@@ -268,21 +270,20 @@ python3 "$SCRIPT" flow field-options --project campps --field Objective
 python3 "$SCRIPT" fields create-option --project campps \
     --field Initiative --option <new-name>
 
-# 5. Create the Objective issue in the appropriate blueprint repo
-gh issue create --repo infiquetra/<blueprint-repo> --template objective.yml \
-    --title "<Objective name>" --body "..."
+# 5. Create the Outcome Scorecard doc in the owning context-library repo
+#    (follow that repo's objective/scorecard convention).
 
 # 6. (Optional) Create a per-repo Milestone for PR-rollup view
 python3 "$SCRIPT" milestones create --repo <consumer-repo> \
     --title "<Objective>" --due-date <YYYY-MM-DD>
 
-# 7. Add the Objective issue as a new option on the Objective project field
+# 7. Add the Objective as a project-field option
 python3 "$SCRIPT" fields create-option --project campps \
     --field Objective --option "<Objective name>"
 
-# 8. Set the Objective field on the Objective issue itself (self-referential)
+# 8. Set the Objective field on each Capability and executable child
 python3 "$SCRIPT" flow set-field --project campps \
-    --repo <blueprint-repo> --number <N> \
+    --repo <work-repo> --number <N> \
     --field Objective --option "<Objective name>"
 ```
 
@@ -291,8 +292,8 @@ python3 "$SCRIPT" flow set-field --project campps \
 Per the 2026-05-03 DECISION, Objectives are tracked via the project's Objective field, not
 labels or milestones-only.
 
-If the Objective project field is absent, fall back to the parent Objective issue's
-sub-issue tree (`gh sub-issue list <parent>`).
+If the Objective project field is absent, stop and create or repair the field.
+Do not fall back to a parent Objective issue; that recreates the retired model.
 
 ```bash
 # 0. Discovery first — `gh project item-list` flattens project-field values into top-level
@@ -399,7 +400,7 @@ default routing, so an unmapped repo must name its board.
 ### How to handle actionability?
 - Auto-applied by issue templates: `needs-plan` + the type label for actionable types
   (capability/enhancement/defect); type + context labels for non-actionable types
-  (objective/exploration/context-update)
+  (exploration/context-update)
 - Current actionable templates also apply `needs-plan` and the type label
 - Cards are picked up from the board; there is no label-gated dispatch filter
 

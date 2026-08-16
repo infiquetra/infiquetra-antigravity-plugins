@@ -52,9 +52,6 @@ ACTIONABLE_TEMPLATE_NOTES = {
 }
 
 NON_ACTIONABLE_TEMPLATE_NOTES = {
-    "objective": (
-        "Objective coordinates multiple capabilities and should not be treated as a Hermes task card."
-    ),
     "exploration": (
         "Exploration produces research, recommendations, or POC findings rather than production code."
     ),

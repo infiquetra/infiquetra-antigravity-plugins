@@ -17,9 +17,9 @@ def test_sdlc_manager_metadata_match() -> None:
     plugin_json = json.loads(_read(PLUGIN_ROOT / "plugin.json"))
 
     assert plugin_json["name"] == "mission-control"
-    assert plugin_json["version"] == "2.9.0"
+    assert plugin_json["version"] == "2.10.0"
     changelog = _read(PLUGIN_ROOT / "CHANGELOG.md")
-    assert changelog.split("## [", 1)[1].startswith("2.9.0]")
+    assert changelog.split("## [", 1)[1].startswith("2.10.0]")
     assert "CAMPPS" in plugin_json["description"]
     assert "Mount Olympus" not in plugin_json["description"]
     assert "campps" in plugin_json["keywords"]
@@ -40,6 +40,8 @@ def test_issue_type_reference_uses_current_template_labels() -> None:
     assert "`capability`, `needs-analysis` (auto-applied by template)" not in issue_types
     assert "`enhancement`, `needs-analysis` (auto-applied by template)" not in issue_types
     assert "`defect`, `needs-triage` (auto-applied by template)" not in issue_types
+    # `objective` is a project field plus a scorecard, never a creatable type label
+    assert "Current template labels: `objective`" not in issue_types
     assert "`objective:{short-name}`" not in issue_types
     assert "`initiative:{name}`" not in issue_types
 
@@ -48,8 +50,11 @@ def test_operator_prompt_honors_the_card_contract_split() -> None:
     operator = _read(PLUGIN_ROOT / "agents/sdlc-operator.md")
 
     assert "(capability/enhancement/defect)" in operator
-    assert "(objective/exploration/context-update)" in operator
+    assert "(exploration/context-update)" in operator
     assert "(capability/enhancement/defect/exploration/context-update)" not in operator
+    # Objective is a project field plus a scorecard, not a sixth issue type.
+    assert "(objective/exploration/context-update)" not in operator
+    assert "--template objective.yml" not in operator
     assert "Step 2: Applied labels (capability, needs-plan)" in operator
     assert "hermes-task" not in operator
     assert "hermes-not-actionable" not in operator

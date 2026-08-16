@@ -1,8 +1,8 @@
 ---
 name: issues
 description: |
-  Create and manage SDLC issues in Infiquetra GitHub repositories using the 6-type issue
-  taxonomy: capability, enhancement, defect, exploration, context-update, and objective.
+  Create and manage SDLC issues in Infiquetra GitHub repositories using the 5-type issue
+  taxonomy: capability, enhancement, defect, exploration, and context-update.
   Handles issue type selection, template-guided creation, type label application, project
   board assignment, and milestone linking.
 when_to_use: |
@@ -40,7 +40,7 @@ when_to_use: |
 
 # SDLC Issues
 
-Create and manage SDLC issues across Infiquetra repositories using the 6-type taxonomy.
+Create and manage SDLC issues across Infiquetra repositories using the 5-type taxonomy.
 Handles type selection, template-guided creation, type label application, and project board
 assignment.
 
@@ -54,16 +54,18 @@ $INFIQUETRA_SDLC_PATH/../infiquetra-antigravity-plugins/plugins/mission-control/
 
 ## Issue Types
 
-Six issue types cover all Infiquetra work:
+Five issue types cover all Infiquetra work:
 
 | Type | Card Contract | Duration | When to Use |
 |------|---------------|----------|-------------|
 | **capability** | Required | 1-4 weeks | New end-to-end deployable functionality |
 | **enhancement** | Required | 2-5 days | Improving existing functionality |
 | **defect** | Required | Hours-2 days | Broken functionality that an agent can fix |
-| **objective** | Not required | 2-8 weeks | Coordinating multiple capabilities with a target date |
 | **exploration** | Not required | 1-3 days | Research, POC, or architectural investigation |
 | **context-update** | Not required | Hours-1 day | Updating Blueprint repository documentation |
+
+Objective is not an issue type. It is an `Objective` project-field option plus an Outcome
+Scorecard doc; Capabilities carry the field value and are top-level by default.
 
 See `references/issue-types.md` for the complete guide and decision tree.
 See `references/templates-reference.md` for the generated template field and label reference.
@@ -105,7 +107,7 @@ Optional actionable sections include `Notes / conventions`. Capability cards als
 
 ## Non-actionable Templates
 
-Objective, Exploration, and Context Update templates carry only their type and context labels.
+Exploration and Context Update templates carry only their type and context labels.
 Do not present these as actionable task cards or dispatch them directly to agents. Use them for
 coordination, research, or documentation context.
 
@@ -202,7 +204,6 @@ After template creation, apply labels and add to the project board where applica
 
 **Non-actionable templates**:
 
-- `objective` -> `objective`
 - `exploration` -> `exploration`, `research`
 - `context-update` -> `context-update`, `documentation`
 
@@ -372,7 +373,6 @@ each to the objective parent or milestone.
 
 | Type | Labels |
 |------|--------|
-| `objective` | `objective` |
 | `exploration` | `exploration`, `research` |
 | `context-update` | `context-update`, `documentation` |
 
@@ -395,5 +395,5 @@ each to the objective parent or milestone.
 
 ## Reference Documents
 
-- `references/issue-types.md` — Complete guide to all 6 issue types with decision tree
+- `references/issue-types.md` — Complete guide to all 5 issue types with decision tree
 - `references/templates-reference.md` — Generated view of canonical issue templates

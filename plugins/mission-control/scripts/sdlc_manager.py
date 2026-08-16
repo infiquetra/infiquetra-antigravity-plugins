@@ -2232,7 +2232,6 @@ def rollout_gap_analysis(repo: str, fmt: str) -> None:
         "defect.yml",
         "enhancement.yml",
         "exploration.yml",
-        "objective.yml",
     ]
 
     gaps = []
@@ -3252,7 +3251,6 @@ _ISSUE_TYPES = (
     "defect",
     "exploration",
     "context-update",
-    "objective",
 )
 # Active prepared-issue teams (KTD17): Asgard (shaping/rapid-action profile) and
 # CAMPPS (strict actionable dispatch profile on the initiative execution board).
@@ -3264,7 +3262,6 @@ _ISSUE_TYPE_LABELS = {
     "capability": ["capability", "needs-plan"],
     "enhancement": ["enhancement", "needs-plan"],
     "defect": ["defect", "needs-plan"],
-    "objective": ["objective"],
     "exploration": ["exploration", "research"],
     "context-update": ["context-update", "documentation"],
 }
@@ -3328,7 +3325,7 @@ _CONTRACT_ISSUE_TYPES = frozenset(
 # When the operator runs the field-creation runbook in
 # `infiquetra-sdlc/docs/operations/operational-reference.md`, the
 # additional prompts light up automatically.
-_CAPABILITY_ADAPTIVE_TYPES = frozenset({"capability", "objective"})
+_CAPABILITY_ADAPTIVE_TYPES = frozenset({"capability"})
 
 # ---------------------------------------------------------------------------
 # Prepared-issue compile + approve machinery (U11)
@@ -3862,8 +3859,7 @@ def _contract_scaffold_body(
 # /plan's per-unit tier table (saga's tier_defaults.resolve_tier_for_plan reads
 # it; precedence there is repo overlay > this band > shared registry). The map
 # mirrors tier_policy.json's work-shape bands: judgment→gemini-3.1-pro/high,
-# mechanical→gemini-3.1-pro/medium, read-only-survey→gemini-3.1-pro/low. `objective` is a
-# parent tracking card with no execution tier of its own — no band stamped.
+# mechanical→gemini-3.1-pro/medium, read-only-survey→gemini-3.1-pro/low.
 _TIER_BAND_HEADER = "Recommended Tier Band"
 _ISSUE_TYPE_TIER_BANDS: dict[str, tuple[str, str] | None] = {
     "capability": ("gemini-3.1-pro", "high"),
@@ -3871,14 +3867,13 @@ _ISSUE_TYPE_TIER_BANDS: dict[str, tuple[str, str] | None] = {
     "defect": ("gemini-3.1-pro", "high"),
     "exploration": ("gemini-3.5-flash", "low"),
     "context-update": ("gemini-3.5-flash", "medium"),
-    "objective": None,
 }
 
 
 def derive_tier_band(issue_type: str) -> dict[str, str] | None:
     """Type→band mapping for the stamped `### Recommended Tier Band` field (AC5).
 
-    Returns ``{"model", "effort"}`` or None (unknown type / objective — no band).
+    Returns ``{"model", "effort"}`` or None for an unknown type.
     """
     band = _ISSUE_TYPE_TIER_BANDS.get(issue_type)
     if band is None:
@@ -4845,17 +4840,17 @@ def _safe_input(prompt: str) -> str | None:
 
 
 def _select_issue_type(default: str | None = None) -> str:
-    """Decision-tree prompt for the 6 issue types. Returns the chosen
+    """Decision-tree prompt for the five issue types. Returns the chosen
     type. `default` overrides the built-in 'capability' default if set."""
     print("\nIssue Type Selection")
     print("=" * 40)
     print("Decision tree:")
-    print("  1. Coordinating multiple capabilities with a target date? -> OBJECTIVE")
-    print("  2. Broken in production? -> DEFECT")
-    print("  3. New end-to-end deployable functionality? -> CAPABILITY")
-    print("  4. Improving existing functionality? -> ENHANCEMENT")
-    print("  5. Researching or investigating? -> EXPLORATION")
-    print("  6. Updating documentation? -> CONTEXT UPDATE")
+    print("  1. Broken in production? -> DEFECT")
+    print("  2. New end-to-end deployable functionality? -> CAPABILITY")
+    print("  3. Improving existing functionality? -> ENHANCEMENT")
+    print("  4. Researching or investigating? -> EXPLORATION")
+    print("  5. Updating documentation? -> CONTEXT UPDATE")
+    print("  Objective is a project field plus scorecard, not an issue type.")
     print()
     fallback = default if default in _ISSUE_TYPES else "capability"
     answer = _safe_input(f"Select type (or press Enter for '{fallback}'): ")
@@ -5036,6 +5031,11 @@ def _apply_post_create_metadata(
 
     Steps 2-3 require `project_name` to be set; step 1 always runs;
     step 4 requires `parent`."""
+    if issue_type not in _ISSUE_TYPES:
+        raise RuntimeError(
+            f"Unknown or retired issue type {issue_type!r}; expected one of {', '.join(_ISSUE_TYPES)}"
+        )
+
     issue_ref = f"{repo}#{issue_number}"
     print(f"\nApplying metadata to {issue_ref}...")
     # Cache config once — saves a load_config() round-trip on board_add.
@@ -5158,7 +5158,7 @@ def issue_create(
       3. Discover project the repo maps to (if any)
       4. Per-project schema discovery: which project fields exist?
       5. Prompt for field values, defaults from ~/.gemini/mission-control/sdlc-defaults.json
-      6. Capability-adaptive: prompt for Size if type is capability/objective AND project exposes the field
+      6. Capability-adaptive: prompt for Size if type is capability AND project exposes the field
       7. Open `gh issue create --web` in browser; operator fills body
       8. Operator pastes back the issue number
       9. Apply the canonical type labels, project field values, sub-issue link
@@ -5246,7 +5246,7 @@ def issue_create(
         if chosen:
             field_values["Status"] = chosen
 
-    # Step 6: capability-adaptive fields (only for capability/objective AND
+    # Step 6: capability-adaptive fields (only for capability AND
     # only when the project exposes the field)
     if issue_type in _CAPABILITY_ADAPTIVE_TYPES and project_name and not skip_metadata:
         for adaptive_field in (
@@ -5410,14 +5410,7 @@ def main() -> None:
     issue_create_p.add_argument("--repo", required=True, type=_normalize_repo_arg)
     issue_create_p.add_argument(
         "--type",
-        choices=[
-            "capability",
-            "enhancement",
-            "defect",
-            "exploration",
-            "context-update",
-            "objective",
-        ],
+        choices=_ISSUE_TYPES,
         help="Issue type (uses template). If omitted, decision-tree prompts for it.",
     )
     issue_create_p.add_argument(
@@ -5439,14 +5432,7 @@ def main() -> None:
     issue_prepare_p.add_argument(
         "--type",
         required=True,
-        choices=[
-            "capability",
-            "enhancement",
-            "defect",
-            "exploration",
-            "context-update",
-            "objective",
-        ],
+        choices=_ISSUE_TYPES,
     )
     issue_prepare_p.add_argument("--team", required=True, choices=_TEAM_CHOICES)
     issue_prepare_p.add_argument("--project", required=True, choices=PROJECT_CHOICES)

@@ -325,7 +325,7 @@ def test_recommended_tier_band_field() -> None:
         "model": "gemini-3.5-flash",
         "effort": "low",
     }
-    # Parent tracking cards carry no execution tier of their own.
+    # `objective` is a retired issue type; it maps to no band, like any unknown type.
     assert sdlc_manager.derive_tier_band("objective") is None
     assert sdlc_manager.derive_tier_band("nonsense-type") is None
 
@@ -340,7 +340,7 @@ def test_tier_band_stamped_on_compiled_body() -> None:
     restamped = sdlc_manager._append_tier_band(body, "defect")
     assert restamped.count("### Recommended Tier Band") == 1
 
-    # No band for objective (parent card).
+    # No band for a retired or unknown type.
     obj_body = sdlc_manager._source_to_issue_body(
         "Track the initiative", "objective", "campps", "infiquetra/widgets", None, None
     )
