@@ -72,8 +72,8 @@ You are deeply familiar with the Infiquetra SDLC process as documented in the
   are **single-select project FIELDS** (decided 2026-05-03 — see
   `infiquetra-sdlc/docs/engineering-journal/DECISIONS.md`), NOT labels.
 - **6 issue types**: Capability, Enhancement, Defect, Exploration, Context-Update, Objective.
-  **Three are Hermes-actionable** (`hermes-task`: capability, enhancement, defect); **three are
-  non-actionable** (`hermes-not-actionable`: objective, exploration, context-update). Verified
+  **Three are contract-bearing** (capability, enhancement, defect); **three are
+  non-actionable** (objective, exploration, context-update). Verified
   2026-05-04 against `infiquetra-sdlc/.github/ISSUE_TEMPLATE/*.yml`.
 
   Field availability is live-discovered; prompts skip fields that do not exist on the target
@@ -199,7 +199,7 @@ interactive flow:
 gh issue create --repo infiquetra/<repo> --template <type>.yml --title "..." --body "..."
 
 # 2. Apply template labels if the issue form did not apply them
-gh issue edit <N> --repo infiquetra/<repo> --add-label "hermes-task,needs-plan,<type-label>"
+gh issue edit <N> --repo infiquetra/<repo> --add-label "needs-plan,<type-label>"
 
 # 3. Add to the default repo-mapped board, or pass --project for Operations / Asgard
 python3 "$SCRIPT" board add --repo <repo> --number <N>
@@ -321,8 +321,8 @@ python "$SCRIPT" milestones progress --repo <repo> --milestone <N>
 3. Map each item to the appropriate consumer repo
 4. For each item:
    a. Create the issue with the right template + sub-issue parent
-   b. Apply template labels: `hermes-task` + `needs-plan` + type label for actionable cards,
-      or `hermes-not-actionable` + context labels for non-actionable cards
+   b. Apply template labels: `needs-plan` + type label for actionable cards,
+      or the type + context labels for non-actionable cards
    c. Add to the target board
    d. Set Initiative + Objective + Status fields
    e. Link as sub-issue of the Objective
@@ -396,12 +396,12 @@ default routing, so an unmapped repo must name its board.
 - Useful when the operator wants the per-milestone PR-rollup view in GitHub
 - Skip when not needed; the Objective field alone is sufficient for tracking
 
-### How to handle Hermes-actionability?
-- Auto-applied by issue templates: `hermes-task` for actionable types
-  (capability/enhancement/defect); `hermes-not-actionable` for non-actionable types
+### How to handle actionability?
+- Auto-applied by issue templates: `needs-plan` + the type label for actionable types
+  (capability/enhancement/defect); type + context labels for non-actionable types
   (objective/exploration/context-update)
 - Current actionable templates also apply `needs-plan` and the type label
-- The orchestrator silently skips cards without `hermes-task`
+- Cards are picked up from the board; there is no label-gated dispatch filter
 
 ### Initiative + Objective: NEVER use labels
 - These are project FIELDS (decided 2026-05-03). Don't apply `objective:*` or `initiative:*`
@@ -431,7 +431,7 @@ For multi-step operations, report progress clearly:
 
 ```
 Step 1: Created capability issue #142 in athena-service
-Step 2: Applied labels (hermes-task, capability, needs-plan)
+Step 2: Applied labels (capability, needs-plan)
 Step 3: Added to CAMPPS board
 Step 4: Set Initiative=platform-quality on #142 (project field, not label)
 Step 5: Set Objective=Auth Pilot on #142

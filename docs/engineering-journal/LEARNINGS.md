@@ -25,6 +25,24 @@
 
 ---
 
+## 2026-08-16
+
+### A cross-repo generated doc turns a sibling repo's merge into this repo's red test  {#template-sync-cross-repo-coupling}
+
+**Context.** Porting the `hermes-task` / `hermes-not-actionable` retirement from `infiquetra-claude-plugins` (commit `bfc4ac67`) into mission-control. Before touching a single file, the baseline test run was already red — one failure, in a suite nobody here had changed.
+
+**Evidence.** `uv run python -m pytest -q` on a clean `main` at `18164bc`: 1768 passed, 1 failed. The failure was `plugins/mission-control/tests/test_template_sync.py::test_generated_reference_matches_checked_in_file`, whose diff read `- bility\`, \`needs-plan` / `+ bility\`, \`hermes-task\`, \`needs-plan`. Nothing in this repo had moved; `infiquetra-sdlc` had. Its five issue templates on `origin/main` now carry `labels: ["capability", "needs-plan"]` with both markers gone.
+
+**Mechanism.** `plugins/mission-control/scripts/sync_template_docs.py` renders `skills/issues/references/templates-reference.md` by reading the canonical GitHub issue templates *live* out of `$INFIQUETRA_SDLC_PATH` (default `~/workspace/infiquetra/infiquetra-sdlc`). The checked-in reference is therefore a function of another repository's working tree. When the sibling repo merged the paired label removal, this repo's regenerate-and-diff test started comparing fresh output against a stale committed file. In CI the same test skips, because the sibling checkout does not exist there — so the coupling is invisible to CI and visible only to whoever has both repos on disk.
+
+**Fix.** Ported the change and regenerated: `uv run python plugins/mission-control/scripts/sync_template_docs.py`. The regenerated `templates-reference.md` came out byte-identical to the Claude plugin's post-change copy (both at blob `ac056f6`), which is a free cross-implementation check that the two renderers agree.
+
+**What surprised.** The red test was a *correct* signal pointing at work not yet done, not a broken test — and it had been sitting there since the sibling repo merged. A baseline run before editing is what separated "pre-existing failure caused by the sibling repo" from "I broke this."
+
+**Generalizable rule.** Always capture a full baseline test run before starting a port, and treat any generator that reads outside its own repository as a scheduled failure with no owner: it goes red on a *sibling repo's* merge, on the machine of whoever happens to have both checkouts, and never in CI. When you find one, record which sibling commit it tracks — otherwise the next person reads a confident local failure as their own regression.
+
+**Refs.** `plugins/mission-control/scripts/sync_template_docs.py::render_reference`, `plugins/mission-control/tests/test_template_sync.py`.
+
 ## 2026-08-13
 
 ### Doctor `install=missing` can be a dangling host symlink, not a missing plugin  {#doctor-dangling-symlink}

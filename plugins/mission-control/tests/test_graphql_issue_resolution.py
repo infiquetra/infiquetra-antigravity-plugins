@@ -86,7 +86,7 @@ def test_get_item_labels_reads_issue_union_node() -> None:
         "repository": {
             "issueOrPullRequest": {
                 "__typename": "Issue",
-                "labels": {"nodes": [{"name": "hermes-task"}, {"name": "needs-plan"}]},
+                "labels": {"nodes": [{"name": "capability"}, {"name": "needs-plan"}]},
             }
         }
     }
@@ -94,7 +94,7 @@ def test_get_item_labels_reads_issue_union_node() -> None:
     with patch.object(sdlc_manager, "_graphql", return_value=response):
         labels = sdlc_manager._get_item_labels("infiquetra-claude-plugins", 280)
 
-    assert labels == ["hermes-task", "needs-plan"]
+    assert labels == ["capability", "needs-plan"]
 
 
 def test_get_item_labels_reads_pull_request_union_node() -> None:
