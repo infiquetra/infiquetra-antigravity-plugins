@@ -1,5 +1,59 @@
 # Changelog — mission-control
 
+## [2.10.0] — 2026-08-16
+
+### Removed — `objective` is no longer an issue type
+
+The canonical taxonomy is five types: capability, enhancement, defect, exploration, and
+context-update. An Objective is a project FIELD option plus an Outcome Scorecard doc in the
+owning context library; Capabilities carry the field value and are top-level by default. This
+catches the plugin up to a decision the rest of the SDLC had already made — `infiquetra-sdlc`
+ships exactly five issue templates and has no `objective.yml`.
+
+- `_ISSUE_TYPES`, `_ISSUE_TYPE_LABELS`, `_ISSUE_TYPE_TIER_BANDS`, and both `--type` argparse
+  choice lists drop `objective`. The two argparse lists now read `_ISSUE_TYPES` directly
+  instead of repeating the taxonomy, so they cannot drift again.
+- `_apply_post_create_metadata` now raises on an unknown or retired type rather than silently
+  applying whatever labels it finds. Creating an `objective` card fails loudly.
+- `_CAPABILITY_ADAPTIVE_TYPES` is `{"capability"}`; the size/value/risk prompts no longer fire
+  for a type that cannot be created.
+- `rollout gap-analysis` stops reporting a missing `objective.yml` template that no repository
+  is supposed to have.
+- The interactive decision tree drops the OBJECTIVE branch and states that Objective is a
+  project field plus scorecard.
+- Prompts, skills, and references updated: `issue-types.md` replaces its Objective *type*
+  section with an "Objective Representation" section and renumbers the five types; the
+  `title_contains_objective` auto-label row is removed (no such rule exists in
+  `infiquetra-sdlc/config/labels.json`); the objective workflow and work-hierarchy references
+  now route through the field plus scorecard instead of an Objective issue.
+
+The `Objective` **project field** and the `### Objective` **card-body section** are unchanged
+and remain correct. `config/sdlc-schema.json` and the vendored `config/generated/` contract
+data keep their `objective` entries for exactly that reason.
+
+## [2.9.0] — 2026-08-16
+
+### Changed — retire the `hermes-task` / `hermes-not-actionable` dispatch markers
+
+- `_ISSUE_TYPE_LABELS` no longer applies either marker. The Hermes orchestrator that read them
+  was frozen on 2026-07-18 (empty repository list, plan phase off, webhook relay stopped and
+  disabled), so they marked cards for a consumer that cannot run.
+- Interactive `issue create` now applies the **canonical type labels** instead. That path
+  previously guaranteed only the dispatch marker — not even the type label — so a card whose
+  browser template failed to prefill landed untyped.
+- `_HERMES_ACTIONABLE_TYPES` renamed to `_CONTRACT_ISSUE_TYPES`: it names the types that carry
+  the eight-section card contract, which is what it has actually meant since the orchestrator
+  froze.
+- Generated template reference: `Hermes actionable: yes/no` becomes
+  `Card contract: required/not required`.
+- Prompts, skills, the operator agent, and the triage command updated to match. The claim that
+  "the orchestrator silently skips cards without `hermes-task`" is removed — nothing filters on
+  the label any more.
+
+Ported from the `infiquetra-claude-plugins` change (commit `bfc4ac67`), which is paired with the
+`infiquetra-sdlc` change removing both labels from the five issue templates. Writers stop here;
+the label definitions and the GitHub-side labels are retired separately.
+
 ## [2.8.0] — 2026-07-30
 
 ### Added

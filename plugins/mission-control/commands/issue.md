@@ -14,7 +14,7 @@ issue command; `/issue` remains a compatibility alias.
 
 ## Arguments
 
-- `type` — Optional issue type: `capability`, `enhancement`, `defect`, `exploration`, `context-update`, `objective`
+- `type` — Optional issue type: `capability`, `enhancement`, `defect`, `exploration`, `context-update`
 - `--repo` — Target repository name without the org prefix
 - `--prepare` — Write a reviewable prepared draft and JSON sidecar without mutating GitHub
 - `--draft` — Alias for `--prepare`

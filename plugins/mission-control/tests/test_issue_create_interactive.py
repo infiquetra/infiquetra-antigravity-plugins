@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import sdlc_manager  # noqa: E402
@@ -197,8 +199,13 @@ def test_paired_card_recursion_guard() -> None:
 # --- _apply_post_create_metadata ------------------------------------------
 
 
-def test_metadata_applies_hermes_task_for_actionable_types() -> None:
-    """Capability/enhancement/defect get `hermes-task`."""
+def test_metadata_applies_type_labels_for_actionable_types() -> None:
+    """Capability/enhancement/defect get their type label plus `needs-plan`.
+
+    This path used to guarantee only the retired `hermes-task` dispatch marker —
+    not even the type label — so a card whose browser template failed to prefill
+    landed untyped.
+    """
     with (
         patch.object(sdlc_manager, "_gh") as mock_gh,
         patch.object(sdlc_manager, "board_add"),
@@ -215,23 +222,19 @@ def test_metadata_applies_hermes_task_for_actionable_types() -> None:
             field_values={},
             fmt="text",
         )
-    # Verify hermes-task label was applied
     cmd_calls = [c.args[0] for c in mock_gh.call_args_list]
-    label_call = next((c for c in cmd_calls if "edit" in c and "hermes-task" in str(c)), None)
+    label_call = next((c for c in cmd_calls if "edit" in c and "--add-label" in c), None)
     assert label_call is not None
-    assert "--add-label" in label_call
-    assert "hermes-task" in label_call
+    applied = label_call[label_call.index("--add-label") + 1]
+    assert applied == "capability,needs-plan"
+    assert "hermes" not in applied
 
 
-def test_metadata_applies_hermes_not_actionable_for_objective() -> None:
-    """Objective is the explicit non-actionable type."""
-    with (
-        patch.object(sdlc_manager, "_gh") as mock_gh,
-        patch.object(sdlc_manager, "board_add"),
-        patch.object(sdlc_manager, "flow_set_field"),
-        patch.object(sdlc_manager, "flow_link_sub_issue"),
-        patch.object(sdlc_manager, "load_config", return_value={}),
-    ):
+def test_objective_is_not_a_creatable_issue_type() -> None:
+    """`objective` is a retired issue type — it is a project field plus a scorecard."""
+    assert "objective" not in sdlc_manager._ISSUE_TYPES
+
+    with pytest.raises(RuntimeError, match="Unknown or retired issue type 'objective'"):
         sdlc_manager._apply_post_create_metadata(
             repo="campps-context-library",
             issue_number=1,
@@ -241,18 +244,9 @@ def test_metadata_applies_hermes_not_actionable_for_objective() -> None:
             field_values={},
             fmt="text",
         )
-    cmd_calls = [c.args[0] for c in mock_gh.call_args_list]
-    label_call = next(
-        (c for c in cmd_calls if "edit" in c and "hermes-not-actionable" in str(c)),
-        None,
-    )
-    assert label_call is not None
-    # Verify hermes-task is NOT applied to objective
-    actionable_calls = [c for c in cmd_calls if "hermes-task" in str(c)]
-    assert actionable_calls == []
 
 
-def test_metadata_applies_hermes_not_actionable_for_exploration() -> None:
+def test_metadata_applies_context_labels_for_exploration() -> None:
     """Exploration/context-update are non-actionable template types."""
     with (
         patch.object(sdlc_manager, "_gh") as mock_gh,
@@ -271,12 +265,15 @@ def test_metadata_applies_hermes_not_actionable_for_exploration() -> None:
             fmt="text",
         )
     cmd_calls = [c.args[0] for c in mock_gh.call_args_list]
-    assert any("hermes-not-actionable" in str(call) for call in cmd_calls)
-    assert not any("hermes-task" in str(call) for call in cmd_calls)
+    label_call = next((c for c in cmd_calls if "edit" in c and "--add-label" in c), None)
+    assert label_call is not None
+    applied = label_call[label_call.index("--add-label") + 1]
+    assert applied == "exploration,research"
+    assert not any("hermes" in str(call) for call in cmd_calls)
 
 
 def test_metadata_label_failure_does_not_abort_other_steps() -> None:
-    """If the hermes-task label apply fails, the project field assignment
+    """If the type label apply fails, the project field assignment
     + sub-issue link should still be attempted. Each step is isolated."""
     with (
         patch.object(sdlc_manager, "_gh") as mock_gh,
@@ -306,7 +303,7 @@ def test_metadata_label_failure_does_not_abort_other_steps() -> None:
 
 def test_metadata_skips_field_apply_when_no_project() -> None:
     """If the repo isn't mapped to a project, skip board add + field
-    assignment but still apply hermes labels + sub-issue link."""
+    assignment but still apply type labels + sub-issue link."""
     with (
         patch.object(sdlc_manager, "_gh"),
         patch.object(sdlc_manager, "board_add") as mock_board,

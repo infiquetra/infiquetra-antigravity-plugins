@@ -1,9 +1,9 @@
 ---
 name: issues
 description: |
-  Create and manage SDLC issues in Infiquetra GitHub repositories using the 6-type issue
-  taxonomy: capability, enhancement, defect, exploration, context-update, and objective.
-  Handles issue type selection, template-guided creation, Hermes label application, project
+  Create and manage SDLC issues in Infiquetra GitHub repositories using the 5-type issue
+  taxonomy: capability, enhancement, defect, exploration, and context-update.
+  Handles issue type selection, template-guided creation, type label application, project
   board assignment, and milestone linking.
 when_to_use: |
   Use this skill when the user wants to:
@@ -40,8 +40,8 @@ when_to_use: |
 
 # SDLC Issues
 
-Create and manage SDLC issues across Infiquetra repositories using the 6-type taxonomy.
-Handles type selection, template-guided creation, Hermes label application, and project board
+Create and manage SDLC issues across Infiquetra repositories using the 5-type taxonomy.
+Handles type selection, template-guided creation, type label application, and project board
 assignment.
 
 ## Script Location
@@ -54,24 +54,26 @@ $INFIQUETRA_SDLC_PATH/../infiquetra-antigravity-plugins/plugins/mission-control/
 
 ## Issue Types
 
-Six issue types cover all Infiquetra work:
+Five issue types cover all Infiquetra work:
 
-| Type | Hermes Actionable | Duration | When to Use |
-|------|-------------------|----------|-------------|
-| **capability** | Yes | 1-4 weeks | New end-to-end deployable functionality |
-| **enhancement** | Yes | 2-5 days | Improving existing functionality |
-| **defect** | Yes | Hours-2 days | Broken functionality that an agent can fix |
-| **objective** | No | 2-8 weeks | Coordinating multiple capabilities with a target date |
-| **exploration** | No | 1-3 days | Research, POC, or architectural investigation |
-| **context-update** | No | Hours-1 day | Updating Blueprint repository documentation |
+| Type | Card Contract | Duration | When to Use |
+|------|---------------|----------|-------------|
+| **capability** | Required | 1-4 weeks | New end-to-end deployable functionality |
+| **enhancement** | Required | 2-5 days | Improving existing functionality |
+| **defect** | Required | Hours-2 days | Broken functionality that an agent can fix |
+| **exploration** | Not required | 1-3 days | Research, POC, or architectural investigation |
+| **context-update** | Not required | Hours-1 day | Updating Blueprint repository documentation |
+
+Objective is not an issue type. It is an `Objective` project-field option plus an Outcome
+Scorecard doc; Capabilities carry the field value and are top-level by default.
 
 See `references/issue-types.md` for the complete guide and decision tree.
 See `references/templates-reference.md` for the generated template field and label reference.
 
-## Hermes Actionable Contract
+## Card Contract
 
 Actionable issue types are `capability`, `enhancement`, and `defect`. Their canonical templates
-apply `hermes-task`, `needs-plan`, and the type label.
+apply `needs-plan` and the type label.
 
 Each actionable card must render the following exact H3 section headers in the GitHub issue body:
 
@@ -84,9 +86,9 @@ Each actionable card must render the following exact H3 section headers in the G
 - `### Acceptance criteria`
 - `### Verification`
 
-Hermes validation expects these semantics:
+Card validation expects these semantics:
 
-- `Context library links` is required for Hermes readiness; use `_none_` when no context applies.
+- `Context library links` is required for readiness; use `_none_` when no context applies.
 - `Acceptance criteria` includes at least one `- [ ]` checklist item and names a runnable check.
 - `Verification` includes exact commands, preferably in a fenced shell code block.
 - `Files expected to change` includes at least one path-like line.
@@ -105,9 +107,9 @@ Optional actionable sections include `Notes / conventions`. Capability cards als
 
 ## Non-actionable Templates
 
-Objective, Exploration, and Context Update templates carry `hermes-not-actionable`. Do not present
-these as Hermes task cards or dispatch them directly to agents. Use them for coordination,
-research, or documentation context.
+Exploration and Context Update templates carry only their type and context labels.
+Do not present these as actionable task cards or dispatch them directly to agents. Use them for
+coordination, research, or documentation context.
 
 ## Core Operations
 
@@ -196,21 +198,20 @@ After template creation, apply labels and add to the project board where applica
 
 **Actionable templates**:
 
-- `capability` -> `capability`, `hermes-task`, `needs-plan`
-- `enhancement` -> `enhancement`, `hermes-task`, `needs-plan`
-- `defect` -> `defect`, `hermes-task`, `needs-plan`
+- `capability` -> `capability`, `needs-plan`
+- `enhancement` -> `enhancement`, `needs-plan`
+- `defect` -> `defect`, `needs-plan`
 
 **Non-actionable templates**:
 
-- `objective` -> `objective`, `hermes-not-actionable`
-- `exploration` -> `exploration`, `research`, `hermes-not-actionable`
-- `context-update` -> `context-update`, `documentation`, `hermes-not-actionable`
+- `exploration` -> `exploration`, `research`
+- `context-update` -> `context-update`, `documentation`
 
 **Apply labels manually** via gh CLI when a template did not apply them:
 
 ```bash
-gh issue edit <N> --repo Infiquetra/<repo> --add-label "hermes-task,needs-plan,capability"
-gh issue edit <N> --repo Infiquetra/<repo> --add-label "hermes-not-actionable"
+gh issue edit <N> --repo Infiquetra/<repo> --add-label "needs-plan,capability"
+gh issue edit <N> --repo Infiquetra/<repo> --add-label "exploration,research"
 ```
 
 ### Add to Project Board
@@ -283,7 +284,7 @@ Ask for optional Notes / conventions and Context library links when they would i
 Ask for Capability size only for capability cards and treat it as a human planning hint.
 
 For non-actionable cards, use the fields in `references/templates-reference.md` and preserve the
-`hermes-not-actionable` distinction.
+actionable / non-actionable distinction.
 
 ### Step 4: Create the Issue
 
@@ -297,8 +298,8 @@ gh issue create --repo Infiquetra/<repo> --template <type>.yml
 
 ### Step 5: Verify Labels
 
-1. Confirm actionable templates applied `hermes-task`, `needs-plan`, and the type label.
-2. Confirm non-actionable templates applied `hermes-not-actionable` and their context labels.
+1. Confirm actionable templates applied `needs-plan` and the type label.
+2. Confirm non-actionable templates applied their type and context labels.
 3. Use `flow verify-label` for any required label that is missing.
 
 ### Step 6: Add to Project Board
@@ -364,17 +365,16 @@ each to the objective parent or milestone.
 
 | Type | Labels |
 |------|--------|
-| `capability` | `capability`, `hermes-task`, `needs-plan` |
-| `enhancement` | `enhancement`, `hermes-task`, `needs-plan` |
-| `defect` | `defect`, `hermes-task`, `needs-plan` |
+| `capability` | `capability`, `needs-plan` |
+| `enhancement` | `enhancement`, `needs-plan` |
+| `defect` | `defect`, `needs-plan` |
 
 ### Non-actionable Labels
 
 | Type | Labels |
 |------|--------|
-| `objective` | `objective`, `hermes-not-actionable` |
-| `exploration` | `exploration`, `research`, `hermes-not-actionable` |
-| `context-update` | `context-update`, `documentation`, `hermes-not-actionable` |
+| `exploration` | `exploration`, `research` |
+| `context-update` | `context-update`, `documentation` |
 
 ### Content Labels
 
@@ -387,13 +387,13 @@ each to the objective parent or milestone.
 ## Key Behaviors
 
 - **Always confirm issue type** before creating — wrong type causes downstream confusion.
-- **Preserve Hermes actionable/non-actionable distinction** — only capability, enhancement, and defect are Hermes task cards.
-- **Use exact actionable H3 headers** — the Hermes validator matches section header text.
+- **Preserve the actionable/non-actionable distinction** — only capability, enhancement, and defect carry the card contract.
+- **Use exact actionable H3 headers** — the card validator matches section header text.
 - **Require checklist acceptance criteria** — at least one `- [ ]` item is mandatory.
 - **Require verification commands** — commands should be copy-pasteable and prove success.
 - **Unmapped repos** will warn on board add — this is expected for newer repos.
 
 ## Reference Documents
 
-- `references/issue-types.md` — Complete guide to all 6 issue types with decision tree
+- `references/issue-types.md` — Complete guide to all 5 issue types with decision tree
 - `references/templates-reference.md` — Generated view of canonical issue templates

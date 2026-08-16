@@ -22,6 +22,20 @@
 
 ---
 
+## 2026-08-16
+
+### Split the two senses of "objective" rather than purging the word (commit pending)  {#objective-field-not-issue-type}
+
+**Decision.** In mission-control, `objective` as an **issue type** is removed — from `_ISSUE_TYPES`, `_ISSUE_TYPE_LABELS`, `_ISSUE_TYPE_TIER_BANDS`, `_CAPABILITY_ADAPTIVE_TYPES`, both `--type` argparse choice lists, the `rollout gap-analysis` template list, the interactive decision tree, and the prompt/skill/reference docs. `Objective` as a **project board field** and `### Objective` as a **card-body section heading** are kept untouched, including every `objective` key in `config/sdlc-schema.json` and the vendored `config/generated/issue_contract_data.py`. `_apply_post_create_metadata` now raises `RuntimeError` on an unknown or retired type instead of applying whatever labels it finds.
+
+**Rejected alternatives.** Deleting every `objective` string in the plugin (would break the card contract, whose always-required first section is literally `### Objective`, and would force a re-vendor of a generated artifact guarded by a pinned SHA256 oracle). Leaving the type in place as a harmless extra choice (it is offered to operators by the interactive decision tree and by `--type`, so it is not inert — it produces cards no template exists for). Silently dropping unknown types in the metadata step rather than raising (an operator who types a retired type would get a half-configured card and no error).
+
+**Rationale.** One word carried two live meanings and one dead one. Grepping for the word cannot distinguish them, so the retirement had to be done by sense, not by string. The two surviving senses are load-bearing: the field is how Objectives are actually tracked (2026-05-03 decision), and the section heading is the first required field of every actionable card. Verified against the live source of truth rather than memory — `infiquetra-sdlc` `origin/main` ships exactly five issue templates with no `objective.yml`, and its `config/labels.json` has five `title_contains_*` auto-label rules with no objective rule, which is why the documented rule row was removed as fiction rather than migrated.
+
+**Revisit when.** A board contract reintroduces a dated Outcome proof card as a real issue type; that is a new type with its own template, not a revival of `objective`.
+
+**Refs.** [[template-sync-cross-repo-coupling]], `plugins/mission-control/scripts/sdlc_manager.py`, `plugins/mission-control/skills/issues/references/issue-types.md`.
+
 ## 2026-08-13
 
 ### Approval tables render from the native outcome spec, not an ExecutionSpec  {#approval-table-native-outcome}

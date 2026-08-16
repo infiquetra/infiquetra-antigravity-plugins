@@ -46,12 +46,13 @@ Do not create an Initiative for one-off work or raw operator intent.
 
 **GitHub constructs**:
 
-- Objective issue, when the Objective itself needs discussion and acceptance criteria.
-- Project `Objective` field option for reporting.
+- Project `Objective` field option for reporting. Objective is never an issue type.
+- Outcome Scorecard doc in the owning context library for discussion and acceptance criteria.
 - GitHub Milestone when progress rollup by repo is useful.
-- Native GitHub sub-issues for child work.
+- Native GitHub sub-issues for child work under a Capability.
 
 Use an Objective when multiple issues must land together or when Jeff needs a progress view.
+Assign the field value to every contributing card rather than creating an Objective parent issue.
 
 ---
 

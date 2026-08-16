@@ -166,7 +166,6 @@ template labels, use `../issues/references/templates-reference.md`.
 | `title_contains_defect` | `\[DEFECT\]` in title | `defect`, `needs-triage` |
 | `title_contains_exploration` | `\[EXPLORATION\]` in title | `exploration` |
 | `title_contains_context` | `\[CONTEXT\]` in title | `context-update`, `documentation` |
-| `title_contains_objective` | `\[OBJECTIVE\]` in title | `objective` |
 | `mentions_security` | `security\|vulnerability\|CVE` in title/body | `security` |
 | `mentions_performance` | `performance\|latency\|slow\|timeout` in title/body | `performance` |
 | `mentions_breaking` | `breaking change\|breaking\|backwards incompatible` in title/body | `breaking-change` |

@@ -40,13 +40,19 @@ work items toward a common outcome.
 
 ## Creation Workflow
 
-### 1. Create The Objective Issue
+### 1. Create The Objective Field Option And Scorecard
 
 ```bash
-python3 sdlc_manager.py issue create --repo <repo> --type objective
+python3 sdlc_manager.py flow field-options \
+  --project <project> --field Objective
+
+python3 sdlc_manager.py fields create-option \
+  --project <project> --field Objective --option "<Objective name>"
 ```
 
-Capture:
+Field helpers discover live IDs; never cache option IDs. An Objective is a project
+field plus an Outcome Scorecard doc in the owning context library — never an issue.
+Record in the scorecard:
 
 - Objective name
 - Objective type
@@ -54,6 +60,9 @@ Capture:
 - Success criteria
 - Included or expected child work
 - Risks and explicit non-goals
+
+Assign the field value to every contributing Capability and executable child. Do not
+create or link an Objective parent issue.
 
 ### 2. Create A Milestone When Useful
 

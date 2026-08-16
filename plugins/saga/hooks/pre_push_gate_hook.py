@@ -73,9 +73,29 @@ _COMMAND_WRAPPERS = frozenset({"sudo", "command", "nohup"})
 # fails open. Note `-p` takes a value for sudo but is a plain flag for command.
 _WRAPPER_VALUE_OPTS = {
     "sudo": frozenset(
-        {"-u", "-g", "-C", "-D", "-R", "-T", "-h", "-p", "-r", "-t", "-U", "-P",
-         "--user", "--group", "--chdir", "--close-from", "--other-user", "--host",
-         "--prompt", "--role", "--type"}
+        {
+            "-u",
+            "-g",
+            "-C",
+            "-D",
+            "-R",
+            "-T",
+            "-h",
+            "-p",
+            "-r",
+            "-t",
+            "-U",
+            "-P",
+            "--user",
+            "--group",
+            "--chdir",
+            "--close-from",
+            "--other-user",
+            "--host",
+            "--prompt",
+            "--role",
+            "--type",
+        }
     ),
     "command": frozenset(),
     "nohup": frozenset(),
@@ -116,7 +136,11 @@ def _skip_redirect_prefix(segment: list[str]) -> int:
         token = segment[i]
         if token in {">", ">>", "<", "<<"}:
             i += 1
-            if i < len(segment) and segment[i] not in {">", ">>", "<", "<<", "&", ">&", "<&"} and not segment[i].isdigit():
+            if (
+                i < len(segment)
+                and segment[i] not in {">", ">>", "<", "<<", "&", ">&", "<&"}
+                and not segment[i].isdigit()
+            ):
                 i += 1
             continue
         if token in {"&", ">&", "<&"} or token.isdigit():
@@ -243,7 +267,11 @@ def _skip_env_prefix(segment: list[str]) -> int:
                 if opt in _ENV_OPTS_WITH_VALUE:
                     i += 2
                     continue
-                if any(opt.startswith(name + "=") for name in _ENV_OPTS_WITH_VALUE if name.startswith("--")):
+                if any(
+                    opt.startswith(name + "=")
+                    for name in _ENV_OPTS_WITH_VALUE
+                    if name.startswith("--")
+                ):
                     i += 1
                     continue
                 if opt in _ENV_FLAGS or opt.startswith("--unset="):
