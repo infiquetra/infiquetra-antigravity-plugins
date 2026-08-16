@@ -7,7 +7,6 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-import pytest
 
 from team_scaffold import cli, spec
 
@@ -33,7 +32,13 @@ def _write_spec(tmp_path: pathlib.Path, team: dict) -> pathlib.Path:
 def test_spec_validate_reports_clear_problems(tmp_path: pathlib.Path) -> None:
     path = _write_spec(
         tmp_path,
-        {"name": "bad-team", "display": "Bad Team", "host_group": "agent_vms", "limit_host": "h1", "roles": []},
+        {
+            "name": "bad-team",
+            "display": "Bad Team",
+            "host_group": "agent_vms",
+            "limit_host": "h1",
+            "roles": [],
+        },
     )
     problems = spec.load_spec(path).validate()
     assert "team.roles is empty" in problems
@@ -43,7 +48,13 @@ def test_spec_validate_reports_clear_problems(tmp_path: pathlib.Path) -> None:
 def test_cli_validate_spec_rejects_an_invalid_spec(tmp_path: pathlib.Path, capsys) -> None:
     path = _write_spec(
         tmp_path,
-        {"name": "bad-team", "display": "Bad Team", "host_group": "agent_vms", "limit_host": "h1", "roles": []},
+        {
+            "name": "bad-team",
+            "display": "Bad Team",
+            "host_group": "agent_vms",
+            "limit_host": "h1",
+            "roles": [],
+        },
     )
     assert cli.main(["validate-spec", str(path)]) == 1
     out = capsys.readouterr().out

@@ -31,7 +31,9 @@ ST = _load("spec_table")
 OUTSPEC = _load("outcome_spec")
 
 
-def _unit(unit_id: str, model: str = "gemini-3.1-pro", effort: str = "high", **over: Any) -> dict[str, Any]:
+def _unit(
+    unit_id: str, model: str = "gemini-3.1-pro", effort: str = "high", **over: Any
+) -> dict[str, Any]:
     unit: dict[str, Any] = {
         "unit_id": unit_id,
         "label": f"do {unit_id}",
@@ -56,7 +58,10 @@ def _spec(*units: dict[str, Any], **over: Any) -> Any:
 
 
 def test_every_unit_appears_with_its_declared_tier() -> None:
-    spec = _spec(_unit("U1", "gemini-3.1-pro", "high"), _unit("U2", "gemini-3.5-flash", "low", depends_on=["U1"]))
+    spec = _spec(
+        _unit("U1", "gemini-3.1-pro", "high"),
+        _unit("U2", "gemini-3.5-flash", "low", depends_on=["U1"]),
+    )
     out = ST.render(spec)
     assert "`U1`" in out and "`U2`" in out
     assert "`gemini-3.1-pro:high`" in out
@@ -185,7 +190,10 @@ def _outcome_dict() -> dict[str, Any]:
                 "state": "pending",
                 "destructive": True,
                 "gated": True,
-                "sandbox": {"mutation_policy": "read-only", "workspace_isolation": "owned-worktree"},
+                "sandbox": {
+                    "mutation_policy": "read-only",
+                    "workspace_isolation": "owned-worktree",
+                },
                 "depends_on": ["a-build"],
             },
         ],
@@ -211,7 +219,9 @@ def test_outcome_table_warns_on_destructive_and_gated_nodes() -> None:
     assert "approve each explicitly" in table
 
 
-def test_outcome_cli_renders_from_a_json_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_outcome_cli_renders_from_a_json_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     path = tmp_path / "outcome-spec.json"
     path.write_text(json.dumps(_outcome_dict()), encoding="utf-8")
     assert ST.main([str(path), "--outcome", "--backend", "inline"]) == 0
@@ -234,19 +244,25 @@ def test_concurrent_writer_section_marks_a_clean_wave_explicitly() -> None:
     assert "No two concurrent units declare the same file" in out
 
 
-def test_outcome_cli_missing_file_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_outcome_cli_missing_file_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     assert ST.main([str(tmp_path / "nope.json"), "--outcome"]) == 2
     assert "no such spec" in capsys.readouterr().err
 
 
-def test_outcome_cli_malformed_json_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_outcome_cli_malformed_json_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     path = tmp_path / "bad.json"
     path.write_text("{not json", encoding="utf-8")
     assert ST.main([str(path), "--outcome"]) == 2
     assert "not valid JSON" in capsys.readouterr().err
 
 
-def test_outcome_cli_invalid_spec_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_outcome_cli_invalid_spec_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     path = tmp_path / "outcome-spec.json"
     path.write_text(json.dumps({"nodes": []}), encoding="utf-8")
     assert ST.main([str(path), "--outcome"]) == 2

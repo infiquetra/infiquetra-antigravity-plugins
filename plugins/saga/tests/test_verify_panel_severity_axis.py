@@ -81,8 +81,8 @@ def test_emitted_harness_contains_advisory_helpers_and_return() -> None:
     assert "function __halt" in script
     assert "Array.isArray(v.refuted_deliverable) && Array.isArray(v.advisory_corrections)" in script
     assert "v.refuted_deliverable.length > 0" in script
-    assert "__logAdvisory(\"U1\"" in script
-    assert "return { units: { \"U1\": U1 }, advisory_corrections: __advisories }" in script
+    assert '__logAdvisory("U1"' in script
+    assert 'return { units: { "U1": U1 }, advisory_corrections: __advisories }' in script
 
 
 def test_even_panel_under_strength_gate_never_fails_open() -> None:

@@ -317,9 +317,15 @@ def render_outcome(spec: outspec.OutcomeSpec, *, backend: str | None = None) -> 
     out.append("| Subplot | Kind | Backend | State | Flags | Sandbox | Depends on |")
     out.append("|---|---|---|---|---|---|---|")
     for node in spec.nodes:
-        flags = [flag for flag, on in
-                 (("gated", node.gated), ("risky", node.risky), ("destructive", node.destructive))
-                 if on]
+        flags = [
+            flag
+            for flag, on in (
+                ("gated", node.gated),
+                ("risky", node.risky),
+                ("destructive", node.destructive),
+            )
+            if on
+        ]
         flag_text = ", ".join(flags) if flags else "—"
         sandbox = "ambient"
         if node.sandbox is not None:
@@ -339,15 +345,12 @@ def render_outcome(spec: outspec.OutcomeSpec, *, backend: str | None = None) -> 
         if destructive:
             named = "`, `".join(destructive)
             out.append(
-                f"⚠️ Destructive nodes — `{named}` — mutate external state; approve each "
-                "explicitly."
+                f"⚠️ Destructive nodes — `{named}` — mutate external state; approve each explicitly."
             )
             out.append("")
         if gated:
             named = "`, `".join(gated)
-            out.append(
-                f"⚠️ Gated nodes — `{named}` — require an explicit gate before dispatch."
-            )
+            out.append(f"⚠️ Gated nodes — `{named}` — require an explicit gate before dispatch.")
             out.append("")
 
     return "\n".join(out).rstrip() + "\n"
