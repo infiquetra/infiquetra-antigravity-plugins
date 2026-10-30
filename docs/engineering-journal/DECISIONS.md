@@ -22,6 +22,20 @@
 
 ---
 
+## 2026-10-29
+
+### Bound PR validation without canceling publication (commit pending)  {#ci-pr-cancellation}
+
+**Decision.** Group PR runs by workflow and PR number with cancellation enabled. Give every other run its own run-ID/attempt group. Set the tests job timeout to 10 minutes and the other five validation jobs to 5 minutes; retain the six check identities and publication dependency chain.
+
+**Rationale.** Successful hosted Ubuntu 24.04 logs from run `31754537166` span about 90 seconds for tests and 8–14 seconds for each short job. The bounds leave substantial headroom. Run-specific groups prevent pushes, manual runs, and either release-tag pattern from canceling or queuing one another. Existing uv cache and pruning defaults remain in place.
+
+**Rejected alternatives.** Shared non-PR groups could interfere with publication. Job consolidation needs separate measurements and context-migration review.
+
+**Revisit when.** Runner labels change or successful hosted tail durations approach these limits. Confirm headroom on the first candidate hosted run.
+
+**Refs.** [CI workflow](../../.github/workflows/ci.yml), [sampled hosted run](https://github.com/infiquetra/infiquetra-antigravity-plugins/actions/runs/31754537166).
+
 ## 2026-08-16
 
 ### Split the two senses of "objective" rather than purging the word (commit pending)  {#objective-field-not-issue-type}
