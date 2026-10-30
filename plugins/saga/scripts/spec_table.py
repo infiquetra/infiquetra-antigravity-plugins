@@ -220,7 +220,7 @@ def render(
     # work was split at planning time — which makes the approval gate the last place it is cheap
     # to fix.
     try:
-        conflicts = getattr(es, "wave_file_conflicts", lambda _: [])(spec)
+        conflicts: list[es.WaveConflict] = getattr(es, "wave_file_conflicts", lambda _: [])(spec)
     except es.SpecError:
         conflicts = []  # dependency_layers already reported the cycle above; do not double-report
     parallel_waves = [layer for layer in layers if len(layer) > 1]
@@ -386,11 +386,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.outcome:
-            spec = _load_outcome(args.spec)
-            table = render_outcome(spec, backend=args.backend)
+            outcome_spec = _load_outcome(args.spec)
+            table = render_outcome(outcome_spec, backend=args.backend)
         else:
-            spec = _load(args.spec)
-            table = render(spec, backend=args.backend, concurrency=args.concurrency)
+            execution_spec = _load(args.spec)
+            table = render(execution_spec, backend=args.backend, concurrency=args.concurrency)
     except FileNotFoundError:
         print(f"spec_table: no such spec: {args.spec}", file=sys.stderr)
         return 2
