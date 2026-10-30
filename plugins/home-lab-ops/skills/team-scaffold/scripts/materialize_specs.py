@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import pathlib
+from typing import Any
 
 import yaml
 
@@ -27,9 +28,14 @@ SPECS_DIR = HERE.parent / "specs"
 
 def load_teams(gen_harness_path: pathlib.Path) -> dict:
     spec = importlib.util.spec_from_file_location("_gen_harness", gen_harness_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load team generator: {gen_harness_path}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)  # side effect: regenerates to /tmp (harmless)
-    return mod.TEAMS
+    teams = mod.TEAMS
+    if not isinstance(teams, dict):
+        raise TypeError("Team generator TEAMS must be a dict")
+    return teams
 
 
 def load_profiles(fixtures: pathlib.Path, repo: str) -> list[dict]:
@@ -84,7 +90,7 @@ def main() -> int:
 
     for repo, cfg in teams.items():
         short = repo[len("team-") :]
-        spec = {
+        spec: dict[str, Any] = {
             "team": {
                 "name": short,
                 "display": cfg["team"],

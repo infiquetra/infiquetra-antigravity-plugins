@@ -25,6 +25,20 @@
 
 ---
 
+## 2026-10-29
+
+### Explicit model and loader types clear the existing mypy failures  {#spec-loader-types}
+
+**Evidence.** Hosted run `31957664695` at `87caa36` reported eight mypy errors in `spec_table.py` and `materialize_specs.py`.
+
+**Mechanism.** The conflict fallback lacked an element type, two CLI branches reused one local for different spec models, and the generator loader assumed optional import metadata and dynamically loaded data already matched their declared types. The output mapping was inferred too narrowly to hold both dicts and profile lists.
+
+**Fix.** Annotate the actual conflict and heterogeneous output collections, use separate model locals, and check the import spec, loader, and loaded `TEAMS` dict. Valid module execution, renderers, and YAML serialization remain unchanged.
+
+**Validation.** The unchanged locked mypy command passes all 269 source files. Relevant tests report 84 passed and 3 existing skips. Five new invalid-input controls fail against the original loader; the valid-input YAML contract passes against both versions. Existing independent assertions are unchanged.
+
+**Generalizable rule.** Narrow dynamic values at their typed boundary and keep incompatible model locals distinct; annotations should describe the real data shape.
+
 ## 2026-08-16
 
 ### A cross-repo generated doc turns a sibling repo's merge into this repo's red test  {#template-sync-cross-repo-coupling}
