@@ -24,6 +24,22 @@
 
 ## 2026-10-29
 
+### Share manifest and lint setup with strict outcome admission (commit pending)  {#ci-validation-lint-grouping}
+
+**Decision.** Replace the `Validate Plugins` and `Lint` display checks with `Validate Plugins and Lint` (`validate-lint`). Keep all five original command steps separately named. Publication requires this combined gate plus Tests, Type Check, Security Scan, and Saga Conformance. The strict conformance dependency expectation follows the same five-lane topology.
+
+**Rationale.** Observed setup accounts for a substantial share of the two short jobs. Each command runs after dependency setup succeeds and while the run is not cancelled, preserving later diagnostics after an earlier command fails. A final gate requires all five explicit producer outcomes to be `success`; other or missing outcomes cannot admit publication.
+
+**Cache policy.** Make the pinned setup-uv v5 defaults explicit: hosted-only `auto`, the existing `**/uv.lock` and `**/requirements*.txt` dependency globs, and CI pruning enabled. Preserve selected Python identity, action pins, and non-PR runner selection.
+
+**Rejected alternatives.** Broader grouping lacks the same measured setup rationale. Swallowing command failures would weaken publication admission.
+
+**Revisit when.** Representative hosted observations establish command/setup/job behavior and timing for this topology. Historical hits and package identities prove cache functionality; they do not establish a speed or cost improvement. Recorded merge-check snapshots must use the current context set.
+
+**Refs.** [CI workflow](../../.github/workflows/ci.yml), [publication dependency assertion](../../plugins/saga/tests/test_conformance_scenarios.py).
+
+## 2026-10-29
+
 ### Isolate PR runners and pin CI actions (commit pending)  {#ci-pr-runner-isolation}
 
 **Decision.** Every pull-request job selects hosted `ubuntu-latest` before consulting the configurable runner JSON. Non-PR events retain the existing runner selection. Default the workflow token to `contents: read`; retain `contents: write` only in the existing tag-guarded publication job. Pin all action references to verified official commits in their existing major families.
