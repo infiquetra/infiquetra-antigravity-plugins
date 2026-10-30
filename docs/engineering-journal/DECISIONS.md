@@ -24,6 +24,20 @@
 
 ## 2026-10-29
 
+### Isolate PR runners and pin CI actions (commit pending)  {#ci-pr-runner-isolation}
+
+**Decision.** Every pull-request job selects hosted `ubuntu-latest` before consulting the configurable runner JSON. Non-PR events retain the existing runner selection. Default the workflow token to `contents: read`; retain `contents: write` only in the existing tag-guarded publication job. Pin all action references to verified official commits in their existing major families.
+
+**Rationale.** Both same-repository and fork PRs execute proposed code. Runner isolation must hold even when the non-PR runner variable names a persistent runner or contains invalid JSON. Explicit permissions bound validation authority, and commit references keep reviewed action code stable.
+
+**Rejected alternatives.** Trusting same-repository PRs with configurable persistent runners or parsing the variable before the PR guard. Mutable major tags can move independently of a workflow review.
+
+**Revisit when.** A reviewed action update or runner policy change is needed; preserve the PR isolation and publication permission boundary.
+
+**Refs.** [CI workflow](../../.github/workflows/ci.yml). Official action repositories: `actions/checkout` v4, `actions/setup-python` v5, `astral-sh/setup-uv` v5, `actions/upload-artifact` v4, and `softprops/action-gh-release` v2.
+
+## 2026-10-29
+
 ### Bound PR validation without canceling publication (commit pending)  {#ci-pr-cancellation}
 
 **Decision.** Group PR runs by workflow and PR number with cancellation enabled. Give every other run its own run-ID/attempt group. Set the tests job timeout to 10 minutes and the other five validation jobs to 5 minutes; retain the six check identities and publication dependency chain.
