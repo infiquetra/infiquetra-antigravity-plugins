@@ -35,6 +35,12 @@ jobs:
 
       - name: Set up uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: auto
+          cache-dependency-glob: |
+            **/uv.lock
+            **/requirements*.txt
+          prune-cache: true
 
       - name: Install dependencies
         run: uv sync --locked --extra dev
@@ -50,8 +56,8 @@ jobs:
           path: coverage.xml
           retention-days: 5
 
-  validate:
-    name: Validate Plugins
+  validate-lint:
+    name: Validate Plugins and Lint
     runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || fromJSON(vars.WORKFLOW_RUNNER_LABELS || '"ubuntu-latest"') }}
     timeout-minutes: 5
 
@@ -66,44 +72,67 @@ jobs:
 
       - name: Set up uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: auto
+          cache-dependency-glob: |
+            **/uv.lock
+            **/requirements*.txt
+          prune-cache: true
 
       - name: Install dependencies
+        id: dependencies
         run: uv sync --locked --extra dev
 
       - name: Validate plugin manifests
+        id: manifests
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: uv run python scripts/validate_plugins.py
 
       - name: Validate marketplace wrapper
+        id: marketplace
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: uv run python marketplace/validator/validate.py
 
       - name: Score review canary
+        id: canary
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: uv run python scripts/review_canary.py tests/fixtures/review_canaries/worker_model_cache_scheduling/sample_review.md
 
-  lint:
-    name: Lint
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || fromJSON(vars.WORKFLOW_RUNNER_LABELS || '"ubuntu-latest"') }}
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
-
-      - name: Install dependencies
-        run: uv sync --locked --extra dev
-
       - name: Run ruff check
+        id: ruff_check
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: uv run python -m ruff check .
 
       - name: Run ruff format check
+        id: ruff_format
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: uv run python -m ruff format --check .
+
+      - name: Require all validation and lint outcomes
+        if: ${{ !cancelled() }}
+        env:
+          MANIFEST_OUTCOME: ${{ steps.manifests.outcome }}
+          MARKETPLACE_OUTCOME: ${{ steps.marketplace.outcome }}
+          CANARY_OUTCOME: ${{ steps.canary.outcome }}
+          RUFF_CHECK_OUTCOME: ${{ steps.ruff_check.outcome }}
+          RUFF_FORMAT_OUTCOME: ${{ steps.ruff_format.outcome }}
+        run: |
+          python - <<'PYCODE'
+          import json
+          import os
+          import sys
+
+          required = (
+              "MANIFEST_OUTCOME",
+              "MARKETPLACE_OUTCOME",
+              "CANARY_OUTCOME",
+              "RUFF_CHECK_OUTCOME",
+              "RUFF_FORMAT_OUTCOME",
+          )
+          outcomes = {name: os.environ.get(name, "") for name in required}
+          print(json.dumps(outcomes, sort_keys=True))
+          sys.exit(0 if all(value == "success" for value in outcomes.values()) else 1)
+          PYCODE
 
   type-check:
     name: Type Check
@@ -121,6 +150,12 @@ jobs:
 
       - name: Set up uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: auto
+          cache-dependency-glob: |
+            **/uv.lock
+            **/requirements*.txt
+          prune-cache: true
 
       - name: Install dependencies
         run: uv sync --locked --extra dev
@@ -144,6 +179,12 @@ jobs:
 
       - name: Set up uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: auto
+          cache-dependency-glob: |
+            **/uv.lock
+            **/requirements*.txt
+          prune-cache: true
 
       - name: Install dependencies
         run: uv sync --locked --extra dev
@@ -176,6 +217,12 @@ jobs:
 
       - name: Set up uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: auto
+          cache-dependency-glob: |
+            **/uv.lock
+            **/requirements*.txt
+          prune-cache: true
 
       - name: Install dependencies
         run: uv sync --locked --extra dev
@@ -190,7 +237,7 @@ jobs:
     name: Publish Plugin
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || fromJSON(vars.WORKFLOW_RUNNER_LABELS || '"ubuntu-latest"') }}
-    needs: [tests, validate, lint, type-check, security, conformance]
+    needs: [tests, validate-lint, type-check, security, conformance]
     permissions:
       contents: write
 
@@ -205,6 +252,12 @@ jobs:
 
       - name: Set up uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: auto
+          cache-dependency-glob: |
+            **/uv.lock
+            **/requirements*.txt
+          prune-cache: true
 
       - name: Install dependencies
         run: uv sync --locked --extra dev

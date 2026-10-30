@@ -175,4 +175,4 @@ def test_ci_runs_conformance_as_a_blocking_publish_dependency() -> None:
     assert "  conformance:\n" in workflow
     assert "python scripts/saga_conformance.py verify --fixture reference-lifecycle" in workflow
     assert "python scripts/saga_conformance.py validate-baseline" in workflow
-    assert "needs: [tests, validate, lint, type-check, security, conformance]" in workflow
+    assert "needs: [tests, validate-lint, type-check, security, conformance]" in workflow
